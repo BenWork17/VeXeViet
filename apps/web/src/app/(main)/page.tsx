@@ -1,0 +1,97 @@
+import { Button, Card } from '@vexeviet/ui';
+import Link from 'next/link';
+
+export default function HomePage() {
+  return (
+    <div className="flex flex-col">
+      {/* Hero Section */}
+      <section className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-600 text-white">
+        <div className="container mx-auto px-4 py-16 md:py-24">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+              VeXeViet - Book Bus Tickets in Vietnam
+            </h1>
+            <p className="text-lg md:text-xl text-blue-100 mb-8">
+              Safe, convenient, and affordable bus travel across Vietnam
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Search Widget Placeholder */}
+      <section className="container mx-auto px-4 -mt-8 mb-16">
+        <Card className="p-6 md:p-8 shadow-xl bg-white border-none">
+          <div className="flex flex-col space-y-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+              Find Your Journey
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-medium text-gray-700">From</label>
+                <div className="h-12 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center text-gray-400">
+                  City selector placeholder
+                </div>
+              </div>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-medium text-gray-700">To</label>
+                <div className="h-12 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center text-gray-400">
+                  City selector placeholder
+                </div>
+              </div>
+              <div className="flex flex-col space-y-2">
+                <label className="text-sm font-medium text-gray-700">Date</label>
+                <div className="h-12 border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center text-gray-400">
+                  Date picker placeholder
+                </div>
+              </div>
+            </div>
+            <Button className="w-full md:w-auto md:ml-auto" size="lg">
+              Search Tickets
+            </Button>
+          </div>
+        </Card>
+      </section>
+
+      {/* Popular Routes Section */}
+      <section className="container mx-auto px-4 pb-16">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">
+          Popular Routes
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {popularRoutes.map((route) => (
+            <Card key={route.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+              <div className="flex flex-col space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-gray-900">{route.from}</span>
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                  <span className="text-lg font-semibold text-gray-900">{route.to}</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  {route.operators} operators
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <span className="text-sm text-gray-500">From</span>
+                  <span className="text-xl font-bold text-blue-600">{route.price}</span>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// Mock data for popular routes
+const popularRoutes = [
+  { id: 1, from: 'Ho Chi Minh', to: 'Da Lat', operators: 25, price: '150,000₫' },
+  { id: 2, from: 'Hanoi', to: 'Ha Long', operators: 18, price: '120,000₫' },
+  { id: 3, from: 'Ho Chi Minh', to: 'Nha Trang', operators: 30, price: '200,000₫' },
+  { id: 4, from: 'Da Nang', to: 'Hoi An', operators: 15, price: '80,000₫' },
+  { id: 5, from: 'Ho Chi Minh', to: 'Vung Tau', operators: 22, price: '100,000₫' },
+  { id: 6, from: 'Hanoi', to: 'Sapa', operators: 12, price: '180,000₫' },
+  { id: 7, from: 'Ho Chi Minh', to: 'Can Tho', operators: 20, price: '130,000₫' },
+  { id: 8, from: 'Hue', to: 'Da Nang', operators: 10, price: '90,000₫' },
+];

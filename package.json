@@ -1,0 +1,28 @@
+{
+  "name": "vexeviet-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VeXeViet - Vietnamese bus ticket booking platform",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^1.12.0",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3",
+    "eslint": "^8.56.0"
+  }
+}
