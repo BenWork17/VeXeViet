@@ -1,14 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store'; // Note: Adjust based on real store path
-import { logout } from '@/store/slices/authSlice';
+// import { useDispatch, useSelector } from 'react-redux';
+// import { RootState } from '@/store'; // Note: Adjust based on real store path
+// import { logout } from '@/store/slices/authSlice';
 import Icon from 'react-native-vector-icons/Feather';
 
 const ProfileScreen = ({ navigation }: any) => {
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch();
   // Using mock selector as real store path might differ
-  const user = useSelector((state: RootState) => state.auth.user) || {
+  const user = {
     fullName: 'Guest User',
     email: 'guest@example.com',
   };
