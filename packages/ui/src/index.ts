@@ -1,5 +1,7 @@
 export { Button, type ButtonProps } from './components/ui/button';
 export { Input, type InputProps } from './components/ui/input';
+export { Checkbox, type CheckboxProps } from './components/ui/checkbox';
+export { Slider, type SliderProps } from './components/ui/slider';
 export {
   Card,
   CardHeader,
@@ -28,5 +30,6 @@ export {
   type ModalContentProps,
   type ModalFooterProps,
 } from './components/ui/modal';
+export { RouteCard, type RouteCardProps } from './components/features/route-card';
 export { cn } from './lib/utils';
 
