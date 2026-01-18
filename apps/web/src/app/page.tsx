@@ -40,8 +40,8 @@ export default function HomePage() {
       </section>
 
       {/* Search Widget */}
-      <section className="container mx-auto px-4 -mt-8 mb-16">
-        <Card className="p-6 md:p-8 shadow-xl bg-white border-none">
+      <section className="container mx-auto px-4 -mt-12 md:-mt-16 mb-16 relative z-10">
+        <Card className="p-6 md:p-8 shadow-2xl bg-white border-none">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Find Your Journey
           </h2>

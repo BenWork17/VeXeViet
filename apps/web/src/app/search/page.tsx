@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { RouteCard, Button } from '@vexeviet/ui';
 import { SearchForm, type SearchFormValues } from '@/components/features/search/SearchForm';
 import { FilterPanel } from '@/components/features/search/FilterPanel';
@@ -83,6 +83,7 @@ function applyFiltersAndSort(
 }
 
 function SearchPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const { filters, results, loading, error, sortBy, sortOrder } = useAppSelector((state) => state.search);
@@ -158,7 +159,7 @@ function SearchPageContent() {
   };
 
   const handleSelectRoute = (routeId: string) => {
-    window.location.href = `/routes/${routeId}`;
+    router.push(`/routes/${routeId}`);
   };
 
   return (

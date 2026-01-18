@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { SeatMap, SeatData } from '@/components/features/booking/SeatMap/SeatMap';
 import { Armchair } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
+import { setSeats, setTotalPrice, setStep } from '@/store/slices/bookingSlice';
 
 // Mock data generator
 const getSeatAvailability = (routeId: string): SeatData[] => {
@@ -29,10 +32,14 @@ const getSeatAvailability = (routeId: string): SeatData[] => {
 };
 
 export default function BookingPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { currentBooking } = useAppSelector((state) => state.booking);
+  
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const routeId = params.id;
-  const busType = 'Standard'; // Mock
-  const basePrice = 250000; // Mock (VND)
+  const busType = currentBooking?.route.busType || 'Standard';
+  const basePrice = currentBooking?.route.price || 250000;
   const vipSurcharge = 50000;
   
   const seats = useMemo(() => getSeatAvailability(routeId), [routeId]);
@@ -55,7 +62,14 @@ export default function BookingPage({ params }: { params: { id: string } }) {
       const seat = seats.find(s => s.id === seatId);
       return total + basePrice + (seat?.type === 'vip' ? vipSurcharge : 0);
     }, 0);
-  }, [selectedSeats, seats]);
+  }, [selectedSeats, seats, basePrice]);
+
+  const handleContinue = () => {
+    dispatch(setSeats(selectedSeats));
+    dispatch(setTotalPrice(totalPrice));
+    dispatch(setStep('payment'));
+    router.push('/booking/payment');
+  };
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl text-slate-900">
@@ -103,6 +117,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
                 </span>
               </div>
               <button 
+                onClick={handleContinue}
                 className={cn(
                   "w-full py-3 rounded-lg font-bold transition-all",
                   selectedSeats.length > 0 

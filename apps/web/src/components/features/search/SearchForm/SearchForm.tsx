@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { format } from 'date-fns'
+import { useRouter } from 'next/navigation'
 import { Button, Input } from '@vexeviet/ui'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -40,7 +41,7 @@ export type SearchFormValues = z.infer<typeof searchFormSchema>
 
 export interface SearchFormProps {
   initialValues?: Partial<SearchFormValues>
-  onSubmit: (values: SearchFormValues) => void
+  onSubmit?: (values: SearchFormValues) => void
   isLoading?: boolean
   className?: string
 }
@@ -51,6 +52,7 @@ export function SearchForm({
   isLoading = false,
   className = '',
 }: SearchFormProps) {
+  const router = useRouter()
   const {
     register,
     handleSubmit,
@@ -85,7 +87,21 @@ export function SearchForm({
   }
 
   const handleFormSubmit = (data: SearchFormValues) => {
-    onSubmit(data)
+    if (onSubmit) {
+      onSubmit(data)
+      return
+    }
+
+    const params = new URLSearchParams()
+    params.set('origin', data.origin)
+    params.set('destination', data.destination)
+    params.set('departureDate', format(data.departureDate, 'yyyy-MM-dd'))
+    params.set('passengers', data.passengers.toString())
+    if (data.returnDate) {
+      params.set('returnDate', format(data.returnDate, 'yyyy-MM-dd'))
+    }
+
+    router.push(`/search?${params.toString()}`)
   }
 
   return (

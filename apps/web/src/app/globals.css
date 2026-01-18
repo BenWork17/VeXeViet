@@ -84,3 +84,29 @@ body {
 .animate-slideInRight {
   animation: slideInRight 0.3s ease-out;
 }
+
+/* Print Styles */
+@media print {
+  .no-print,
+  header,
+  footer,
+  nav {
+    display: none !important;
+  }
+  
+  .ticket-card {
+    border: 2px solid #000 !important;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+  
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}

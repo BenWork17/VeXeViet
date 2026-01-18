@@ -14,6 +14,7 @@ const ProfileScreen = ({ navigation }: any) => {
   };
 
   const menuItems = [
+    { id: 'wallet', label: 'Ticket Wallet', icon: 'credit-card', screen: 'TicketWallet' },
     { id: 'bookings', label: 'My Bookings', icon: 'briefcase', screen: 'BookingHistory' },
     { id: 'edit', label: 'Edit Profile', icon: 'edit-2', screen: 'EditProfile' },
     { id: 'password', label: 'Change Password', icon: 'lock', screen: 'ChangePassword' },

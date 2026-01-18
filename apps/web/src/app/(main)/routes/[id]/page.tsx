@@ -1,14 +1,41 @@
+'use client';
+
 import { notFound } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { getRouteDetailById } from '@/lib/api/mock/routes';
 import { RouteDetailHeader, RouteJourneyTimeline, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
-import Link from 'next/link';
+import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
+import { initBooking } from '@/store/slices/bookingSlice';
+import type { RouteDetail } from '@vexeviet/types';
 
-export default async function RouteDetailPage({ params }: { params: { id: string } }) {
-  const route = await getRouteDetailById(params.id);
+export default function RouteDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
+  const [route, setRoute] = useState<RouteDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!route) {
-    notFound();
-  }
+  useEffect(() => {
+    async function fetchRoute() {
+      const data = await getRouteDetailById(params.id);
+      setRoute(data || null);
+      setLoading(false);
+    }
+    fetchRoute();
+  }, [params.id]);
+
+  if (loading) return <div className="container mx-auto px-4 py-8">Loading...</div>;
+  if (!route) notFound();
+
+  const handleSelectSeats = () => {
+    if (!user) {
+      router.push(`/login?redirect=/routes/${route.id}`);
+      return;
+    }
+    dispatch(initBooking(route));
+    router.push(`/booking/${route.id}`);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -35,12 +62,12 @@ export default async function RouteDetailPage({ params }: { params: { id: string
                 <span className="font-semibold">{route.availableSeats} seats</span>
               </div>
               
-              <Link
-                href={`/booking/${route.id}`}
+              <button
+                onClick={handleSelectSeats}
                 className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 rounded-lg font-bold transition-colors"
               >
                 Select Seats
-              </Link>
+              </button>
               
               <p className="text-xs text-center text-gray-400">
                 Instant confirmation • No booking fees
@@ -59,12 +86,12 @@ export default async function RouteDetailPage({ params }: { params: { id: string
               {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(route.price)}
             </p>
           </div>
-          <Link
-            href={`/booking/${route.id}`}
+          <button
+            onClick={handleSelectSeats}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-3 rounded-lg font-bold transition-colors"
           >
             Select Seats
-          </Link>
+          </button>
         </div>
       </div>
     </div>

@@ -41,6 +41,72 @@ const mockRoutes: Record<string, Route> = {
       'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=1000',
     ],
   },
+  'route-001': {
+    id: 'route-001',
+    operator: {
+      id: 'op-001',
+      name: 'Sao Viet Express',
+      logoUrl: 'https://via.placeholder.com/150',
+      rating: 4.8,
+      totalReviews: 850,
+    },
+    busType: 'LIMOUSINE',
+    licensePlate: '29B-999.99',
+    departureTime: '2026-02-15T22:00:00Z',
+    arrivalTime: '2026-02-16T05:30:00Z',
+    departureLocation: 'Hanoi',
+    arrivalLocation: 'Sapa',
+    duration: '7h 30m',
+    price: 350000,
+    availableSeats: 12,
+    amenities: [
+      { id: 'a1', name: 'Wifi', icon: 'Wifi' },
+      { id: 'a2', name: 'Water', icon: 'Cup' },
+    ],
+    pickupPoints: [
+      { id: 'pickup-001', time: '22:00', location: 'My Dinh Bus Station', address: 'Pham Hung Street' },
+    ],
+    dropoffPoints: [
+      { id: 'dropoff-001', time: '05:30', location: 'Sapa Bus Station', address: 'Fansipan Road' },
+    ],
+    policies: [
+      { type: 'CANCELLATION', title: 'Cancellation Policy', description: 'Free cancellation up to 24 hours before departure' },
+    ],
+    images: ['https://via.placeholder.com/800x600'],
+  },
+  'route-004': {
+    id: 'route-004',
+    operator: {
+      id: 'op-001',
+      name: 'Sao Viet Express',
+      logoUrl: 'https://via.placeholder.com/150',
+      rating: 4.7,
+      totalReviews: 420,
+    },
+    busType: 'VIP',
+    licensePlate: '15B-888.88',
+    departureTime: '2026-02-15T14:00:00Z',
+    arrivalTime: '2026-02-15T16:30:00Z',
+    departureLocation: 'Hanoi',
+    arrivalLocation: 'Hai Phong',
+    duration: '2h 30m',
+    price: 120000,
+    availableSeats: 30,
+    amenities: [
+      { id: 'a1', name: 'Wifi', icon: 'Wifi' },
+      { id: 'a2', name: 'AC', icon: 'Wind' },
+    ],
+    pickupPoints: [
+      { id: 'pickup-005', time: '14:00', location: 'Giap Bat Bus Station', address: 'Giai Phong Street' },
+    ],
+    dropoffPoints: [
+      { id: 'dropoff-004', time: '16:30', location: 'Tam Bac Bus Station', address: 'Tran Nguyen Han Street' },
+    ],
+    policies: [
+      { type: 'CANCELLATION', title: 'Cancellation Policy', description: 'Free cancellation up to 12 hours before departure' },
+    ],
+    images: ['https://via.placeholder.com/800x600'],
+  },
 };
 
 export async function getRouteDetailById(id: string): Promise<Route | null> {
