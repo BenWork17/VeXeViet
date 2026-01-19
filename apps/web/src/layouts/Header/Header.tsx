@@ -7,59 +7,116 @@ import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@/store';
 import { logout } from '@/store/slices/authSlice';
+import { ThemeSwitcher } from '@/components/theme';
+import { useThemeContext } from '@/components/theme/ThemeProvider';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
+  const { resolvedTheme } = useThemeContext();
+  
+  const isDark = resolvedTheme === 'dark';
 
   return (
-    <header className="no-print sticky top-0 z-50 w-full border-b bg-white shadow-sm">
+    <header 
+      className="no-print sticky top-0 z-50 w-full shadow-md border-b"
+      style={{ 
+        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+        borderColor: isDark ? '#374151' : '#e5e7eb'
+      }}
+    >
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500" />
-            <span className="text-xl font-bold text-gray-900">VeXeViet</span>
+          <Link href="/" className="flex items-center space-x-2 group">
+            <div className="relative h-8 w-12 overflow-hidden rounded-sm shadow-sm transition-transform group-hover:scale-105">
+              <div className="absolute inset-0 bg-[#DA251D]" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[#FFFF00]">
+                <svg viewBox="0 0 512 512" className="h-4 w-4 fill-current">
+                  <path d="M256 36l61.2 188.4H512L348.6 340.2 409.8 528.6 256 412.2 102.2 528.6 163.4 340.2 0 224.4h194.8L256 36z" />
+                </svg>
+              </div>
+            </div>
+            <span 
+              className="text-xl font-black tracking-tighter italic"
+              style={{ color: isDark ? '#ffffff' : '#111827' }}
+            >
+              VeXe<span className="text-primary">Viet</span>
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/search" className="text-sm font-semibold text-gray-700 hover:text-blue-600 transition-colors">
+            <Link 
+              href="/search" 
+              className="text-sm font-semibold hover:text-primary transition-colors"
+              style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+            >
               Search
             </Link>
             {user && (
-              <Link href="/profile" className="text-sm font-semibold text-gray-700 hover:text-blue-600 transition-colors">
+              <Link 
+                href="/profile" 
+                className="text-sm font-semibold hover:text-primary transition-colors"
+                style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+              >
                 My Bookings
               </Link>
             )}
           </nav>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            <ThemeSwitcher />
+            
             {user ? (
               <div className="hidden md:flex items-center space-x-4">
-                <Link href="/profile" className="flex items-center space-x-2 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100">
-                  <User className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-700">{user.fullName}</span>
+                <Link 
+                  href="/profile" 
+                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full border bg-primary/10 border-primary/20 text-primary transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  <span className="text-sm font-medium">{user.fullName}</span>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={() => dispatch(logout())}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => dispatch(logout())}
+                  className="hover:text-primary"
+                  style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+                >
                   Logout
                 </Button>
               </div>
             ) : (
               <div className="hidden md:flex items-center space-x-2">
                 <Link href="/login">
-                  <Button variant="ghost" size="sm">Login</Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="hover:text-primary"
+                    style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+                  >
+                    Login
+                  </Button>
                 </Link>
                 <Link href="/register">
-                  <Button size="sm">Sign Up</Button>
+                  <Button 
+                    size="sm"
+                    className="bg-primary hover:bg-primary/90"
+                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                  >
+                    Sign Up
+                  </Button>
                 </Link>
               </div>
             )}
 
             {/* Mobile Menu Button */}
             <button
-              className="md:hidden p-2 text-gray-600"
+              className="md:hidden p-2 rounded-full transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+              style={{ color: isDark ? '#e5e7eb' : '#374151' }}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -68,12 +125,19 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden border-t py-4 space-y-4 animate-fadeIn">
+          <div 
+            className="md:hidden border-t py-4 space-y-4 animate-fadeIn -mx-4 px-4"
+            style={{ 
+              backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+              borderColor: isDark ? '#374151' : '#e5e7eb'
+            }}
+          >
             <nav className="flex flex-col space-y-3">
               <Link
                 href="/search"
-                className="px-4 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+                className="px-4 py-2 text-base font-medium rounded-lg transition-colors"
                 onClick={() => setIsMenuOpen(false)}
+                style={{ color: isDark ? '#e5e7eb' : '#374151' }}
               >
                 Search
               </Link>
@@ -81,8 +145,9 @@ export function Header() {
                 <>
                   <Link
                     href="/profile"
-                    className="px-4 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 rounded-lg"
+                    className="px-4 py-2 text-base font-medium rounded-lg transition-colors"
                     onClick={() => setIsMenuOpen(false)}
+                    style={{ color: isDark ? '#e5e7eb' : '#374151' }}
                   >
                     Profile
                   </Link>
@@ -91,7 +156,7 @@ export function Header() {
                       dispatch(logout());
                       setIsMenuOpen(false);
                     }}
-                    className="px-4 py-2 text-left text-base font-medium text-red-600 hover:bg-red-50 rounded-lg"
+                    className="px-4 py-2 text-left text-base font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   >
                     Logout
                   </button>

@@ -2,14 +2,14 @@
 
 import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { RouteCard, Button } from '@vexeviet/ui';
+import { format } from 'date-fns';
+import { RouteCard, Button, cn } from '@vexeviet/ui';
 import { SearchForm, type SearchFormValues } from '@/components/features/search/SearchForm';
 import { FilterPanel } from '@/components/features/search/FilterPanel';
 import { mockSearchRoutes } from '@vexeviet/api-client';
 import { Route, SearchFilters, SearchRoutesResponse } from '@vexeviet/types';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { setFilters, setResults, setLoading, setError, setSortBy, setSortOrder, resetFilters } from '@/store/slices/searchSlice';
-import { cn } from '@/lib/utils';
 
 function applyFiltersAndSort(
   routes: Route[],
@@ -163,41 +163,64 @@ function SearchPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100">
-      {/* Search Header với gradient đẹp */}
-      <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 border-b shadow-2xl">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-4">
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              Tìm Chuyến Xe
-            </h1>
-            <p className="text-blue-100 mt-2">Tìm kiếm và đặt vé xe khách trực tuyến</p>
+    <div className="min-h-screen bg-background">
+      {/* Search Header với phong cách Luxury */}
+      <div className="bg-background relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-1/3 h-full bg-primary/10 -skew-x-12 translate-x-1/2" />
+        <div className="container mx-auto px-4 py-12 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div>
+              <div className="flex items-center space-x-2 text-secondary font-bold tracking-widest uppercase text-[10px] mb-3">
+                <span className="w-8 h-[1px] bg-secondary"></span>
+                <span className="text-slate-900 dark:text-white">Kết quả tìm kiếm</span>
+              </div>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                {origin} <span className="text-primary mx-2">→</span> {destination}
+              </h1>
+            </div>
+            <div className="bg-white/10 dark:bg-white/5 backdrop-blur-md border-4 border-slate-200 dark:border-white/10 p-4 rounded-2xl flex items-center gap-6">
+              <div className="text-center">
+                <span className="text-[10px] font-bold text-slate-600 dark:text-gray-200 uppercase tracking-widest block">Ngày đi</span>
+                <span className="text-slate-900 dark:text-white font-bold">{departureDate ? format(new Date(departureDate), 'dd/MM/yyyy') : '-'}</span>
+              </div>
+              <div className="w-px h-8 bg-slate-200 dark:bg-white/10" />
+              <div className="text-center">
+                <span className="text-[10px] font-bold text-slate-600 dark:text-gray-200 uppercase tracking-widest block">Hành khách</span>
+                <span className="text-slate-900 dark:text-white font-bold">{passengers || 1} khách</span>
+              </div>
+            </div>
           </div>
-          <SearchForm
-            initialValues={
-              origin && destination && departureDate
-                ? {
-                    origin,
-                    destination,
-                    departureDate: new Date(departureDate),
-                    passengers: passengers ? parseInt(passengers, 10) : 1,
-                  }
-                : undefined
-            }
-            onSubmit={handleSearch}
-            isLoading={loading}
-          />
+          
+          <div className="bg-blue-600 rounded-[2.5rem] p-1 md:p-2 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border-4 border-blue-700 overflow-hidden">
+            <div className="bg-white rounded-[1.8rem] p-6 md:p-10 border-4 border-slate-200">
+              <SearchForm
+                initialValues={
+                  origin && destination && departureDate
+                    ? {
+                        origin,
+                        destination,
+                        departureDate: new Date(departureDate),
+                        passengers: passengers ? parseInt(passengers, 10) : 1,
+                      }
+                    : undefined
+                }
+                onSubmit={handleSearch}
+                isLoading={loading}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
           {/* Filter Sidebar - Desktop */}
           <aside className="hidden lg:block lg:col-span-1">
-            <div className="sticky top-4">
+            <div className="sticky top-8 space-y-8">
+              <div className="flex items-center space-x-2 text-primary font-bold tracking-widest uppercase text-xs">
+                <span className="w-6 h-[2px] bg-primary"></span>
+                <span>Bộ lọc thông minh</span>
+              </div>
               <FilterPanel
                 priceRange={searchResults?.data.filters.priceRange}
                 availableBusTypes={searchResults?.data.filters.availableBusTypes}

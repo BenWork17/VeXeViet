@@ -2,16 +2,18 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useDispatch } from 'react-redux';
+import { setPaymentStatus } from '@/store/slices/bookingSlice';
 import { PaymentResultParams } from '@/types/payment';
 
 function PaymentResultContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dispatch = useDispatch();
   const [result, setResult] = useState<PaymentResultParams | null>(null);
 
   useEffect(() => {
     // Parse payment result from query params
-    // Different gateways use different parameter names
     const vnpStatus = searchParams.get('vnp_TransactionStatus');
     const momoStatus = searchParams.get('resultCode');
     const zaloStatus = searchParams.get('status');
@@ -33,13 +35,18 @@ function PaymentResultContent() {
       status = 'success';
     }
 
-    setResult({
+    const paymentResult: PaymentResultParams = {
       status,
       transactionId: transactionId || undefined,
       bookingId: bookingId || undefined,
       message: searchParams.get('message') || undefined,
-    });
-  }, [searchParams]);
+    };
+
+    setResult(paymentResult);
+    
+    // Sync with Redux Store
+    dispatch(setPaymentStatus(status));
+  }, [searchParams, dispatch]);
 
   if (!result) {
     return (
@@ -118,13 +125,13 @@ function PaymentResultContent() {
                       router.push('/profile/bookings');
                     }
                   }}
-                  className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90"
+                  className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"
                 >
                   Xem vé
                 </button>
                 <button
                   onClick={() => router.push('/')}
-                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all active:scale-95"
                 >
                   Về trang chủ
                 </button>
@@ -132,14 +139,20 @@ function PaymentResultContent() {
             ) : (
               <>
                 <button
-                  onClick={() => router.back()}
-                  className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90"
+                  onClick={() => {
+                    if (result.bookingId) {
+                      router.push(`/booking/payment?id=${result.bookingId}`);
+                    } else {
+                      router.back();
+                    }
+                  }}
+                  className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"
                 >
                   Thử lại
                 </button>
                 <button
                   onClick={() => router.push('/')}
-                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all active:scale-95"
                 >
                   Về trang chủ
                 </button>

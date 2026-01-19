@@ -105,145 +105,123 @@ export function SearchForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className={`space-y-4 ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label htmlFor="origin" className="block text-sm font-medium text-gray-700">
-            Origin
-          </label>
-          <Input
-            id="origin"
-            placeholder="Enter origin city"
-            variant={errors.origin ? 'error' : 'default'}
-            disabled={isLoading}
-            {...register('origin')}
-          />
-          {errors.origin && <p className="text-sm text-red-600">{errors.origin.message}</p>}
+    <form onSubmit={handleSubmit(handleFormSubmit)} className={`space-y-6 ${className}`}>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-end">
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2 relative">
+            <label htmlFor="origin" className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
+              Điểm đi
+            </label>
+            <div className="relative group">
+                <Input
+                id="origin"
+                placeholder="Tỉnh, thành phố..."
+                className="pl-10 h-14 rounded-2xl border-4 border-slate-200 bg-white focus:bg-white transition-all focus:border-primary focus:ring-0"
+                disabled={isLoading}
+                {...register('origin')}
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </span>
+            </div>
+            {errors.origin && <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-tighter">{errors.origin.message}</p>}
+          </div>
+
+          <div className="space-y-2 relative">
+            <label htmlFor="destination" className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
+              Điểm đến
+            </label>
+            <div className="relative group">
+                <Input
+                id="destination"
+                placeholder="Tỉnh, thành phố..."
+                className="pl-10 h-14 rounded-2xl border-4 border-slate-200 bg-white focus:bg-white transition-all focus:border-primary focus:ring-0"
+                disabled={isLoading}
+                {...register('destination')}
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </span>
+              <button
+                type="button"
+                onClick={handleSwapLocations}
+                disabled={isLoading}
+                className="absolute -left-6 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md border border-gray-100 p-2 rounded-full hover:rotate-180 transition-all duration-500 text-primary"
+                aria-label="Swap origin and destination"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+              </button>
+            </div>
+            {errors.destination && <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-tighter">{errors.destination.message}</p>}
+          </div>
         </div>
 
-        <div className="space-y-2 relative">
-          <label htmlFor="destination" className="block text-sm font-medium text-gray-700">
-            Destination
-          </label>
-          <Input
-            id="destination"
-            placeholder="Enter destination city"
-            variant={errors.destination ? 'error' : 'default'}
+        <div className="grid grid-cols-2 gap-4 lg:col-span-1">
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">Ngày đi</label>
+            <Popover open={departureDateOpen} onOpenChange={setDepartureDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isLoading}
+                  className={`h-14 rounded-2xl border-4 border-slate-200 bg-white w-full justify-start text-left font-normal transition-all hover:bg-white focus:border-primary ${
+                    !departureDate ? 'text-gray-400' : 'text-gray-900'
+                  }`}
+                >
+                  <svg className="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  {departureDate ? format(departureDate, 'dd/MM/yyyy') : 'Chọn ngày'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 z-[100] rounded-3xl overflow-hidden border-none shadow-2xl" align="start">
+                <Calendar
+                  mode="single"
+                  selected={departureDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setValue('departureDate', date, { shouldValidate: true })
+                      setDepartureDateOpen(false)
+                    }
+                  }}
+                  disabled={(date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">Số khách</label>
+            <div className="relative group">
+                <Input
+                id="passengers"
+                type="number"
+                min={1}
+                max={10}
+                className="pl-10 h-14 rounded-2xl border-4 border-slate-200 bg-white focus:bg-white transition-all focus:border-primary focus:ring-0"
+                disabled={isLoading}
+                {...register('passengers', { valueAsNumber: true })}
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-1">
+          <Button 
+            type="submit" 
+            size="lg"
+            className="w-full h-14 rounded-2xl text-lg font-bold shadow-[0_10px_20px_-5px_rgba(139,0,0,0.3)] hover:shadow-[0_20px_40px_-10px_rgba(139,0,0,0.4)] transition-all bg-primary text-white dark:bg-gray-800 dark:text-white dark:border dark:border-gray-600 [&:hover]:text-black" 
             disabled={isLoading}
-            {...register('destination')}
-          />
-          {errors.destination && (
-            <p className="text-sm text-red-600">{errors.destination.message}</p>
-          )}
-          <button
-            type="button"
-            onClick={handleSwapLocations}
-            disabled={isLoading}
-            className="absolute right-0 top-0 mt-8 mr-2 p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
-            aria-label="Swap origin and destination"
           >
-            ⇄
-          </button>
+            {isLoading ? 'Đang tìm...' : 'Tìm chuyến xe'}
+          </Button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Departure Date</label>
-          <Popover open={departureDateOpen} onOpenChange={setDepartureDateOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                className={`w-full justify-start text-left font-normal ${
-                  !departureDate ? 'text-gray-400' : ''
-                } ${errors.departureDate ? 'border-red-500' : ''}`}
-              >
-                {departureDate ? format(departureDate, 'PPP') : 'Pick a date'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[100]" align="start">
-              <Calendar
-                mode="single"
-                selected={departureDate}
-                onSelect={(date) => {
-                  if (date) {
-                    setValue('departureDate', date, { shouldValidate: true })
-                    setDepartureDateOpen(false)
-                  }
-                }}
-                disabled={(date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          {errors.departureDate && (
-            <p className="text-sm text-red-600">{errors.departureDate.message as string}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Return Date (Optional)</label>
-          <Popover open={returnDateOpen} onOpenChange={setReturnDateOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isLoading}
-                className={`w-full justify-start text-left font-normal ${
-                  !returnDate ? 'text-gray-400' : ''
-                } ${errors.returnDate ? 'border-red-500' : ''}`}
-              >
-                {returnDate ? format(returnDate, 'PPP') : 'Pick a date'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-[100]" align="start">
-              <Calendar
-                mode="single"
-                selected={returnDate}
-                onSelect={(date) => {
-                  setValue('returnDate', date, { shouldValidate: true })
-                  setReturnDateOpen(false)
-                }}
-                disabled={(date: Date) =>
-                  date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                  (departureDate ? date <= departureDate : false)
-                }
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          {errors.returnDate && (
-            <p className="text-sm text-red-600">{errors.returnDate.message as string}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="passengers" className="block text-sm font-medium text-gray-700">
-            Passengers
-          </label>
-          <Input
-            id="passengers"
-            type="number"
-            min={1}
-            max={10}
-            placeholder="1"
-            variant={errors.passengers ? 'error' : 'default'}
-            disabled={isLoading}
-            {...register('passengers', { valueAsNumber: true })}
-          />
-          {errors.passengers && <p className="text-sm text-red-600">{errors.passengers.message}</p>}
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-4">
-        <Button type="button" variant="secondary" onClick={() => reset()} disabled={isLoading}>
-          Clear
-        </Button>
-        <Button type="submit" variant="primary" disabled={isLoading}>
-          {isLoading ? 'Searching...' : 'Search Routes'}
-        </Button>
       </div>
     </form>
   )

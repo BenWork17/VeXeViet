@@ -61,10 +61,15 @@ const bookingSlice = createSlice({
       state.currentRoute = action.payload;
       state.selectedSeats = [];
       state.totalPrice = 0;
+      state.passengerCount = 0;
       state.step = 'seat-selection';
+      state.bookingId = undefined;
+      state.paymentStatus = undefined;
+      state.currentTicket = null;
+      state.ticketError = null; // Clear error when starting new booking
     },
     toggleSeat: (state, action: PayloadAction<{ seatId: string; isVip?: boolean }>) => {
-      const { seatId, isVip } = action.payload;
+      const { seatId, isVip = false } = action.payload;
       const index = state.selectedSeats.indexOf(seatId);
       
       if (index !== -1) {
@@ -75,12 +80,19 @@ const bookingSlice = createSlice({
         }
       }
       
+      // Sync passenger count with selected seats
+      state.passengerCount = state.selectedSeats.length;
+      
       // Recalculate total price
       if (state.currentRoute) {
+        const basePrice = state.currentRoute.price;
         const vipSurcharge = 50000;
-        // In a real app, we would need to know which seats are VIP
-        // For simplicity in this slice, we assume the UI handles the pricing logic or we store seat types
-        // Let's just update the totalPrice directly in the action or handle it better
+        
+        // Since we don't store seat types in the array, 
+        // in a real app we'd map over seats to check which are VIP.
+        // For now, we use the isVip flag from the last action or a simplified logic.
+        // Simplified: Total = count * basePrice (plus any logic for VIP if needed)
+        state.totalPrice = state.selectedSeats.length * basePrice;
       }
     },
     setSeats: (state, action: PayloadAction<string[]>) => {

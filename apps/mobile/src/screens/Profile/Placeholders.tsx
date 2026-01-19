@@ -1,16 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../hooks/useTheme';
 
-const PlaceholderScreen = ({ title }: { title: string }) => (
-  <View style={styles.container}>
-    <Text style={styles.text}>{title} Screen</Text>
-    <Text style={styles.subtext}>Tính năng đang được phát triển</Text>
-  </View>
-);
+const PlaceholderScreen = ({ title }: { title: string }) => {
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.text, { color: colors.foreground }]}>{title} Screen</Text>
+      <Text style={[styles.subtext, { color: colors.mutedForeground }]}>Tính năng đang được phát triển</Text>
+    </View>
+  );
+};
 
 export const EditProfileScreen = () => <PlaceholderScreen title="Edit Profile" />;
 export const ChangePasswordScreen = () => <PlaceholderScreen title="Change Password" />;
-export const SettingsScreen = () => <PlaceholderScreen title="Settings" />;
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' },

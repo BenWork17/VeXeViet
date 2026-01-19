@@ -1,13 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
-// import { useDispatch, useSelector } from 'react-redux';
-// import { RootState } from '@/store'; // Note: Adjust based on real store path
-// import { logout } from '@/store/slices/authSlice';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { useTheme } from '../../hooks/useTheme';
 
 const ProfileScreen = ({ navigation }: any) => {
-  // const dispatch = useDispatch();
-  // Using mock selector as real store path might differ
+  const { colors } = useTheme();
   const user = {
     fullName: 'Guest User',
     email: 'guest@example.com',
@@ -28,7 +25,6 @@ const ProfileScreen = ({ navigation }: any) => {
         text: 'Logout',
         style: 'destructive',
         onPress: () => {
-          // dispatch(logout());
           console.log('User logged out');
         },
       },
@@ -36,37 +32,37 @@ const ProfileScreen = ({ navigation }: any) => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.avatarContainer}>
-          <Icon name="user" size={40} color="#3b82f6" />
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View style={[styles.avatarContainer, { backgroundColor: colors.muted }]}>
+          <Icon name="user" size={40} color={colors.primary} />
         </View>
-        <Text style={styles.userName}>{user.fullName}</Text>
-        <Text style={styles.userEmail}>{user.email}</Text>
+        <Text style={[styles.userName, { color: colors.foreground }]}>{user.fullName}</Text>
+        <Text style={[styles.userEmail, { color: colors.mutedForeground }]}>{user.email}</Text>
       </View>
 
-      {/* Menu */}
-      <View style={styles.menuContainer}>
+      <View style={[styles.menuContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
         {menuItems.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
             onPress={() => item.screen && navigation.navigate(item.screen)}
           >
             <View style={styles.menuItemLeft}>
-              <Icon name={item.icon} size={20} color="#4b5563" />
-              <Text style={styles.menuLabel}>{item.label}</Text>
+              <Icon name={item.icon} size={20} color={colors.mutedForeground} />
+              <Text style={[styles.menuLabel, { color: colors.foreground }]}>{item.label}</Text>
             </View>
-            <Icon name="chevron-right" size={20} color="#9ca3af" />
+            <Icon name="chevron-right" size={20} color={colors.mutedForeground} />
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Logout */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Icon name="log-out" size={20} color="#ef4444" />
-        <Text style={styles.logoutText}>Log Out</Text>
+      <TouchableOpacity 
+        style={[styles.logoutButton, { backgroundColor: colors.card, borderColor: colors.border }]} 
+        onPress={handleLogout}
+      >
+        <Icon name="log-out" size={20} color={colors.destructive} />
+        <Text style={[styles.logoutText, { color: colors.destructive }]}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
