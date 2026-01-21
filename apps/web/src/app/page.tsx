@@ -12,16 +12,23 @@ export default function HomePage() {
   const [triggerBusExit, setTriggerBusExit] = useState(false);
 
   const handleSearch = (values: SearchFormValues) => {
+    // Format date as local date (YYYY-MM-DD) without timezone conversion
+    const year = values.departureDate.getFullYear()
+    const month = String(values.departureDate.getMonth() + 1).padStart(2, '0')
+    const day = String(values.departureDate.getDate()).padStart(2, '0')
+    const formattedDate = `${year}-${month}-${day}`
+
     const params = new URLSearchParams();
     params.set('origin', values.origin);
     params.set('destination', values.destination);
-    const dateStr = values.departureDate.toISOString().split('T')[0];
-    if (dateStr) params.set('departureDate', dateStr);
+    params.set('departureDate', formattedDate);
     params.set('passengers', values.passengers.toString());
 
     if (values.returnDate) {
-      const returnDateStr = values.returnDate.toISOString().split('T')[0];
-      if (returnDateStr) params.set('returnDate', returnDateStr);
+      const returnYear = values.returnDate.getFullYear()
+      const returnMonth = String(values.returnDate.getMonth() + 1).padStart(2, '0')
+      const returnDay = String(values.returnDate.getDate()).padStart(2, '0')
+      params.set('returnDate', `${returnYear}-${returnMonth}-${returnDay}`)
     }
 
     setTriggerBusExit(true);
@@ -96,8 +103,8 @@ export default function HomePage() {
       </section>
 
       {/* Search Widget */}
-      <section className="container mx-auto px-4 -mt-24 mb-24 relative z-20">
-        <Card className="p-1 md:p-2 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] bg-blue-600 border-4 border-blue-700 rounded-[2.5rem] overflow-hidden">
+      <section className="container mx-auto px-4 -mt-24 mb-24 relative z-30">
+        <Card className="p-1 md:p-2 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] bg-blue-600 border-4 border-blue-700 rounded-[2.5rem] overflow-visible">
           <div className="bg-white rounded-[1.8rem] p-6 md:p-10 border-4 border-slate-200">
             <div className="flex items-center space-x-3 mb-8">
               <div className="h-1 w-12 bg-primary rounded-full" />

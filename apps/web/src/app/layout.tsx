@@ -3,6 +3,7 @@ import 'react-day-picker/dist/style.css'
 import { Header } from '@/layouts/Header/Header'
 import { Footer } from '@/layouts/Footer/Footer'
 import { StoreProvider } from '@/store/StoreProvider'
+import { QueryProvider } from './providers'
 import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 import { ToastProvider } from '@/components/error/ToastProvider'
 import { PWAProvider } from '@/components/pwa'
@@ -43,17 +44,19 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-screen flex-col font-sans transition-colors duration-200">
         <ErrorBoundary>
-          <StoreProvider>
-            <ThemeProvider>
-              <ToastProvider>
-                <PWAProvider>
-                  <Header />
-                  <main className="flex-1">{children}</main>
-                  <Footer />
-                </PWAProvider>
-              </ToastProvider>
-            </ThemeProvider>
-          </StoreProvider>
+          <QueryProvider>
+            <StoreProvider>
+              <ThemeProvider>
+                <ToastProvider>
+                  <PWAProvider>
+                    <Header />
+                    <main className="flex-1">{children}</main>
+                    <Footer />
+                  </PWAProvider>
+                </ToastProvider>
+              </ThemeProvider>
+            </StoreProvider>
+          </QueryProvider>
         </ErrorBoundary>
       </body>
     </html>

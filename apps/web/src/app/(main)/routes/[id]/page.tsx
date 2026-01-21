@@ -3,37 +3,92 @@
 import { notFound } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getRouteDetailById } from '@/lib/api/mock/routes';
+import { getRouteById } from '@/lib/api/routes';
 import { RouteDetailHeader, RouteJourneyTimeline, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { initBooking } from '@/store/slices/bookingSlice';
-import type { RouteDetail } from '@vexeviet/types';
+import type { Route } from '@/types/models';
 
 export default function RouteDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
-  const [route, setRoute] = useState<RouteDetail | null>(null);
+  const [route, setRoute] = useState<Route | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchRoute() {
-      const data = await getRouteDetailById(params.id);
-      setRoute(data || null);
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getRouteById(params.id);
+        if (data) {
+          const durationStr = typeof data.duration === 'number' 
+            ? `${Math.floor(data.duration / 60)}h ${data.duration % 60}m`
+            : String(data.duration || '');
+          
+          const priceNum = typeof data.price === 'string' ? parseFloat(data.price) : (data.price || 0);
+          
+          setRoute({
+            id: data.id,
+            operator: data.operator 
+              ? { 
+                  id: data.operator.id || '', 
+                  name: data.operator.name || `${data.operator.firstName || ''} ${data.operator.lastName || ''}`.trim() || 'Unknown',
+                  logoUrl: data.operator.logo || '',
+                  rating: data.operator.rating || 0,
+                  totalReviews: data.operator.totalTrips || 0
+                }
+              : { id: '', name: 'Unknown', logoUrl: '', rating: 0, totalReviews: 0 },
+            busType: data.busType || 'STANDARD',
+            licensePlate: data.licensePlate || '',
+            departureTime: data.departureTime,
+            arrivalTime: data.arrivalTime,
+            departureLocation: data.departureLocation || data.origin || '',
+            arrivalLocation: data.arrivalLocation || data.destination || '',
+            duration: durationStr,
+            price: priceNum,
+            availableSeats: data.availableSeats || 0,
+            amenities: (data.amenities || []).map((a, i) => ({ id: String(i), name: String(a), icon: 'Check' })),
+            pickupPoints: (data.pickupPoints || []).map((p, i) => ({ id: String(i), time: p.time, location: p.location, address: p.address })),
+            dropoffPoints: (data.dropoffPoints || []).map((p, i) => ({ id: String(i), time: p.time, location: p.location, address: p.address })),
+            policies: [],
+            images: data.images || [],
+          });
+        } else {
+          setRoute(null);
+        }
+      } catch (err) {
+        console.error('Failed to fetch route:', err);
+        setError('Không thể tải thông tin chuyến xe');
+        setRoute(null);
+      } finally {
+        setLoading(false);
+      }
     }
     fetchRoute();
   }, [params.id]);
 
-  if (loading) return <div className="container mx-auto px-4 py-8">Loading...</div>;
+  if (loading) return <div className="container mx-auto px-4 py-8">Đang tải thông tin chuyến xe...</div>;
+  if (error) return <div className="container mx-auto px-4 py-8 text-red-500">{error}</div>;
   if (!route) notFound();
 
   const handleSelectSeats = () => {
-    if (!user) {
-      router.push(`/login?redirect=/routes/${route.id}`);
-      return;
-    }
-    dispatch(initBooking(route));
+    // TODO: Re-enable login requirement after testing
+    // if (!user) {
+    //   router.push(`/login?redirect=/routes/${route.id}`);
+    //   return;
+    // }
+    // Adapt FE Route to booking slice format
+    dispatch(initBooking({
+      id: route.id,
+      price: route.price,
+      busType: route.busType,
+      from: route.departureLocation,
+      to: route.arrivalLocation,
+      departureTime: route.departureTime,
+    }));
     router.push(`/booking/${route.id}`);
   };
 

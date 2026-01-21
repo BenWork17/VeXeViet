@@ -2,18 +2,15 @@
 
 import Link from 'next/link';
 import { Button } from '@vexeviet/ui';
-import { Menu, X, User } from 'lucide-react';
+import { Menu, X, User as UserIcon } from 'lucide-react';
 import { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
-import { logout } from '@/store/slices/authSlice';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { ThemeSwitcher } from '@/components/theme';
 import { useThemeContext } from '@/components/theme/ThemeProvider';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user } = useSelector((state: RootState) => state.auth);
-  const dispatch = useDispatch<AppDispatch>();
+  const { user, logout, isLoggingOut } = useAuth();
   const { resolvedTheme } = useThemeContext();
   
   const isDark = resolvedTheme === 'dark';
@@ -60,7 +57,7 @@ export function Header() {
                 className="text-sm font-semibold hover:text-primary transition-colors"
                 style={{ color: isDark ? '#e5e7eb' : '#374151' }}
               >
-                My Bookings
+                Profile
               </Link>
             )}
           </nav>
@@ -74,17 +71,18 @@ export function Header() {
                   href="/profile" 
                   className="flex items-center space-x-2 px-3 py-1.5 rounded-full border bg-primary/10 border-primary/20 text-primary transition-colors"
                 >
-                  <User className="w-4 h-4" />
-                  <span className="text-sm font-medium">{user.fullName}</span>
+                  <UserIcon className="w-4 h-4" />
+                  <span className="text-sm font-medium">{user.firstName} {user.lastName}</span>
                 </Link>
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={() => dispatch(logout())}
+                  onClick={() => logout()}
+                  disabled={isLoggingOut}
                   className="hover:text-primary"
                   style={{ color: isDark ? '#e5e7eb' : '#374151' }}
                 >
-                  Logout
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
                 </Button>
               </div>
             ) : (
@@ -153,12 +151,13 @@ export function Header() {
                   </Link>
                   <button
                     onClick={() => {
-                      dispatch(logout());
+                      logout();
                       setIsMenuOpen(false);
                     }}
+                    disabled={isLoggingOut}
                     className="px-4 py-2 text-left text-base font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                   >
-                    Logout
+                    {isLoggingOut ? 'Logging out...' : 'Logout'}
                   </button>
                 </>
               ) : (

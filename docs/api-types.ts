@@ -1,6 +1,6 @@
 /**
  * VeXeViet API Types for Frontend Integration
- * Synced with Backend - Iteration 1-4 (Booking Service)
+ * Version: Iteration 1-4 (Booking Service)
  * Last Updated: 2026-01-19
  */
 
@@ -17,7 +17,7 @@ export interface ApiResponse<T> {
 export interface ApiError {
   success: false;
   error: {
-    code: ErrorCode;
+    code: string;
     message: string;
     details?: Record<string, unknown>;
   };
@@ -103,87 +103,39 @@ export interface UpdateProfileRequest {
   phone?: string;
 }
 
-export interface UpdateProfileResponse {
-  user: User;
-}
-
 // ========================
 // Route Types
 // ========================
 
 export type RouteStatus = 'ACTIVE' | 'INACTIVE' | 'CANCELLED';
-export type VehicleType = 'LIMOUSINE' | 'SLEEPER_BUS' | 'STANDARD' | 'VIP' | 'SLEEPER';
-export type BusType = VehicleType; // Alias for backwards compatibility
+export type VehicleType = 'LIMOUSINE' | 'SLEEPER_BUS' | 'STANDARD' | 'VIP';
 
 export interface Route {
   id: string;
-  name?: string;
-  description?: string;
   operatorId: string;
-  origin: string;                 // City name e.g., "Ho Chi Minh City"
-  destination: string;            // City name e.g., "Da Lat"
-  departureLocation?: string;     // e.g., "Bến Xe Miền Đông"
-  arrivalLocation?: string;       // e.g., "Bến Xe Đà Lạt"
-  distance?: number;              // km
-  departureTime: string;          // ISO datetime or HH:mm
-  arrivalTime: string;            // ISO datetime or HH:mm
-  duration: number;               // minutes
-  price: number | string;         // May be string from DB decimal
+  departureCity: string;
+  arrivalCity: string;
+  departureTime: string;      // HH:mm format
+  arrivalTime: string;        // HH:mm format
+  duration: number;           // minutes
+  price: number;
   availableSeats: number;
   totalSeats: number;
-  busType: VehicleType;           // API returns busType
-  vehicleType?: VehicleType;      // Frontend alias
+  vehicleType: VehicleType;
   amenities: string[];
   status: RouteStatus;
-  licensePlate?: string;
-  images?: string[] | null;
-  policies?: {
-    luggage?: string;
-    cancellation?: string;
-  };
-  pickupPoints: RoutePickupPoint[];
-  dropoffPoints: RouteDropoffPoint[];
-  operator?: RouteOperator;
-  createdAt?: string;
-  updatedAt?: string;
-  
-  // Legacy fields for FE compatibility
-  departureCity?: string;
-  arrivalCity?: string;
-  departureCitySlug?: string;
-  arrivalCitySlug?: string;
+  departureCitySlug: string;
+  arrivalCitySlug: string;
+  pickupPoints: PickupPoint[];
+  dropoffPoints: DropoffPoint[];
+  operator?: Operator;
 }
 
-// Pickup/Dropoff points from API
-export interface RoutePickupPoint {
-  time: string;
-  address: string;
-  location: string;
-}
-
-export interface RouteDropoffPoint {
-  time: string;
-  address: string;
-  location: string;
-}
-
-// Operator from API
-export interface RouteOperator {
-  id: string;
-  firstName?: string;
-  lastName?: string;
-  name?: string;
-  logo?: string;
-  rating?: number;
-  totalTrips?: number;
-}
-
-// Legacy interfaces for backwards compatibility
 export interface PickupPoint {
   id: string;
   name: string;
   address: string;
-  time: string;
+  time: string;              // HH:mm format
   latitude?: number;
   longitude?: number;
 }
@@ -192,7 +144,7 @@ export interface DropoffPoint {
   id: string;
   name: string;
   address: string;
-  time: string;
+  time: string;              // HH:mm format
   latitude?: number;
   longitude?: number;
 }
@@ -200,78 +152,26 @@ export interface DropoffPoint {
 export interface Operator {
   id: string;
   name: string;
-  logo?: string;
   rating?: number;
   totalTrips?: number;
 }
 
-// Route Search Request (POST /search/routes)
-export interface SearchRoutesRequest {
-  origin: string;              // City name, e.g., "Ho Chi Minh City"
-  destination: string;         // City name, e.g., "Da Lat"
-  departureDate?: string;      // YYYY-MM-DD format
-  passengers?: number;         // Default: 1
-  busType?: VehicleType;       // Filter by vehicle type
-  minPrice?: number;
-  maxPrice?: number;
-  sortBy?: 'price' | 'departureTime' | 'duration';
-  sortOrder?: 'asc' | 'desc';
-  page?: number;               // Default: 1
-  pageSize?: number;           // Default: 20
-}
-
-// Legacy params (for backwards compatibility with some FE components)
+// Route Search
 export interface SearchRoutesParams {
-  from: string;                // City slug, e.g., "ho-chi-minh"
-  to: string;                  // City slug, e.g., "da-lat"
-  date: string;                // YYYY-MM-DD format
-  passengers?: number;         // Default: 1
-  page?: number;               // Default: 1
-  limit?: number;              // Default: 10
+  from: string;              // City slug, e.g., "ho-chi-minh"
+  to: string;                // City slug, e.g., "da-lat"
+  date: string;              // YYYY-MM-DD format
+  passengers?: number;       // Default: 1
+  page?: number;             // Default: 1
+  limit?: number;            // Default: 10
   sortBy?: 'price' | 'departureTime' | 'rating';
   sortOrder?: 'asc' | 'desc';
   vehicleType?: VehicleType;
   minPrice?: number;
   maxPrice?: number;
-  departureTimeFrom?: string;  // HH:mm
-  departureTimeTo?: string;    // HH:mm
+  departureTimeFrom?: string; // HH:mm
+  departureTimeTo?: string;   // HH:mm
   amenities?: string[];
-}
-
-export interface SearchRoutesResponse {
-  routes: Route[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-// Legacy search filters (for FE backwards compatibility)
-export interface SearchFilters {
-  minPrice?: number;
-  maxPrice?: number;
-  departureTimeRange?: {
-    start: string;
-    end: string;
-  };
-  busTypes?: string[];
-  amenities?: string[];
-}
-
-// Route detail with additional fields
-export interface RouteDetail extends Route {
-  cancellationPolicy?: string;
-  images?: string[];
-}
-
-// City
-export interface City {
-  id: string;
-  name: string;
-  slug: string;
-  province?: string;
 }
 
 // ========================
@@ -419,11 +319,6 @@ export interface ReleaseSeatsRequest {
   holdId?: string;
 }
 
-export interface ReleaseSeatsResponse {
-  released: boolean;
-  seats: string[];
-}
-
 // ========================
 // Error Codes
 // ========================
@@ -476,57 +371,29 @@ export const BOOKING_STATUSES: BookingStatus[] = [
 
 export const API_ENDPOINTS = {
   // Auth
-  AUTH_REGISTER: '/auth/register',
-  AUTH_LOGIN: '/auth/login',
-  AUTH_LOGOUT: '/auth/logout',
-  AUTH_REFRESH: '/auth/refresh-token',
+  AUTH_REGISTER: '/api/v1/auth/register',
+  AUTH_LOGIN: '/api/v1/auth/login',
+  AUTH_LOGOUT: '/api/v1/auth/logout',
+  AUTH_REFRESH: '/api/v1/auth/refresh-token',
 
   // Users
-  USER_PROFILE: '/users/profile',
+  USER_PROFILE: '/api/v1/users/profile',
 
-  // Search (Route Service)
-  SEARCH_ROUTES: '/search/routes',           // POST - Search routes
-  SEARCH_POPULAR: '/search/popular',         // GET - Popular routes
-  SEARCH_SUGGESTIONS: '/search/suggestions', // GET - Autocomplete suggestions
-  
   // Routes
-  ROUTES_BY_ID: (id: string) => `/routes/${id}`,
-  CITIES: '/cities',
+  ROUTES_SEARCH: '/api/v1/routes/search',
+  ROUTES_BY_ID: (id: string) => `/api/v1/routes/${id}`,
+  ROUTES_POPULAR: '/api/v1/routes/popular',
+  CITIES: '/api/v1/cities',
 
   // Bookings
-  BOOKINGS_CREATE: '/bookings',
-  BOOKINGS_MY: '/bookings/my',
-  BOOKINGS_BY_ID: (id: string) => `/bookings/${id}`,
-  BOOKINGS_CANCEL: (id: string) => `/bookings/${id}/cancel`,
+  BOOKINGS_CREATE: '/api/v1/bookings',
+  BOOKINGS_MY: '/api/v1/bookings/my',
+  BOOKINGS_BY_ID: (id: string) => `/api/v1/bookings/${id}`,
+  BOOKINGS_CANCEL: (id: string) => `/api/v1/bookings/${id}/cancel`,
 
   // Seats
-  SEATS_AVAILABILITY: '/seats/availability',
-  SEATS_CHECK: '/seats/check',
-  SEATS_HOLD: '/seats/hold',
-  SEATS_RELEASE: '/seats/release',
+  SEATS_AVAILABILITY: '/api/v1/seats/availability',
+  SEATS_CHECK: '/api/v1/seats/check',
+  SEATS_HOLD: '/api/v1/seats/hold',
+  SEATS_RELEASE: '/api/v1/seats/release',
 } as const;
-
-// ========================
-// Error Messages (Vietnamese)
-// ========================
-
-export const ERROR_MESSAGES: Record<ErrorCode, string> = {
-  INVALID_CREDENTIALS: 'Email hoặc mật khẩu không đúng',
-  TOKEN_EXPIRED: 'Phiên đăng nhập hết hạn, vui lòng đăng nhập lại',
-  TOKEN_INVALID: 'Token không hợp lệ',
-  UNAUTHORIZED: 'Bạn cần đăng nhập để thực hiện thao tác này',
-  VALIDATION_ERROR: 'Dữ liệu không hợp lệ',
-  INVALID_INPUT: 'Thông tin nhập vào không hợp lệ',
-  NOT_FOUND: 'Không tìm thấy dữ liệu',
-  ROUTE_NOT_FOUND: 'Không tìm thấy tuyến xe',
-  BOOKING_NOT_FOUND: 'Không tìm thấy đơn đặt vé',
-  SEATS_UNAVAILABLE: 'Ghế đã được đặt, vui lòng chọn ghế khác',
-  SEATS_ALREADY_HELD: 'Ghế đang được giữ bởi người khác',
-  BOOKING_EXPIRED: 'Đơn đặt vé đã hết hạn',
-  BOOKING_ALREADY_CANCELLED: 'Đơn đặt vé đã bị hủy trước đó',
-  INSUFFICIENT_SEATS: 'Không đủ ghế trống',
-  INVALID_SEAT_NUMBERS: 'Số ghế không hợp lệ',
-  PASSENGER_SEAT_MISMATCH: 'Số hành khách không khớp với số ghế đã chọn',
-  INTERNAL_ERROR: 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau',
-  SERVICE_UNAVAILABLE: 'Dịch vụ tạm thời không khả dụng',
-};

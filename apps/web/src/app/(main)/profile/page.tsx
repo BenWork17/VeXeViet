@@ -1,27 +1,21 @@
 'use client';
 
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '@/store';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useMyBookings } from '@/lib/hooks/useBookings';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { logout } from '@/store/slices/authSlice';
 import { ProfileForm, BookingHistoryList } from '@/components/features/profile/ProfileComponents';
-import { getUserBookings } from '@/lib/api/mock/user';
-import { Booking } from '@/types/models';
 import { User, LogOut, Briefcase, Settings, Bell } from 'lucide-react';
 
 export default function ProfilePage() {
-  const { user } = useSelector((state: RootState) => state.auth);
-  const dispatch = useDispatch<AppDispatch>();
+  const { user, logout, isLoggingOut } = useAuth();
+  const { data: bookings = [], isLoading: isLoadingBookings } = useMyBookings();
   const router = useRouter();
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [activeTab, setActiveTab] = useState<'profile' | 'bookings'>('profile');
 
   useEffect(() => {
     if (!user) {
       router.push('/login');
-    } else {
-      getUserBookings(user.id).then(setBookings);
     }
   }, [user, router]);
 
@@ -36,7 +30,7 @@ export default function ProfilePage() {
             <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-3">
               <User className="w-10 h-10" />
             </div>
-            <h2 className="font-bold text-lg text-center">{user.fullName}</h2>
+            <h2 className="font-bold text-lg text-center">{user.firstName} {user.lastName}</h2>
             <p className="text-sm text-gray-500 text-center">{user.email}</p>
           </div>
           
@@ -51,7 +45,7 @@ export default function ProfilePage() {
               Account Settings
             </button>
             <button
-              onClick={() => router.push('/profile/bookings')}
+              onClick={() => setActiveTab('bookings')}
               className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                 activeTab === 'bookings' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
               }`}
@@ -66,13 +60,14 @@ export default function ProfilePage() {
             <hr className="my-2" />
             <button
               onClick={() => {
-                dispatch(logout());
+                logout();
                 router.push('/');
               }}
+              disabled={isLoggingOut}
               className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              Logout
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </nav>
         </aside>
@@ -87,9 +82,9 @@ export default function ProfilePage() {
             </div>
             <div className="p-6">
               {activeTab === 'profile' ? (
-                <ProfileForm user={user} />
+                <ProfileForm user={user as any} />
               ) : (
-                <BookingHistoryList bookings={bookings} />
+                <BookingHistoryList bookings={bookings as any} isLoading={isLoadingBookings} />
               )}
             </div>
           </div>

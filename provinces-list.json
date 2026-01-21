@@ -1,0 +1,317 @@
+[
+  {
+    "id": "hanoi",
+    "name": "Hà Nội",
+    "displayName": "Hà Nội"
+  },
+  {
+    "id": "haiphong",
+    "name": "Hải Phòng",
+    "displayName": "Hải Phòng"
+  },
+  {
+    "id": "quangninh",
+    "name": "Quảng Ninh",
+    "displayName": "Hạ Long - Quảng Ninh"
+  },
+  {
+    "id": "haigiang",
+    "name": "Hà Giang",
+    "displayName": "Hà Giang"
+  },
+  {
+    "id": "caobang",
+    "name": "Cao Bằng",
+    "displayName": "Cao Bằng"
+  },
+  {
+    "id": "langson",
+    "name": "Lạng Sơn",
+    "displayName": "Lạng Sơn"
+  },
+  {
+    "id": "laocai",
+    "name": "Lào Cai",
+    "displayName": "Sa Pa - Lào Cai"
+  },
+  {
+    "id": "yenbai",
+    "name": "Yên Bái",
+    "displayName": "Yên Bái"
+  },
+  {
+    "id": "tuyenquang",
+    "name": "Tuyên Quang",
+    "displayName": "Tuyên Quang"
+  },
+  {
+    "id": "backan",
+    "name": "Bắc Kạn",
+    "displayName": "Bắc Kạn"
+  },
+  {
+    "id": "thainguyen",
+    "name": "Thái Nguyên",
+    "displayName": "Thái Nguyên"
+  },
+  {
+    "id": "bacgiang",
+    "name": "Bắc Giang",
+    "displayName": "Bắc Giang"
+  },
+  {
+    "id": "bacninh",
+    "name": "Bắc Ninh",
+    "displayName": "Bắc Ninh"
+  },
+  {
+    "id": "hanam",
+    "name": "Hà Nam",
+    "displayName": "Hà Nam"
+  },
+  {
+    "id": "hungyen",
+    "name": "Hưng Yên",
+    "displayName": "Hưng Yên"
+  },
+  {
+    "id": "haiduong",
+    "name": "Hải Dương",
+    "displayName": "Hải Dương"
+  },
+  {
+    "id": "namdinh",
+    "name": "Nam Định",
+    "displayName": "Nam Định"
+  },
+  {
+    "id": "thaibinh",
+    "name": "Thái Bình",
+    "displayName": "Thái Bình"
+  },
+  {
+    "id": "ninhbinh",
+    "name": "Ninh Bình",
+    "displayName": "Ninh Bình"
+  },
+  {
+    "id": "hoabinh",
+    "name": "Hòa Bình",
+    "displayName": "Hòa Bình"
+  },
+  {
+    "id": "sonla",
+    "name": "Sơn La",
+    "displayName": "Sơn La"
+  },
+  {
+    "id": "dienbien",
+    "name": "Điện Biên",
+    "displayName": "Điện Biên"
+  },
+  {
+    "id": "laichau",
+    "name": "Lai Châu",
+    "displayName": "Lai Châu"
+  },
+  {
+    "id": "phutho",
+    "name": "Phú Thọ",
+    "displayName": "Phú Thọ"
+  },
+  {
+    "id": "vinhphuc",
+    "name": "Vĩnh Phúc",
+    "displayName": "Vĩnh Phúc"
+  },
+  {
+    "id": "thanhhoa",
+    "name": "Thanh Hóa",
+    "displayName": "Thanh Hóa"
+  },
+  {
+    "id": "nghean",
+    "name": "Nghệ An",
+    "displayName": "Vinh - Nghệ An"
+  },
+  {
+    "id": "hatinh",
+    "name": "Hà Tĩnh",
+    "displayName": "Hà Tĩnh"
+  },
+  {
+    "id": "quangbinh",
+    "name": "Quảng Bình",
+    "displayName": "Đồng Hới - Quảng Bình"
+  },
+  {
+    "id": "quangtri",
+    "name": "Quảng Trị",
+    "displayName": "Quảng Trị"
+  },
+  {
+    "id": "thuathienhue",
+    "name": "Thừa Thiên Huế",
+    "displayName": "Huế - Thừa Thiên Huế"
+  },
+  {
+    "id": "danang",
+    "name": "Đà Nẵng",
+    "displayName": "Đà Nẵng"
+  },
+  {
+    "id": "quangnam",
+    "name": "Quảng Nam",
+    "displayName": "Hội An - Quảng Nam"
+  },
+  {
+    "id": "quangngai",
+    "name": "Quảng Ngãi",
+    "displayName": "Quảng Ngãi"
+  },
+  {
+    "id": "binhdinh",
+    "name": "Bình Định",
+    "displayName": "Quy Nhơn - Bình Định"
+  },
+  {
+    "id": "phuyen",
+    "name": "Phú Yên",
+    "displayName": "Tuy Hòa - Phú Yên"
+  },
+  {
+    "id": "khanhhoa",
+    "name": "Khánh Hòa",
+    "displayName": "Nha Trang - Khánh Hòa"
+  },
+  {
+    "id": "ninhthuan",
+    "name": "Ninh Thuận",
+    "displayName": "Phan Rang - Ninh Thuận"
+  },
+  {
+    "id": "binhthuan",
+    "name": "Bình Thuận",
+    "displayName": "Phan Thiết - Bình Thuận"
+  },
+  {
+    "id": "kontum",
+    "name": "Kon Tum",
+    "displayName": "Kon Tum"
+  },
+  {
+    "id": "gialai",
+    "name": "Gia Lai",
+    "displayName": "Pleiku - Gia Lai"
+  },
+  {
+    "id": "daklak",
+    "name": "Đắk Lắk",
+    "displayName": "Buôn Ma Thuột - Đắk Lắk"
+  },
+  {
+    "id": "daknong",
+    "name": "Đắk Nông",
+    "displayName": "Đắk Nông"
+  },
+  {
+    "id": "lamdong",
+    "name": "Lâm Đồng",
+    "displayName": "Đà Lạt - Lâm Đồng"
+  },
+  {
+    "id": "hochiminh",
+    "name": "Hồ Chí Minh",
+    "displayName": "Hồ Chí Minh"
+  },
+  {
+    "id": "baria-vungtau",
+    "name": "Bà Rịa - Vũng Tàu",
+    "displayName": "Vũng Tàu - Bà Rịa"
+  },
+  {
+    "id": "binhduong",
+    "name": "Bình Dương",
+    "displayName": "Thủ Dầu Một - Bình Dương"
+  },
+  {
+    "id": "binhphuoc",
+    "name": "Bình Phước",
+    "displayName": "Bình Phước"
+  },
+  {
+    "id": "dongnai",
+    "name": "Đồng Nai",
+    "displayName": "Biên Hòa - Đồng Nai"
+  },
+  {
+    "id": "tayninh",
+    "name": "Tây Ninh",
+    "displayName": "Tây Ninh"
+  },
+  {
+    "id": "longan",
+    "name": "Long An",
+    "displayName": "Tân An - Long An"
+  },
+  {
+    "id": "tiengiang",
+    "name": "Tiền Giang",
+    "displayName": "Mỹ Tho - Tiền Giang"
+  },
+  {
+    "id": "bentre",
+    "name": "Bến Tre",
+    "displayName": "Bến Tre"
+  },
+  {
+    "id": "travinh",
+    "name": "Trà Vinh",
+    "displayName": "Trà Vinh"
+  },
+  {
+    "id": "vinhlong",
+    "name": "Vĩnh Long",
+    "displayName": "Vĩnh Long"
+  },
+  {
+    "id": "dongtap",
+    "name": "Đồng Tháp",
+    "displayName": "Cao Lãnh - Đồng Tháp"
+  },
+  {
+    "id": "angiang",
+    "name": "An Giang",
+    "displayName": "Long Xuyên - An Giang"
+  },
+  {
+    "id": "kiengiang",
+    "name": "Kiên Giang",
+    "displayName": "Rạch Giá - Kiên Giang"
+  },
+  {
+    "id": "cantho",
+    "name": "Cần Thơ",
+    "displayName": "Cần Thơ"
+  },
+  {
+    "id": "haugiang",
+    "name": "Hậu Giang",
+    "displayName": "Vị Thanh - Hậu Giang"
+  },
+  {
+    "id": "soctrang",
+    "name": "Sóc Trăng",
+    "displayName": "Sóc Trăng"
+  },
+  {
+    "id": "baclieu",
+    "name": "Bạc Liêu",
+    "displayName": "Bạc Liêu"
+  },
+  {
+    "id": "camau",
+    "name": "Cà Mau",
+    "displayName": "Cà Mau"
+  }
+]

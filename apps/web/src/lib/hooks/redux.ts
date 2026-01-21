@@ -3,3 +3,6 @@ import type { AppDispatch, RootState } from '@/store';
 
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppSelector = useSelector.withTypes<RootState>();
+
+// Re-export useAuth hook for convenience
+export { useAuth } from './useAuth';

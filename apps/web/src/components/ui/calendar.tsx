@@ -10,38 +10,37 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn('p-3 bg-white', className)}
+      className={cn('p-6 bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/20 rounded-2xl shadow-xl border-2 border-blue-100', className)}
       classNames={{
         months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
-        month: 'space-y-4',
-        caption: 'flex justify-center pt-1 relative items-center',
-        caption_label: 'text-sm font-medium text-gray-900',
+        month: 'space-y-5',
+        caption: 'flex justify-center pt-2 pb-3 relative items-center',
+        caption_label: 'text-lg font-black text-gray-900 tracking-tight',
         nav: 'space-x-1 flex items-center',
         nav_button: cn(
-          'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors',
-          'hover:bg-gray-100 h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100',
-          'text-gray-900'
+          'inline-flex items-center justify-center rounded-full text-sm font-medium transition-all duration-300',
+          'hover:bg-blue-600 hover:text-white hover:scale-110 h-9 w-9 bg-white shadow-md p-0',
+          'text-blue-600 border-2 border-blue-200'
         ),
-        nav_button_previous: 'absolute left-1',
-        nav_button_next: 'absolute right-1',
-        table: 'w-full border-collapse space-y-1',
-        head_row: 'flex',
-        head_cell: 'text-gray-500 rounded-md w-9 font-normal text-[0.8rem]',
-        row: 'flex w-full mt-2',
-        cell: 'text-center text-sm p-0 relative [&:has([aria-selected])]:bg-blue-50 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+        nav_button_previous: 'absolute left-2',
+        nav_button_next: 'absolute right-2',
+        table: 'w-full border-collapse space-y-1.5 mt-2',
+        head_row: 'flex gap-1',
+        head_cell: 'text-blue-600 font-bold rounded-md w-11 text-xs uppercase tracking-wider',
+        row: 'flex w-full mt-1.5 gap-1',
+        cell: 'text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-xl last:[&:has([aria-selected])]:rounded-r-xl focus-within:relative focus-within:z-20',
         day: cn(
-          'inline-flex items-center justify-center rounded-md text-sm font-normal h-9 w-9',
-          'text-gray-900',
-          'hover:bg-gray-100 hover:text-gray-900',
-          'focus:bg-gray-100 focus:text-gray-900',
-          'aria-selected:opacity-100'
+          'inline-flex items-center justify-center rounded-xl text-sm font-semibold h-11 w-11',
+          'text-gray-700 transition-all duration-300 cursor-pointer',
+          'hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:text-white hover:scale-110 hover:shadow-lg hover:z-10',
+          'aria-selected:opacity-100 relative'
         ),
         day_selected:
-          'bg-blue-600 text-white hover:bg-blue-700 hover:text-white focus:bg-blue-700 focus:text-white',
-        day_today: 'bg-blue-50 text-blue-900 font-semibold',
-        day_outside: 'text-gray-400 opacity-50',
-        day_disabled: 'text-gray-300 opacity-50 cursor-not-allowed line-through',
-        day_range_middle: 'aria-selected:bg-blue-100 aria-selected:text-gray-900',
+          'bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg scale-105 font-bold hover:from-blue-700 hover:to-indigo-800 hover:text-white focus:from-blue-700 focus:to-indigo-800 focus:text-white',
+        day_today: 'bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold shadow-md hover:from-amber-500 hover:to-orange-600',
+        day_outside: 'text-gray-300 opacity-40 hover:opacity-60',
+        day_disabled: 'text-gray-200 opacity-30 cursor-not-allowed line-through hover:bg-transparent hover:scale-100 hover:shadow-none',
+        day_range_middle: 'aria-selected:bg-blue-100 aria-selected:text-blue-900',
         day_hidden: 'invisible',
         ...classNames,
       }}

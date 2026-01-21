@@ -7,7 +7,14 @@ import { RouteCard, Button, cn } from '@vexeviet/ui';
 import { SearchForm, type SearchFormValues } from '@/components/features/search/SearchForm';
 import { FilterPanel } from '@/components/features/search/FilterPanel';
 import { mockSearchRoutes } from '@vexeviet/api-client';
+import { searchRoutes } from '@/lib/api/routes';
 import { Route, SearchFilters, SearchRoutesResponse } from '@vexeviet/types';
+
+const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+
+// Debug log
+console.log('[Search] USE_MOCK_API:', USE_MOCK_API, 'env value:', process.env.NEXT_PUBLIC_USE_MOCK_API);
+
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { setFilters, setResults, setLoading, setError, setSortBy, setSortOrder, resetFilters } from '@/store/slices/searchSlice';
 
@@ -21,21 +28,21 @@ function applyFiltersAndSort(
 
   // Apply price filter
   if (filters.minPrice !== undefined) {
-    filtered = filtered.filter((r) => r.price >= filters.minPrice);
+    filtered = filtered.filter((r) => r.price >= filters.minPrice!);
   }
   if (filters.maxPrice !== undefined) {
-    filtered = filtered.filter((r) => r.price <= filters.maxPrice);
+    filtered = filtered.filter((r) => r.price <= filters.maxPrice!);
   }
 
-  // Apply bus type filter
+  // Apply bus type filter (maps to vehicleType in new API)
   if (filters.busTypes && filters.busTypes.length > 0) {
-    filtered = filtered.filter((r) => filters.busTypes.includes(r.busType));
+    filtered = filtered.filter((r) => filters.busTypes!.includes(r.vehicleType));
   }
 
   // Apply amenities filter
   if (filters.amenities && filters.amenities.length > 0) {
     filtered = filtered.filter((r) =>
-      filters.amenities.every((a: string) => r.amenities.includes(a))
+      filters.amenities!.every((a: string) => r.amenities?.includes(a))
     );
   }
 
@@ -64,8 +71,9 @@ function applyFiltersAndSort(
         comparison = a.price - b.price;
         break;
       case 'duration': {
-        const durationA = parseInt(a.duration.split('h')[0] || '0', 10);
-        const durationB = parseInt(b.duration.split('h')[0] || '0', 10);
+        // Duration is now in minutes (number)
+        const durationA = typeof a.duration === 'number' ? a.duration : 0;
+        const durationB = typeof b.duration === 'number' ? b.duration : 0;
         comparison = durationA - durationB;
         break;
       }
@@ -73,7 +81,10 @@ function applyFiltersAndSort(
         comparison = a.departureTime.localeCompare(b.departureTime);
         break;
       case 'rating':
-        comparison = a.operatorRating - b.operatorRating;
+        // Rating is now in operator object
+        const ratingA = a.operator?.rating ?? 0;
+        const ratingB = b.operator?.rating ?? 0;
+        comparison = ratingA - ratingB;
         break;
     }
     return sortOrder === 'asc' ? comparison : -comparison;
@@ -98,33 +109,73 @@ function SearchPageContent() {
   // Apply client-side filtering and sorting
   const filteredAndSortedRoutes = useMemo(() => {
     if (!searchResults) return [];
-    return applyFiltersAndSort(searchResults.data.routes, filters, sortBy, sortOrder);
+    return applyFiltersAndSort(searchResults.routes, filters, sortBy, sortOrder);
   }, [searchResults, filters, sortBy, sortOrder]);
 
   const performSearch = async (values: SearchFormValues) => {
+    console.log('[performSearch] Starting search with values:', values);
+    console.log('[performSearch] USE_MOCK_API:', USE_MOCK_API);
+    
     dispatch(setLoading(true));
     dispatch(setError(null));
 
     try {
-      const result = await mockSearchRoutes({
-        origin: values.origin,
-        destination: values.destination,
-        departureDate: values.departureDate.toISOString().split('T')[0] || '',
-        returnDate: values.returnDate?.toISOString().split('T')[0],
-        passengers: values.passengers,
-        filters: {
+      let result: SearchRoutesResponse;
+      
+      if (USE_MOCK_API) {
+        console.log('[performSearch] Using MOCK API');
+        // Use mock API for development without backend
+        const mockResult = await mockSearchRoutes({
+          from: values.origin,
+          to: values.destination,
+          date: values.departureDate.toISOString().split('T')[0] || '',
+          passengers: values.passengers,
           minPrice: filters.minPrice,
           maxPrice: filters.maxPrice,
-          departureTimeRange: filters.departureTimeRange,
-          busTypes: filters.busTypes,
           amenities: filters.amenities,
-        },
-      });
+        });
+        result = mockResult;
+      } else {
+        console.log('[performSearch] Using REAL API');
+        
+        // Format date as local date (YYYY-MM-DD) without timezone conversion
+        const year = values.departureDate.getFullYear();
+        const month = String(values.departureDate.getMonth() + 1).padStart(2, '0');
+        const day = String(values.departureDate.getDate()).padStart(2, '0');
+        const formattedDate = `${year}-${month}-${day}`;
+        
+        console.log('[performSearch] Formatted date:', formattedDate);
+        
+        // Use real API - POST /api/v1/search/routes
+        const apiResult = await searchRoutes({
+          origin: values.origin,
+          destination: values.destination,
+          departureDate: formattedDate,
+          passengers: values.passengers,
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+        });
+        
+        console.log('[performSearch] API result:', apiResult);
+        
+        // Handle different response structures
+        // API may return { routes, pagination } or { data: { routes, pagination } }
+        if (apiResult && 'routes' in apiResult) {
+          result = apiResult;
+        } else if (apiResult && 'data' in apiResult && (apiResult as any).data?.routes) {
+          result = (apiResult as any).data;
+        } else {
+          console.error('Unexpected API response:', apiResult);
+          throw new Error('Invalid API response format');
+        }
+      }
+      
+      console.log('[performSearch] Final result:', result);
       setSearchResults(result);
-      dispatch(setResults(result.data.routes));
+      dispatch(setResults(result.routes));
     } catch (err) {
       dispatch(setError('Failed to search routes. Please try again.'));
-      console.error(err);
+      console.error('[performSearch] Error:', err);
     } finally {
       dispatch(setLoading(false));
     }
@@ -142,16 +193,23 @@ function SearchPageContent() {
   }, [origin, destination, departureDate, passengers]);
 
   const handleSearch = (values: SearchFormValues) => {
+    // Format date as local date (YYYY-MM-DD) without timezone conversion
+    const year = values.departureDate.getFullYear()
+    const month = String(values.departureDate.getMonth() + 1).padStart(2, '0')
+    const day = String(values.departureDate.getDate()).padStart(2, '0')
+    const formattedDate = `${year}-${month}-${day}`
+
     const params = new URLSearchParams();
     params.set('origin', values.origin);
     params.set('destination', values.destination);
-    const dateStr = values.departureDate.toISOString().split('T')[0];
-    if (dateStr) params.set('departureDate', dateStr);
+    params.set('departureDate', formattedDate);
     params.set('passengers', values.passengers.toString());
 
     if (values.returnDate) {
-      const returnDateStr = values.returnDate.toISOString().split('T')[0];
-      if (returnDateStr) params.set('returnDate', returnDateStr);
+      const returnYear = values.returnDate.getFullYear()
+      const returnMonth = String(values.returnDate.getMonth() + 1).padStart(2, '0')
+      const returnDay = String(values.returnDate.getDate()).padStart(2, '0')
+      params.set('returnDate', `${returnYear}-${returnMonth}-${returnDay}`)
     }
 
     window.history.pushState({}, '', `/search?${params.toString()}`);
@@ -165,9 +223,9 @@ function SearchPageContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Search Header với phong cách Luxury */}
-      <div className="bg-background relative overflow-hidden">
+      <div className="bg-background relative overflow-visible z-[10000]">
         <div className="absolute top-0 right-0 w-1/3 h-full bg-primary/10 -skew-x-12 translate-x-1/2" />
-        <div className="container mx-auto px-4 py-12 relative z-10">
+        <div className="container mx-auto px-4 py-12 relative z-[10001]">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
             <div>
               <div className="flex items-center space-x-2 text-secondary font-bold tracking-widest uppercase text-[10px] mb-3">
@@ -191,7 +249,7 @@ function SearchPageContent() {
             </div>
           </div>
           
-          <div className="bg-blue-600 rounded-[2.5rem] p-1 md:p-2 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border-4 border-blue-700 overflow-hidden">
+          <div className="bg-blue-600 rounded-[2.5rem] p-1 md:p-2 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] border-4 border-blue-700 overflow-visible relative z-[9999]">
             <div className="bg-white rounded-[1.8rem] p-6 md:p-10 border-4 border-slate-200">
               <SearchForm
                 initialValues={
@@ -215,16 +273,16 @@ function SearchPageContent() {
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
           {/* Filter Sidebar - Desktop */}
-          <aside className="hidden lg:block lg:col-span-1">
+          <aside className="hidden lg:block lg:col-span-1 relative z-[5]">
             <div className="sticky top-8 space-y-8">
               <div className="flex items-center space-x-2 text-primary font-bold tracking-widest uppercase text-xs">
                 <span className="w-6 h-[2px] bg-primary"></span>
                 <span>Bộ lọc thông minh</span>
               </div>
               <FilterPanel
-                priceRange={searchResults?.data.filters.priceRange}
-                availableBusTypes={searchResults?.data.filters.availableBusTypes}
-                availableAmenities={searchResults?.data.filters.availableAmenities}
+                priceRange={undefined}
+                availableBusTypes={undefined}
+                availableAmenities={undefined}
               />
             </div>
           </aside>
@@ -251,9 +309,9 @@ function SearchPageContent() {
                 </div>
                 <div className="p-4">
                   <FilterPanel
-                    priceRange={searchResults?.data.filters.priceRange}
-                    availableBusTypes={searchResults?.data.filters.availableBusTypes}
-                    availableAmenities={searchResults?.data.filters.availableAmenities}
+                    priceRange={undefined}
+                    availableBusTypes={undefined}
+                    availableAmenities={undefined}
                   />
                 </div>
               </div>
@@ -263,7 +321,7 @@ function SearchPageContent() {
           {/* Results Section */}
           <div className="lg:col-span-3 space-y-6">
             {/* Sort Controls với design đẹp hơn */}
-            {!loading && !error && searchResults && searchResults.data.routes.length > 0 && (
+            {!loading && !error && searchResults && searchResults.routes.length > 0 && (
               <div className="bg-gradient-to-r from-white to-blue-50 rounded-xl border-2 border-blue-100 p-5 shadow-lg">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -394,7 +452,7 @@ function SearchPageContent() {
           </div>
         )}
 
-        {!loading && !error && searchResults && searchResults.data.routes.length === 0 && (
+        {!loading && !error && searchResults && searchResults.routes.length === 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <div className="text-gray-400 mb-4">
               <svg
@@ -418,7 +476,7 @@ function SearchPageContent() {
           </div>
         )}
 
-        {!loading && !error && searchResults && filteredAndSortedRoutes.length === 0 && searchResults.data.routes.length > 0 && (
+        {!loading && !error && searchResults && filteredAndSortedRoutes.length === 0 && searchResults.routes.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <div className="text-gray-400 mb-4">
               <svg
@@ -437,7 +495,7 @@ function SearchPageContent() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No routes match your filters</h3>
             <p className="text-gray-600 mb-6">
-              We found {searchResults.data.routes.length} routes, but none match your current filter settings. Try adjusting your filters.
+              We found {searchResults.routes.length} routes, but none match your current filter settings. Try adjusting your filters.
             </p>
             <Button variant="outline" onClick={() => dispatch(resetFilters())}>
               Clear all filters
@@ -452,9 +510,9 @@ function SearchPageContent() {
                 <h2 className="text-2xl font-bold text-gray-900" aria-live="polite" aria-atomic="true">
                   {filteredAndSortedRoutes.length} {filteredAndSortedRoutes.length === 1 ? 'route' : 'routes'} found
                 </h2>
-                {filteredAndSortedRoutes.length !== searchResults.data.routes.length && (
+                {filteredAndSortedRoutes.length !== searchResults.routes.length && (
                   <p className="text-sm text-gray-600 mt-1">
-                    Filtered from {searchResults.data.routes.length} total routes
+                    Filtered from {searchResults.routes.length} total routes
                   </p>
                 )}
               </div>
@@ -469,22 +527,22 @@ function SearchPageContent() {
               ))}
             </div>
 
-            {searchResults.data.pagination.totalPages > 1 && (
+            {searchResults.pagination.totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 pt-6">
                 <button
-                  disabled={searchResults.data.pagination.page === 1}
+                  disabled={searchResults.pagination.page === 1}
                   className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50"
                 >
                   Previous
                 </button>
                 <span className="px-4 py-2 text-sm text-gray-600">
-                  Page {searchResults.data.pagination.page} of{' '}
-                  {searchResults.data.pagination.totalPages}
+                  Page {searchResults.pagination.page} of{' '}
+                  {searchResults.pagination.totalPages}
                 </span>
                 <button
                   disabled={
-                    searchResults.data.pagination.page ===
-                    searchResults.data.pagination.totalPages
+                    searchResults.pagination.page ===
+                    searchResults.pagination.totalPages
                   }
                   className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50"
                 >
