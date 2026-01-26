@@ -83,7 +83,7 @@ export function ProvinceSelect({
       </div>
 
       {open && filteredProvinces.length > 0 && (
-        <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[240px] overflow-y-auto">
+        <div className="absolute z-[99999] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-[280px] overflow-y-auto">
           {northProvinces.length > 0 && (
             <div>
               <div className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 sticky top-0 z-10">

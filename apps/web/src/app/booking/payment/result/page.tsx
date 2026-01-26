@@ -46,6 +46,9 @@ function PaymentResultContent() {
     
     // Sync with Redux Store
     dispatch(setPaymentStatus(status));
+
+    // ❌ REMOVED: confirmBooking should be called by Payment Service, NOT by frontend
+    // The Payment Service will automatically call /bookings/:id/confirm after successful payment
   }, [searchParams, dispatch]);
 
   if (!result) {

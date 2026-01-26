@@ -72,12 +72,12 @@ export default function BookingTicketPage() {
 
   // Handle both nested totalPrice object and direct totalAmount
   let totalAmount = 0;
-  if (booking.totalPrice && typeof booking.totalPrice === 'object') {
-    totalAmount = (booking.totalPrice as any).amount || (booking.totalPrice as any).total || 0;
+  if ((booking as any).totalPrice && typeof (booking as any).totalPrice === 'object') {
+    totalAmount = ((booking as any).totalPrice as any).amount || ((booking as any).totalPrice as any).total || 0;
   } else if (booking.totalAmount) {
     totalAmount = booking.totalAmount;
-  } else if (booking.totalPrice) {
-    totalAmount = booking.totalPrice as number;
+  } else if ((booking as any).totalPrice) {
+    totalAmount = (booking as any).totalPrice as number;
   }
 
   const seatList = booking.passengers?.map((p: any) => p.seatNumber).filter(Boolean) || booking.seats || [];

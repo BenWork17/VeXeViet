@@ -10,6 +10,7 @@ import {
   CreateBookingResponse,
   CancelBookingRequest,
   CancelBookingResponse,
+  ConfirmBookingResponse,
   SeatAvailability,
   CheckSeatsRequest,
   CheckSeatsResponse,
@@ -61,7 +62,17 @@ export async function getBookingById(id: string): Promise<Booking> {
 export async function cancelBooking(id: string, data?: CancelBookingRequest): Promise<CancelBookingResponse> {
   const response = await apiClient.post<ApiResponse<CancelBookingResponse>>(
     API_ENDPOINTS.BOOKINGS_CANCEL(id),
-    data
+    data || {}
+  );
+  return response.data.data;
+}
+
+/**
+ * Confirm a booking (Internal API - called by Payment Service)
+ */
+export async function confirmBooking(id: string): Promise<ConfirmBookingResponse> {
+  const response = await apiClient.post<ApiResponse<ConfirmBookingResponse>>(
+    API_ENDPOINTS.BOOKINGS_CONFIRM(id)
   );
   return response.data.data;
 }

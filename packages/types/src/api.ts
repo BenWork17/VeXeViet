@@ -156,12 +156,14 @@ export interface Route {
 
 // Pickup/Dropoff points from API
 export interface RoutePickupPoint {
+  id?: string;
   time: string;
   address: string;
   location: string;
 }
 
 export interface RouteDropoffPoint {
+  id?: string;
   time: string;
   address: string;
   location: string;
@@ -343,10 +345,20 @@ export interface CancelBookingRequest {
 
 export interface CancelBookingResponse {
   bookingId: string;
+  bookingCode: string;
   status: 'CANCELLED';
   cancelledAt: string;
+  cancellationReason?: string;
   refundAmount?: number;
   refundStatus?: string;
+}
+
+// Booking - Confirm (Internal API)
+export interface ConfirmBookingResponse {
+  bookingId: string;
+  bookingCode: string;
+  status: 'CONFIRMED';
+  confirmedAt: string;
 }
 
 // ========================
@@ -365,10 +377,45 @@ export interface SeatInfo {
 export interface SeatAvailability {
   routeId: string;
   departureDate: string;
+  busTemplate: BusTemplate;
+  seats: SeatDetail[];
+  summary: SeatSummary;
+}
+
+export interface BusTemplate {
+  id: string;
+  name: string;
+  busType: 'STANDARD' | 'LIMOUSINE' | 'SLEEPER';
+  totalSeats: number;
+  floors: number;
+  rowsPerFloor: number;
+  columns: string[];         // e.g., ["A", "_", "B", "C"] where "_" = aisle
+  layoutImage: string | null;
+}
+
+export interface SeatDetail {
+  id: string;
+  seatNumber: string;
+  seatLabel: string;
+  row: number;
+  column: string;
+  floor: number;
+  seatType: 'STANDARD' | 'VIP' | 'SLEEPER';
+  position: 'WINDOW' | 'AISLE' | 'MIDDLE';
+  basePrice: number;
+  priceModifier: number;
+  finalPrice: number;
+  status: SeatStatus;
+  isSelectable: boolean;
+  metadata: Record<string, any> | null;
+}
+
+export interface SeatSummary {
   totalSeats: number;
   availableSeats: number;
-  seats: SeatInfo[];
-  seatMap?: SeatMapConfig;
+  bookedSeats: number;
+  heldSeats: number;
+  blockedSeats: number;
 }
 
 export interface SeatMapConfig {
@@ -498,6 +545,7 @@ export const API_ENDPOINTS = {
   BOOKINGS_MY: '/bookings/my',
   BOOKINGS_BY_ID: (id: string) => `/bookings/${id}`,
   BOOKINGS_CANCEL: (id: string) => `/bookings/${id}/cancel`,
+  BOOKINGS_CONFIRM: (id: string) => `/bookings/${id}/confirm`,
 
   // Seats
   SEATS_AVAILABILITY: '/seats/availability',

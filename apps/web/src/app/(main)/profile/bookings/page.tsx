@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { useRouter } from 'next/navigation';
 import { mockBookingApi } from '@/lib/api/mock/booking';
+import { cancelBooking } from '@/lib/api/bookings';
 import { BookingDetails } from '@/types/booking';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -56,16 +57,16 @@ export default function BookingsDashboardPage() {
   const handleCancelBooking = async (bookingId: string) => {
     setCancellingId(bookingId);
     try {
-      const result = await mockBookingApi.cancelBooking(bookingId);
+      // Call real API instead of mock
+      const result = await cancelBooking(bookingId, {
+        reason: 'User requested cancellation'
+      });
       
-      if (result.success) {
-        showToast(result.message, 'success');
-        await loadBookings(); // Refresh bookings
-      } else {
-        showToast(result.message, 'error');
-      }
-    } catch (error) {
-      showToast('Failed to cancel booking', 'error');
+      showToast('Booking cancelled successfully', 'success');
+      await loadBookings(); // Refresh bookings
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.error?.message || 'Failed to cancel booking';
+      showToast(errorMessage, 'error');
     } finally {
       setCancellingId(null);
     }

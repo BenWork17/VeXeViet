@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Users, ShieldCheck, XCircle, Clock } from 'lucide-react';
 import { getRouteById } from '@/lib/api/routes';
 import { RouteDetailHeader, RouteJourneyTimeline, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
@@ -50,9 +51,20 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
             duration: durationStr,
             price: priceNum,
             availableSeats: data.availableSeats || 0,
-            amenities: (data.amenities || []).map((a, i) => ({ id: String(i), name: String(a), icon: 'Check' })),
-            pickupPoints: (data.pickupPoints || []).map((p, i) => ({ id: String(i), time: p.time, location: p.location, address: p.address })),
-            dropoffPoints: (data.dropoffPoints || []).map((p, i) => ({ id: String(i), time: p.time, location: p.location, address: p.address })),
+            amenities: (data.amenities || []).map((a: any, i: number) => {
+              // Handle both string and object formats from API
+              if (typeof a === 'string') {
+                return { id: String(i), name: a, icon: 'Check' };
+              }
+              // If it's an object with name property
+              if (a && typeof a === 'object' && a.name) {
+                return { id: a.id || String(i), name: String(a.name), icon: a.icon || 'Check' };
+              }
+              // Fallback
+              return { id: String(i), name: String(a), icon: 'Check' };
+            }),
+            pickupPoints: (data.pickupPoints || []).map((p: any, i: number) => ({ id: String(i), time: p.time, location: p.location, address: p.address })),
+            dropoffPoints: (data.dropoffPoints || []).map((p: any, i: number) => ({ id: String(i), time: p.time, location: p.location, address: p.address })),
             policies: [],
             images: data.images || [],
           });
@@ -93,59 +105,109 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="flex-1 min-w-0">
-          <RouteDetailHeader route={route} />
-          <RouteJourneyTimeline route={route} />
-          <RouteDetailTabs route={route} />
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 min-w-0">
+            <RouteDetailHeader route={route} />
+            <RouteDetailTabs route={route} />
+          </div>
 
-        {/* Booking Sidebar */}
-        <div className="lg:w-80 flex-shrink-0">
-          <div className="bg-white p-6 rounded-lg shadow-sm border sticky top-24">
-            <p className="text-gray-500 text-sm mb-1">Price per person</p>
-            <div className="flex items-baseline gap-1 mb-6">
-              <span className="text-3xl font-bold text-blue-600">
-                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(route.price)}
-              </span>
-            </div>
+          {/* Booking Sidebar - Enhanced */}
+          <div className="lg:w-96 shrink-0">
+            <div className="sticky top-24 space-y-4">
+              {/* Main Booking Card */}
+              <div className="bg-white rounded-2xl shadow-xl border-2 border-blue-100 overflow-hidden">
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-white">
+                  <p className="text-blue-100 text-sm font-medium mb-2">Giá vé mỗi người</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold">
+                      {new Intl.NumberFormat('vi-VN', {
+                        style: 'currency',
+                        currency: 'VND',
+                      }).format(route.price)}
+                    </span>
+                  </div>
+                  <p className="text-blue-100 text-xs mt-2">💡 Giá đã bao gồm thuế VAT</p>
+                </div>
 
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Available seats</span>
-                <span className="font-semibold">{route.availableSeats} seats</span>
+                <div className="p-6 space-y-5">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <Users className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 font-medium">Ghế còn lại</p>
+                        <p className="text-2xl font-bold text-blue-900">{route.availableSeats}</p>
+                      </div>
+                    </div>
+                    {route.availableSeats < 10 && (
+                      <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full animate-pulse">
+                        Sắp hết!
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleSelectSeats}
+                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                  >
+                    Chọn ghế ngay
+                  </button>
+
+                  <div className="space-y-3 pt-4 border-t border-gray-100">
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <ShieldCheck className="w-5 h-5 text-green-600" />
+                      <span>Xác nhận ngay lập tức</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <XCircle className="w-5 h-5 text-green-600" />
+                      <span>Không phí đặt vé</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <Clock className="w-5 h-5 text-green-600" />
+                      <span>Hỗ trợ 24/7</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              <button
-                onClick={handleSelectSeats}
-                className="block w-full bg-blue-600 hover:bg-blue-700 text-white text-center py-3 rounded-lg font-bold transition-colors"
-              >
-                Select Seats
-              </button>
-              
-              <p className="text-xs text-center text-gray-400">
-                Instant confirmation • No booking fees
-              </p>
+
+              {/* Trust Badge */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                    <ShieldCheck className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-green-900">Đặt vé an toàn</p>
+                    <p className="text-xs text-green-700">100% bảo mật thanh toán</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 lg:hidden z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+      {/* Mobile Sticky Bottom Bar - Enhanced */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-blue-100 p-4 lg:hidden z-50 shadow-2xl">
         <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
-          <div>
-            <p className="text-xs text-gray-500">From</p>
-            <p className="text-xl font-bold text-blue-600">
-              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(route.price)}
+          <div className="flex-1">
+            <p className="text-xs text-gray-500 font-medium">Giá vé</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND',
+                notation: 'compact',
+              }).format(route.price)}
             </p>
           </div>
           <button
             onClick={handleSelectSeats}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-3 rounded-lg font-bold transition-colors"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3.5 px-6 rounded-xl font-bold shadow-lg transform active:scale-95 transition-all"
           >
-            Select Seats
+            Chọn ghế
           </button>
         </div>
       </div>

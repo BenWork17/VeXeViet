@@ -1,21 +1,59 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PaymentForm } from '@/components/features/booking/PaymentForm/PaymentForm';
+import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
 import { initiatePayment } from '@/lib/api/payment';
 import { PaymentMethod } from '@/types/payment';
-import { useAppSelector } from '@/lib/hooks/redux';
-import { selectBooking } from '@/store/slices/bookingSlice';
+import { useAppSelector, useAppDispatch } from '@/lib/hooks/redux';
+import { useSeatHold } from '@/lib/hooks/useSeatHold';
+import { selectBooking, clearHoldInfo, resetBooking } from '@/store/slices/bookingSlice';
 
 export default function PaymentPage() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const booking = useAppSelector(selectBooking);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showExpiredModal, setShowExpiredModal] = useState(false);
 
-  // Mock booking ID - in real app, this would come from the booking creation response
-  const bookingId = 'BK-' + Date.now();
+  // Use the seat hold hook
+  const { 
+    holdId, 
+    expiresAt, 
+    isExpired, 
+    release,
+    clearHold 
+  } = useSeatHold({
+    onExpire: () => {
+      setShowExpiredModal(true);
+    },
+  });
+
+  // Check for expired hold on mount
+  useEffect(() => {
+    if (isExpired && holdId) {
+      setShowExpiredModal(true);
+    }
+  }, [isExpired, holdId]);
+
+  // Handle return to seat selection
+  const handleReturnToSeatSelection = useCallback(async () => {
+    try {
+      // Try to release the hold (it might already be expired on backend)
+      await release();
+    } catch {
+      // Ignore errors - hold might already be expired
+    }
+    
+    // Clear local hold state
+    clearHold();
+    dispatch(clearHoldInfo());
+    
+    // Navigate back to search
+    router.push('/search');
+  }, [release, clearHold, dispatch, router]);
 
   // Validate booking state
   if (!booking.currentRoute || booking.selectedSeats.length === 0) {
@@ -36,12 +74,26 @@ export default function PaymentPage() {
   }
 
   const handlePaymentMethodSelect = async (method: PaymentMethod) => {
+    // Check if hold has expired before proceeding
+    if (isExpired) {
+      setShowExpiredModal(true);
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
 
     try {
-      // In a real app, we would first call the booking API to create a booking record
-      // For this demo, we use the Redux state to pass details to the payment initiator
+      // Create booking with holdId
+      const bookingId = 'BK-' + Date.now();
+      
+      // In a real app, we would first call the booking API with holdId
+      // const bookingResponse = await createBooking({
+      //   holdId: holdId!,
+      //   passengers: [...],
+      //   ...
+      // });
+      
       const response = await initiatePayment(bookingId, method, booking.totalPrice);
 
       if (response.success && response.paymentUrl) {
@@ -60,37 +112,54 @@ export default function PaymentPage() {
     }
   };
 
+  // Handle hold expiration during payment
+  const handleHoldExpire = useCallback(() => {
+    if (!isProcessing) {
+      setShowExpiredModal(true);
+    }
+  }, [isProcessing]);
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="mb-8 border-b pb-4">
-        <h1 className="text-3xl font-bold text-slate-900">Thanh toán</h1>
-        <p className="text-slate-500 mt-2">Vui lòng chọn phương thức thanh toán an toàn</p>
-      </div>
-
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">⚠️</span>
-            <strong>Lỗi:</strong> {error}
-          </div>
+    <>
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        <div className="mb-8 border-b pb-4">
+          <h1 className="text-3xl font-bold text-slate-900">Thanh toán</h1>
+          <p className="text-slate-500 mt-2">Vui lòng chọn phương thức thanh toán an toàn</p>
         </div>
-      )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <PaymentForm
-          bookingId={bookingId}
-          tripDetails={{
-            from: booking.currentRoute.from,
-            to: booking.currentRoute.to,
-            departureTime: booking.currentRoute.departureTime,
-            busType: booking.currentRoute.busType,
-          }}
-          passengerCount={booking.selectedSeats.length}
-          amount={booking.totalPrice}
-          onMethodSelect={handlePaymentMethodSelect}
-          isProcessing={isProcessing}
-        />
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚠️</span>
+              <strong>Lỗi:</strong> {error}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <PaymentForm
+            bookingId={holdId || 'BK-' + Date.now()}
+            expiresAt={expiresAt || undefined}
+            onExpire={handleHoldExpire}
+            tripDetails={{
+              from: booking.currentRoute.from,
+              to: booking.currentRoute.to,
+              departureTime: booking.currentRoute.departureTime,
+              busType: booking.currentRoute.busType,
+            }}
+            passengerCount={booking.selectedSeats.length}
+            amount={booking.totalPrice}
+            onMethodSelect={handlePaymentMethodSelect}
+            isProcessing={isProcessing}
+          />
+        </div>
       </div>
-    </div>
+
+      {/* Expired Modal */}
+      <SeatHoldExpiredModal
+        isOpen={showExpiredModal}
+        onReturnToSeatSelection={handleReturnToSeatSelection}
+      />
+    </>
   );
-  }
+}

@@ -36,6 +36,7 @@ export {
   getMyBookings,
   getBookingById,
   cancelBooking,
+  confirmBooking,
   getSeatAvailability,
   checkSeats,
   holdSeats,

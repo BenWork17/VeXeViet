@@ -21,6 +21,11 @@ export interface BookingState {
   bookingId?: string;
   paymentStatus?: 'pending' | 'success' | 'failed';
   
+  // Seat holding state
+  holdId: string | null;
+  holdExpiresAt: string | null;
+  heldSeats: string[];
+  
   // Ticket details
   currentTicket: BookingDetails | null;
   ticketLoading: boolean;
@@ -35,6 +40,9 @@ const initialState: BookingState = {
   step: 'seat-selection',
   bookingId: undefined,
   paymentStatus: undefined,
+  holdId: null,
+  holdExpiresAt: null,
+  heldSeats: [],
   currentTicket: null,
   ticketLoading: false,
   ticketError: null,
@@ -116,6 +124,17 @@ const bookingSlice = createSlice({
     clearTicketError: (state) => {
       state.ticketError = null;
     },
+    // Seat holding actions
+    setHoldInfo: (state, action: PayloadAction<{ holdId: string; expiresAt: string; seats: string[] }>) => {
+      state.holdId = action.payload.holdId;
+      state.holdExpiresAt = action.payload.expiresAt;
+      state.heldSeats = action.payload.seats;
+    },
+    clearHoldInfo: (state) => {
+      state.holdId = null;
+      state.holdExpiresAt = null;
+      state.heldSeats = [];
+    },
     resetBooking: () => initialState,
     resetBookingState: () => initialState,
   },
@@ -148,6 +167,8 @@ export const {
   setBookingId, 
   setPaymentStatus, 
   clearTicketError,
+  setHoldInfo,
+  clearHoldInfo,
   resetBooking,
   resetBookingState
 } = bookingSlice.actions;
@@ -160,5 +181,15 @@ export const selectCanProceed = (state: RootState) => state.booking.selectedSeat
 export const selectCurrentTicket = (state: RootState) => state.booking.currentTicket;
 export const selectTicketLoading = (state: RootState) => state.booking.ticketLoading;
 export const selectTicketError = (state: RootState) => state.booking.ticketError;
+
+// Seat holding selectors
+export const selectHoldId = (state: RootState) => state.booking.holdId;
+export const selectHoldExpiresAt = (state: RootState) => state.booking.holdExpiresAt;
+export const selectHeldSeats = (state: RootState) => state.booking.heldSeats;
+export const selectHasActiveHold = (state: RootState) => {
+  const { holdId, holdExpiresAt } = state.booking;
+  if (!holdId || !holdExpiresAt) return false;
+  return new Date(holdExpiresAt).getTime() > Date.now();
+};
 
 export default bookingSlice.reducer;

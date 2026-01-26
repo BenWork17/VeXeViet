@@ -8,6 +8,7 @@ import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 import { ToastProvider } from '@/components/error/ToastProvider'
 import { PWAProvider } from '@/components/pwa'
 import { ThemeProvider } from '@/components/theme'
+import { LayoutContent } from './LayoutContent'
 
 export { metadata, viewport } from './metadata'
 
@@ -49,9 +50,7 @@ export default function RootLayout({
               <ThemeProvider>
                 <ToastProvider>
                   <PWAProvider>
-                    <Header />
-                    <main className="flex-1">{children}</main>
-                    <Footer />
+                    <LayoutContent>{children}</LayoutContent>
                   </PWAProvider>
                 </ToastProvider>
               </ThemeProvider>

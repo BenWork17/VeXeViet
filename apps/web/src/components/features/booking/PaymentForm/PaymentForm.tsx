@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { PaymentMethod } from '@/types/payment';
 import { cn } from '@/lib/utils';
+import { CountdownTimer } from '../CountdownTimer';
 
 export interface PaymentFormProps {
   bookingId: string;
+  expiresAt?: string | Date;
+  onExpire?: () => void;
   tripDetails: {
     from: string;
     to: string;
@@ -72,6 +75,8 @@ function formatDateTime(dateTime: string): string {
 
 export function PaymentForm({
   bookingId,
+  expiresAt,
+  onExpire,
   tripDetails,
   passengerCount,
   amount,
@@ -89,6 +94,13 @@ export function PaymentForm({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-slate-900 bg-white">
+      {/* Countdown Timer */}
+      {expiresAt && (
+        <div className="flex justify-center mb-4">
+          <CountdownTimer expiresAt={expiresAt} onExpire={onExpire} />
+        </div>
+      )}
+
       {/* Summary Card */}
       <div className="rounded-lg border bg-slate-50 p-6 shadow-sm text-slate-900 border-slate-200">
         <h2 className="mb-4 text-xl font-bold text-slate-900 border-b pb-2 border-slate-200">Thông tin chuyến đi</h2>

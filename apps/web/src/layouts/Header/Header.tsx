@@ -1,26 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from '@vexeviet/ui';
+import { Button, cn } from '@vexeviet/ui';
 import { Menu, X, User as UserIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { ThemeSwitcher } from '@/components/theme';
 import { useThemeContext } from '@/components/theme/ThemeProvider';
+import { usePathname } from 'next/navigation';
 
 export function Header() {
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const { user, logout, isLoggingOut } = useAuth();
   const { resolvedTheme } = useThemeContext();
   
   const isDark = resolvedTheme === 'dark';
+  const isHomePage = pathname === '/';
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const isTransparent = isHomePage && !isScrolled && !isMenuOpen;
 
   return (
     <header 
-      className="no-print sticky top-0 z-50 w-full shadow-md border-b"
+      className={cn(
+        "no-print sticky top-0 z-50 w-full transition-all duration-300",
+        isTransparent ? "bg-transparent border-transparent shadow-none" : "shadow-md border-b"
+      )}
       style={{ 
-        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
-        borderColor: isDark ? '#374151' : '#e5e7eb'
+        backgroundColor: isTransparent ? 'transparent' : (isDark ? '#1a1a1a' : '#ffffff'),
+        borderColor: isTransparent ? 'transparent' : (isDark ? '#374151' : '#e5e7eb')
       }}
     >
       <div className="container mx-auto px-4">
@@ -36,7 +53,7 @@ export function Header() {
             </div>
             <span 
               className="text-xl font-black tracking-tighter italic"
-              style={{ color: isDark ? '#ffffff' : '#111827' }}
+              style={{ color: isTransparent ? (isDark ? '#ffffff' : '#111827') : (isDark ? '#ffffff' : '#111827') }}
             >
               VeXe<span className="text-primary">Viet</span>
             </span>
@@ -47,7 +64,7 @@ export function Header() {
             <Link 
               href="/search" 
               className="text-sm font-semibold hover:text-primary transition-colors"
-              style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+              style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
             >
               Search
             </Link>
@@ -55,7 +72,7 @@ export function Header() {
               <Link 
                 href="/profile" 
                 className="text-sm font-semibold hover:text-primary transition-colors"
-                style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+                style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
               >
                 Profile
               </Link>
@@ -69,7 +86,10 @@ export function Header() {
               <div className="hidden md:flex items-center space-x-4">
                 <Link 
                   href="/profile" 
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full border bg-primary/10 border-primary/20 text-primary transition-colors"
+                  className={cn(
+                    "flex items-center space-x-2 px-3 py-1.5 rounded-full border transition-colors",
+                    isTransparent ? "bg-white/10 border-white/20 text-gray-900" : "bg-primary/10 border-primary/20 text-primary"
+                  )}
                 >
                   <UserIcon className="w-4 h-4" />
                   <span className="text-sm font-medium">{user.firstName} {user.lastName}</span>
@@ -80,7 +100,7 @@ export function Header() {
                   onClick={() => logout()}
                   disabled={isLoggingOut}
                   className="hover:text-primary"
-                  style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+                  style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
                 >
                   {isLoggingOut ? 'Logging out...' : 'Logout'}
                 </Button>
@@ -92,7 +112,7 @@ export function Header() {
                     variant="ghost" 
                     size="sm"
                     className="hover:text-primary"
-                    style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+                    style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
                   >
                     Login
                   </Button>
@@ -101,7 +121,7 @@ export function Header() {
                   <Button 
                     size="sm"
                     className="bg-primary hover:bg-primary/90"
-                    style={{ color: isDark ? '#ffffff' : '#000000' }}
+                    style={{ color: '#ffffff' }}
                   >
                     Sign Up
                   </Button>
@@ -114,7 +134,7 @@ export function Header() {
               className="md:hidden p-2 rounded-full transition-colors"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-              style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+              style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

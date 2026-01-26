@@ -26,6 +26,9 @@ export {
   seatKeys,
 } from './useBookings';
 
+// Seat holding hook
+export { useSeatHold } from './useSeatHold';
+
 // Utility hooks
 export { useTheme } from './useTheme';
 export { useOnlineStatus } from './useOnlineStatus';
