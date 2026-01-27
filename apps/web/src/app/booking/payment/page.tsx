@@ -122,20 +122,6 @@ export default function PaymentPage() {
   return (
     <>
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="mb-8 border-b pb-4">
-          <h1 className="text-3xl font-bold text-slate-900">Thanh toán</h1>
-          <p className="text-slate-500 mt-2">Vui lòng chọn phương thức thanh toán an toàn</p>
-        </div>
-
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">⚠️</span>
-              <strong>Lỗi:</strong> {error}
-            </div>
-          </div>
-        )}
-
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <PaymentForm
             bookingId={holdId || 'BK-' + Date.now()}

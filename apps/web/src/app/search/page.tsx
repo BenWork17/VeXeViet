@@ -256,7 +256,7 @@ function SearchPageContent() {
   }, [origin, destination, departureDateStr, passengers])
 
   const handleBookRoute = (routeId: string) => {
-    router.push(`/booking/${routeId}?departureDate=${departureDateStr}&passengers=${passengers}`)
+    router.push(`/booking/${routeId}`)
   }
 
   return (

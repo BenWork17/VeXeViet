@@ -253,186 +253,97 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   };
 
   const totalPrice = useMemo(() => {
-    // Use seatAvailability for all bus types when available
-    if (seatAvailability) {
-      return selectedSeats.reduce((total, seatId) => {
-        const seat = seatAvailability.seats.find(s => s.id === seatId);
-        return total + (seat?.finalPrice || basePrice);
+    if (selectedSeats.length === 0) return 0;
+    
+    // If we have detailed availability, use actual seat prices
+    if (seatAvailability && seatAvailability.seats.length > 0) {
+      return selectedSeats.reduce((sum, seatId) => {
+        const seat = seatAvailability.seats.find(s => s.id === seatId || s.seatNumber === seatId || s.seatLabel === seatId);
+        return sum + (seat?.finalPrice || basePrice);
       }, 0);
     }
-    // Fallback for legacy SeatMap
-    return selectedSeats.reduce((total, seatId) => {
-      const seat = seats.find(s => s.id === seatId);
-      return total + basePrice + (seat?.type === 'vip' ? vipSurcharge : 0);
+    
+    // Fallback to base price + surcharges
+    return selectedSeats.reduce((sum, seatId) => {
+      const seat = seats.find((s) => s.id === seatId);
+      const price = seat?.type === 'vip' ? basePrice + vipSurcharge : basePrice;
+      return sum + price;
     }, 0);
-  }, [selectedSeats, seats, basePrice, seatAvailability]);
+  }, [selectedSeats, seats, basePrice, vipSurcharge, seatAvailability]);
 
-  const handleContinue = useCallback(async () => {
-    if (selectedSeats.length === 0) {
-      setError('Vui lòng chọn ít nhất một ghế');
-      return;
-    }
-
-    setError(null);
-
+  const handleContinue = async () => {
+    if (selectedSeats.length === 0) return;
+    
     try {
+      // Hold seats before continuing
       const departureDate = currentRoute?.departureTime 
         ? new Date(currentRoute.departureTime).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
 
-      // Get seat labels (not IDs) for the API
-      const seatLabels = selectedSeats.map(seatId => {
-        if (seatAvailability) {
-          const seat = seatAvailability.seats.find(s => s.id === seatId);
-          return seat?.seatLabel || seat?.seatNumber || seatId;
-        }
-        return seatId;
+      // Map selected seat IDs back to seat numbers/labels as expected by backend
+      const seatLabels = selectedSeats.map(id => {
+        const seat = seatAvailability?.seats.find(s => s.id === id || s.seatNumber === id || s.seatLabel === id);
+        return seat?.seatNumber || seat?.seatLabel || id;
       });
 
-      console.log('[BookingPage] Calling hold API with:', {
+      console.log('[BookingPage] Requesting hold:', {
         routeId,
         departureDate,
         seats: seatLabels,
         ttlSeconds: 900
       });
 
-      // Call hold API with seat labels (not internal IDs)
       await hold({
-        routeId: routeId,
-        departureDate: departureDate,
+        routeId,
+        departureDate,
         seats: seatLabels,
-        ttlSeconds: 900, // 15 minutes
+        ttlSeconds: 900
       });
-    } catch (err: any) {
-      // Error is handled in onHoldError callback
-      console.error('[BookingPage] Hold error:', err);
-      console.error('[BookingPage] Error response:', err.response?.data);
-      
-      // Show detailed error to user
-      const errorMessage = err.response?.data?.error?.message 
-        || err.response?.data?.message 
-        || err.message 
-        || 'Không thể giữ chỗ. Vui lòng thử lại.';
-      setError(errorMessage);
-    }
-  }, [selectedSeats, hold, routeId, currentRoute]);
-
-  // Handle refresh seats after conflict
-  const handleRefreshSeats = useCallback(async () => {
-    setShowConflictModal(false);
-    setLoading(true);
-    
-    try {
-      const departureDate = currentRoute?.departureTime 
-        ? new Date(currentRoute.departureTime).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
-        
-      // Refresh seat availability
-      await refreshSeatAvailability(routeId, departureDate);
-      
-      // Refetch seats from API
-      const availability = await getSeatAvailability(routeId, departureDate);
-      setSeatAvailability(availability);
-      
-      // Clear selected seats that are now unavailable
-      setSelectedSeats(prev => prev.filter(seatId => {
-        const seat = availability.seats.find(s => s.id === seatId);
-        return seat?.status === 'AVAILABLE';
-      }));
+      // Note: Navigation happens in onHoldSuccess callback
     } catch (err) {
-      setError('Không thể cập nhật sơ đồ ghế');
-    } finally {
-      setLoading(false);
+      // Error handled in onHoldError callback
     }
-  }, [routeId, currentRoute, refreshSeatAvailability]);
+  };
 
-  // Handle expired hold - go back to seat selection
-  const handleExpiredReturn = useCallback(() => {
-    setShowExpiredModal(false);
-    clearHold();
-    dispatch(clearHoldInfo());
-    setSelectedSeats([]);
-    window.location.reload(); // Reload to refresh seat availability
-  }, [clearHold, dispatch]);
-
-  const handleBack = useCallback(() => {
-    // If user has a hold, release it before going back
-    if (holdId) {
-      release().catch(() => {}); // Try to release, ignore errors
-    }
+  const handleBack = () => {
     router.back();
-  }, [holdId, release, router]);
+  };
 
-  // Get selected seat labels for display
-  const getSelectedSeatLabels = (): string[] => {
-    if (isSleeper && seatAvailability) {
-      return selectedSeats.map(seatId => {
-        const seat = seatAvailability.seats.find(s => s.id === seatId);
-        return seat?.seatLabel || seat?.seatNumber || seatId;
-      });
-    }
-    // For standard buses, the seat ID is the label
-    return selectedSeats;
+  const handleRefreshSeats = async () => {
+    setShowConflictModal(false);
+    await refreshSeatAvailability();
+  };
+
+  const handleExpiredReturn = async () => {
+    setShowExpiredModal(false);
+    await clearHold();
+    dispatch(clearHoldInfo());
+    router.push('/search');
+  };
+
+  const getSelectedSeatLabels = () => {
+    if (!seatAvailability) return selectedSeats;
+    return selectedSeats.map(id => {
+      const seat = seatAvailability.seats.find(s => s.id === id || s.seatNumber === id || s.seatLabel === id);
+      return seat?.seatLabel || id;
+    });
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 px-4 max-w-4xl flex items-center justify-center min-h-[500px]">
-        <div className="flex flex-col items-center gap-6">
-          <div className="relative w-20 h-20">
-            <div className="absolute inset-0 rounded-full border-4 border-slate-200" />
-            <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
-          </div>
-          <div className="text-center">
-            <p className="text-xl font-bold text-slate-900 mb-1">Đang tải sơ đồ ghế</p>
-            <p className="text-slate-500">Vui lòng đợi trong giây lát...</p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium">Đang tải sơ đồ ghế...</p>
       </div>
     );
   }
 
+  if (!currentRoute) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl text-slate-900">
-      <div className="mb-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors group"
-        >
-          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </div>
-          <span className="font-semibold">Quay lại tìm kiếm</span>
-        </button>
-      </div>
-
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase tracking-wider">
-              {busTypeDisplay}
-            </span>
-            <h1 className="text-3xl font-black text-slate-900">Chọn chỗ ngồi</h1>
-          </div>
-          <p className="text-slate-500 flex items-center gap-2">
-            <span className="font-bold text-slate-700">{currentRoute.from}</span>
-            <ArrowRight className="w-4 h-4" />
-            <span className="font-bold text-slate-700">{currentRoute.to}</span>
-            <span className="mx-1">•</span>
-            <span>{new Date(currentRoute.departureTime).toLocaleString('vi-VN', {
-              weekday: 'long',
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}</span>
-          </p>
-        </div>
-      </div>
-      
       {error && (
         <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 rounded-r-lg flex items-start gap-3">
           <div className="shrink-0 text-amber-500 mt-0.5">
