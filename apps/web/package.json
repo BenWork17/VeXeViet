@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo -p 8081",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-alert-dialog": "^1.0.5",
     "@radix-ui/react-popover": "^1.1.15",
     "@reduxjs/toolkit": "^2.11.2",
@@ -40,7 +40,7 @@
     "styled-jsx": "^5.1.7",
     "tailwind-merge": "^3.4.0",
     "webpack": "^5.97.0",
-    "zod": "^4.3.5"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.41.0",
