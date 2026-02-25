@@ -1,5 +1,7 @@
 export type PaymentMethod = 'VNPAY' | 'MOMO' | 'ZALOPAY' | 'CREDIT_CARD';
 
+export type PaymentStatus = 'COMPLETED' | 'FAILED' | 'CANCELLED';
+
 export interface InitiatePaymentRequest {
   bookingId: string;
   paymentMethod: PaymentMethod;
@@ -13,9 +15,26 @@ export interface InitiatePaymentResponse {
   transactionId: string;
 }
 
+// Params received from backend VNPay redirect
+export interface VNPayResultParams {
+  success: boolean;
+  status: PaymentStatus;
+  paymentId: string;
+  transactionId: string;
+  bankCode: string;
+  message: string;
+  responseCode: string;
+}
+
+// Internal payment result used in UI
 export interface PaymentResultParams {
-  status: 'success' | 'failed' | 'pending';
+  success: boolean;
+  status: PaymentStatus;
+  paymentId?: string;
   transactionId?: string;
-  bookingId?: string;
+  bankCode?: string;
   message?: string;
+  responseCode?: string;
+  // Legacy fields
+  bookingId?: string;
 }

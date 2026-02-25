@@ -1,6 +1,7 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@vexeviet/ui';
 import { formatCurrency } from '@/lib/utils';
@@ -29,6 +30,8 @@ interface PopularRouteCardProps {
 }
 
 export const PopularRouteCard = memo(({ route, index }: PopularRouteCardProps) => {
+  const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState(false);
   const price = typeof route.price === 'string' ? parseFloat(route.price) : route.price;
   const formattedPrice = formatCurrency(price);
   const variant = CARD_VARIANTS[index % CARD_VARIANTS.length];
@@ -36,12 +39,14 @@ export const PopularRouteCard = memo(({ route, index }: PopularRouteCardProps) =
   return (
     <Link
       href={`/routes/${route.id}`}
+      onClick={() => setIsNavigating(true)}
       className={cn(
         "group relative bg-white rounded-2xl overflow-hidden",
         "transition-all duration-300 ease-out",
         "hover:-translate-y-2 hover:shadow-2xl",
         "border border-gray-100",
-        "focus:outline-none focus:ring-2 focus:ring-primary/50"
+        "focus:outline-none focus:ring-2 focus:ring-primary/50",
+        isNavigating && "pointer-events-none opacity-80"
       )}
     >
       {/* Animated Gradient Header */}
@@ -152,14 +157,18 @@ export const PopularRouteCard = memo(({ route, index }: PopularRouteCardProps) =
             variant.gradient,
             variant.glow
           )}>
-            <svg 
-              className="w-5 h-5 group-hover:translate-x-0.5 transition-transform duration-200" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-            </svg>
+            {isNavigating ? (
+              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg 
+                className="w-5 h-5 group-hover:translate-x-0.5 transition-transform duration-200" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            )}
           </div>
         </div>
       </div>

@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { setPaymentStatus } from '@/store/slices/bookingSlice';
-import { PaymentResultParams } from '@/types/payment';
+import type { PaymentResultParams, PaymentStatus } from '@/types/payment';
 
 function PaymentResultContent() {
   const router = useRouter();
@@ -13,39 +13,59 @@ function PaymentResultContent() {
   const [result, setResult] = useState<PaymentResultParams | null>(null);
 
   useEffect(() => {
-    // Parse payment result from query params
+    // === NEW: Parse params from backend VNPay redirect ===
+    const successParam = searchParams.get('success');
+    const statusParam = searchParams.get('status');
+    const paymentId = searchParams.get('paymentId');
+    const bankCode = searchParams.get('bankCode');
+    const responseCode = searchParams.get('responseCode');
+
+    // === LEGACY: Parse old-style params ===
     const vnpStatus = searchParams.get('vnp_TransactionStatus');
     const momoStatus = searchParams.get('resultCode');
     const zaloStatus = searchParams.get('status');
     const transactionId = searchParams.get('transactionId') || searchParams.get('vnp_TxnRef');
     const bookingId = searchParams.get('bookingId');
 
-    let status: 'success' | 'failed' | 'pending' = 'failed';
+    let isSuccess = false;
+    let status: PaymentStatus = 'FAILED';
 
-    // VNPAY: 00 = success
-    if (vnpStatus === '00') {
-      status = 'success';
+    // Priority 1: New backend VNPay redirect format
+    if (successParam !== null) {
+      isSuccess = successParam === 'true';
+      status = (statusParam as PaymentStatus) || (isSuccess ? 'COMPLETED' : 'FAILED');
     }
-    // Momo: 0 = success
+    // Priority 2: Legacy VNPAY direct params
+    else if (vnpStatus === '00') {
+      isSuccess = true;
+      status = 'COMPLETED';
+    }
+    // Priority 3: Momo
     else if (momoStatus === '0') {
-      status = 'success';
+      isSuccess = true;
+      status = 'COMPLETED';
     }
-    // ZaloPay: 1 = success
+    // Priority 4: ZaloPay
     else if (zaloStatus === '1') {
-      status = 'success';
+      isSuccess = true;
+      status = 'COMPLETED';
     }
 
     const paymentResult: PaymentResultParams = {
+      success: isSuccess,
       status,
+      paymentId: paymentId || undefined,
       transactionId: transactionId || undefined,
-      bookingId: bookingId || undefined,
+      bankCode: bankCode || undefined,
       message: searchParams.get('message') || undefined,
+      responseCode: responseCode || undefined,
+      bookingId: bookingId || undefined,
     };
 
     setResult(paymentResult);
-    
+
     // Sync with Redux Store
-    dispatch(setPaymentStatus(status));
+    dispatch(setPaymentStatus(isSuccess ? 'success' : 'failed'));
 
     // ❌ REMOVED: confirmBooking should be called by Payment Service, NOT by frontend
     // The Payment Service will automatically call /bookings/:id/confirm after successful payment
@@ -59,7 +79,7 @@ function PaymentResultContent() {
     );
   }
 
-  const isSuccess = result.status === 'success';
+  const isSuccess = result.success;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -85,6 +105,19 @@ function PaymentResultContent() {
             {isSuccess ? 'Thanh toán thành công!' : 'Thanh toán thất bại'}
           </h1>
 
+          {/* Status Badge */}
+          <div className="mb-4">
+            <span className={`inline-block rounded-full px-4 py-1 text-sm font-semibold ${
+              result.status === 'COMPLETED'
+                ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200'
+                : result.status === 'CANCELLED'
+                ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200'
+                : 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'
+            }`}>
+              {result.status === 'COMPLETED' ? 'Hoàn thành' : result.status === 'CANCELLED' ? 'Đã hủy' : 'Thất bại'}
+            </span>
+          </div>
+
           {/* Message */}
           <p
             className={`mb-6 ${
@@ -99,8 +132,14 @@ function PaymentResultContent() {
           </p>
 
           {/* Transaction Details */}
-          {(result.transactionId || result.bookingId) && (
+          {(result.transactionId || result.bookingId || result.paymentId) && (
             <div className="mb-6 space-y-2 rounded-lg border bg-white p-4 text-left dark:bg-gray-900">
+              {result.paymentId && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Mã thanh toán:</span>
+                  <span className="font-mono font-semibold">{result.paymentId}</span>
+                </div>
+              )}
               {result.bookingId && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Mã đặt vé:</span>
@@ -111,6 +150,27 @@ function PaymentResultContent() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Mã giao dịch:</span>
                   <span className="font-mono text-sm">{result.transactionId}</span>
+                </div>
+              )}
+              {result.bankCode && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ngân hàng:</span>
+                  <span className="font-semibold">
+                    <span className="inline-block rounded bg-blue-100 px-2 py-0.5 text-sm text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {result.bankCode}
+                    </span>
+                  </span>
+                </div>
+              )}
+              {result.responseCode && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Mã phản hồi:</span>
+                  <span className={`font-mono text-sm font-semibold ${
+                    result.responseCode === '00' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {result.responseCode}
+                    {result.responseCode === '00' && ' (Thành công)'}
+                  </span>
                 </div>
               )}
             </div>

@@ -8,6 +8,7 @@ import { getRouteById } from '@/lib/api/routes';
 import { RouteDetailHeader, RouteJourneyTimeline, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { initBooking } from '@/store/slices/bookingSlice';
+import { cn } from '@/lib/utils';
 import type { Route } from '@/types/models';
 
 export default function RouteDetailPage({ params }: { params: { id: string } }) {
@@ -17,6 +18,7 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
   const [route, setRoute] = useState<Route | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     async function fetchRoute() {
@@ -87,6 +89,8 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
   if (!route) notFound();
 
   const handleSelectSeats = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
     // TODO: Re-enable login requirement after testing
     // if (!user) {
     //   router.push(`/login?redirect=/routes/${route.id}`);
@@ -151,9 +155,20 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
 
                   <button
                     onClick={handleSelectSeats}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200"
+                    disabled={isNavigating}
+                    className={cn(
+                      "w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg transition-all duration-200",
+                      isNavigating ? "opacity-70 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl transform hover:scale-[1.02]"
+                    )}
                   >
-                    Chọn ghế ngay
+                    {isNavigating ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Đang chuyển...
+                      </span>
+                    ) : (
+                      'Chọn ghế ngay'
+                    )}
                   </button>
 
                   <div className="space-y-3 pt-4 border-t border-gray-100">
@@ -205,9 +220,20 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
           </div>
           <button
             onClick={handleSelectSeats}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3.5 px-6 rounded-xl font-bold shadow-lg transform active:scale-95 transition-all"
+            disabled={isNavigating}
+            className={cn(
+              "flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 px-6 rounded-xl font-bold shadow-lg transition-all",
+              isNavigating ? "opacity-70 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-700 transform active:scale-95"
+            )}
           >
-            Chọn ghế
+            {isNavigating ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Đang chuyển...
+              </span>
+            ) : (
+              'Chọn ghế'
+            )}
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useUpdateProfile } from '@/lib/hooks/useAuth';
 import { useToast } from '@/components/error/ToastProvider';
@@ -132,6 +133,8 @@ import { format } from 'date-fns';
 import { Calendar, MapPin, Ticket } from 'lucide-react';
 
 export function BookingHistoryList({ bookings, isLoading }: { bookings: any[], isLoading?: boolean }) {
+  const [navigatingBookingId, setNavigatingBookingId] = useState<string | null>(null);
+  
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
@@ -325,13 +328,28 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[], i
                 </button>
               ) : booking.status === 'PENDING' ? (
                 <button
-                  onClick={() => window.location.href = `/booking/payment?bookingId=${booking.bookingId}`}
-                  className="bg-orange-500 text-white px-4 py-1.5 rounded-lg hover:bg-orange-600 font-medium flex items-center gap-1 text-sm"
+                  onClick={() => {
+                    setNavigatingBookingId(booking.bookingId);
+                    window.location.href = `/booking/payment?bookingId=${booking.bookingId}`;
+                  }}
+                  disabled={navigatingBookingId === booking.bookingId}
+                  className={`bg-orange-500 text-white px-4 py-1.5 rounded-lg font-medium flex items-center gap-1 text-sm ${
+                    navigatingBookingId === booking.bookingId ? 'opacity-70 cursor-not-allowed' : 'hover:bg-orange-600'
+                  }`}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  Thanh toán ngay
+                  {navigatingBookingId === booking.bookingId ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Đang chuyển...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                      </svg>
+                      Thanh toán ngay
+                    </>
+                  )}
                 </button>
               ) : null}
             </div>

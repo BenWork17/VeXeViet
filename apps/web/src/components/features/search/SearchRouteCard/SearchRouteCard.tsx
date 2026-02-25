@@ -146,6 +146,7 @@ function getSeatStatus(available: number, total: number): { color: string; label
 
 export function SearchRouteCard({ route, onBook, className }: SearchRouteCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
 
   const busConfig = BUS_TYPE_CONFIG[route.busType] || BUS_TYPE_CONFIG.STANDARD;
   const seatStatus = getSeatStatus(route.availableSeats, route.totalSeats);
@@ -308,15 +309,27 @@ export function SearchRouteCard({ route, onBook, className }: SearchRouteCardPro
               </div>
             </div>
             <Button
-              onClick={() => onBook?.(route.id)}
+              onClick={() => {
+                setIsBooking(true);
+                onBook?.(route.id);
+              }}
+              disabled={isBooking}
               className={cn(
                 'px-6 py-3 rounded-xl font-semibold text-white shadow-md',
                 'bg-gradient-to-r transition-all duration-300',
                 busConfig.gradient,
-                'hover:shadow-lg hover:shadow-blue-500/50'
+                'hover:shadow-lg hover:shadow-blue-500/50',
+                isBooking && 'opacity-80 cursor-not-allowed'
               )}
             >
-              Đặt vé
+              {isBooking ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Đang xử lý...
+                </span>
+              ) : (
+                'Đặt vé'
+              )}
             </Button>
           </div>
         </div>
