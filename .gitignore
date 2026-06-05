@@ -7,12 +7,18 @@ node_modules/
 # Testing
 coverage/
 *.log
+*.tsbuildinfo
 
 # Next.js
 .next/
 out/
 build/
 dist/
+
+# Generated PWA assets
+apps/web/public/sw.js
+apps/web/public/workbox-*.js
+apps/web/public/fallback-*.js
 
 # Production
 .vercel
