@@ -32,6 +32,31 @@ import { Button, cn } from '@vexeviet/ui';
 import type { Route } from '@vexeviet/types';
 
 const DEFAULT_ZOOM_OFFSET = 4;
+const MAX_TRIP_DAYS = 5;
+const DAY_TIME_LIMIT_HOURS = 12;
+const DEFAULT_CITY_SPEED_KMH = 24;
+const DAY_ROUTE_COLORS = ['#0EA5E9', '#F97316', '#22C55E', '#A855F7', '#EF4444'];
+const DEFAULT_DAY_ROUTE_COLOR = '#0EA5E9';
+const MAP_TILE_SUBDOMAINS = ['a', 'b', 'c'];
+const MAP_TILE_BUFFER = 8;
+
+function withAlpha(hexColor: string, alphaHex: string) {
+  return `${hexColor}${alphaHex}`;
+}
+
+function getTileSource(providerIndex: number, zoom: number, tileX: number, tileY: number) {
+  const subdomain = MAP_TILE_SUBDOMAINS[Math.abs(tileX + tileY + zoom) % MAP_TILE_SUBDOMAINS.length] ?? 'a';
+
+  if (providerIndex === 1) {
+    return `https://${subdomain}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tileX}/${tileY}.png`;
+  }
+
+  if (providerIndex === 2) {
+    return `https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${tileX}/${tileY}.png`;
+  }
+
+  return `https://${subdomain}.tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
+}
 
 const WIKI_TITLE_ALIASES: Record<string, string> = {
   'Dragon_Bridge,_Da_Nang,_Vietnam': 'Dragon_Bridge_(Da_Nang)',
@@ -198,6 +223,11 @@ type TransportKind = 'route' | 'fallback';
 type OSRMProfile = 'driving' | 'walking' | 'cycling';
 type AnalysisState = 'idle' | 'loading' | 'complete';
 type RouteSimulationStatus = 'idle' | 'playing' | 'paused';
+type DayPlan = {
+  day: number;
+  startTime: string;
+  placeIds: string[];
+};
 
   type TravelPlace = {
     id: string;
@@ -258,6 +288,20 @@ type DeparturePoint = StartPoint & {
 type MapPoint = {
   x: number;
   y: number;
+};
+
+type DayRoutePreview = {
+  day: number;
+  startTime: string;
+  color: string;
+  places: TravelPlace[];
+  route: Array<StartPoint | TravelPlace>;
+  linePoints: MapPoint[];
+  polyline: string;
+  visitHours: number;
+  travelHours: number;
+  totalHours: number;
+  distanceKm: number;
 };
 
 type NominatimResult = {
@@ -766,12 +810,100 @@ function getSuggestedRoute(startPoint: StartPoint, places: TravelPlace[]): Array
   return route;
 }
 
+function getClosedSuggestedRoute(startPoint: StartPoint, places: TravelPlace[]): Array<StartPoint | TravelPlace> {
+  const route = getSuggestedRoute(startPoint, places);
+  if (places.length === 0) return route;
+  return [...route, startPoint];
+}
+
 function getRouteDistance(route: Array<StartPoint | TravelPlace>): number {
   if (route.length < 2) return 0;
 
   return route.slice(1).reduce((total, stop, index) => {
     return total + getDistanceKm(route[index]!, stop);
   }, 0);
+}
+
+function createEmptyDayPlans(dayCount: number): DayPlan[] {
+  return Array.from({ length: dayCount }, (_, index) => ({ day: index + 1, startTime: '08:00', placeIds: [] }));
+}
+
+function estimateTravelHours(distanceKm: number): number {
+  return distanceKm / DEFAULT_CITY_SPEED_KMH;
+}
+
+function getDayVisitHours(places: TravelPlace[]): number {
+  return places.reduce((total, place) => total + place.durationHours, 0);
+}
+
+function getDayTotalHours(startPoint: StartPoint, places: TravelPlace[]): number {
+  const route = getClosedSuggestedRoute(startPoint, places);
+  return getDayVisitHours(places) + estimateTravelHours(getRouteDistance(route));
+}
+
+function distributePlacesAcrossDays(places: TravelPlace[], startPoint: StartPoint, dayCount: number): DayPlan[] {
+  const plans = createEmptyDayPlans(dayCount);
+  const remaining = [...places].sort((a, b) => b.durationHours - a.durationHours);
+
+  remaining.forEach((place) => {
+    let targetDayIndex = 0;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    plans.forEach((plan, index) => {
+      const dayPlaces = plan.placeIds
+        .map((id) => places.find((item) => item.id === id))
+        .filter(Boolean) as TravelPlace[];
+      const nextPlaces = [...dayPlaces, place];
+      const nextHours = getDayTotalHours(startPoint, nextPlaces);
+      const overflow = Math.max(0, nextHours - DAY_TIME_LIMIT_HOURS);
+      const score = overflow * 100 + nextHours;
+
+      if (score < bestScore) {
+        bestScore = score;
+        targetDayIndex = index;
+      }
+    });
+
+    plans[targetDayIndex]?.placeIds.push(place.id);
+  });
+
+  return plans;
+}
+
+function fitDayPlansToCount(plans: DayPlan[], dayCount: number, selectedIds: string[], places: TravelPlace[], startPoint: StartPoint): DayPlan[] {
+  const selectedSet = new Set(selectedIds);
+  const cleanedPlans = createEmptyDayPlans(dayCount);
+
+  plans.forEach((plan, index) => {
+    if (index >= dayCount) return;
+    cleanedPlans[index]!.startTime = plan.startTime || cleanedPlans[index]!.startTime;
+    cleanedPlans[index]!.placeIds = plan.placeIds.filter((id) => selectedSet.has(id));
+  });
+
+  const assignedIds = new Set(cleanedPlans.flatMap((plan) => plan.placeIds));
+  const missingPlaces = places.filter((place) => selectedSet.has(place.id) && !assignedIds.has(place.id));
+
+  if (missingPlaces.length === 0) return cleanedPlans;
+
+  const distributedMissing = distributePlacesAcrossDays(missingPlaces, startPoint, dayCount);
+  distributedMissing.forEach((plan, index) => {
+    cleanedPlans[index]!.placeIds.push(...plan.placeIds);
+  });
+
+  return cleanedPlans;
+}
+
+function movePlaceBetweenDayPlans(plans: DayPlan[], placeId: string, targetDayIndex: number, targetIndex?: number): DayPlan[] {
+  const nextPlans = plans.map((plan) => ({
+    ...plan,
+    placeIds: plan.placeIds.filter((id) => id !== placeId),
+  }));
+  const targetPlan = nextPlans[targetDayIndex];
+  if (!targetPlan) return nextPlans;
+
+  const insertIndex = Math.max(0, Math.min(targetIndex ?? targetPlan.placeIds.length, targetPlan.placeIds.length));
+  targetPlan.placeIds.splice(insertIndex, 0, placeId);
+  return nextPlans;
 }
 
 function toDeparturePoint(point: StartPoint): DeparturePoint {
@@ -1012,6 +1144,10 @@ const ANALYSIS_STEPS = [
 export function TripPlanner({ origin, destination, departureDate, routes, controls, className }: TripPlannerProps) {
   const guide = useMemo(() => resolveCityGuide(destination), [destination]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [dayCount, setDayCount] = useState(1);
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [dayPlans, setDayPlans] = useState<DayPlan[]>(() => createEmptyDayPlans(1));
+  const [draggedPlaceId, setDraggedPlaceId] = useState<string | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<TravelPlace | null>(null);
   const [selectedActivitiesByPlace, setSelectedActivitiesByPlace] = useState<Record<string, string[]>>({});
   const [selectedLocalTransportIndex, setSelectedLocalTransportIndex] = useState<number | null>(null);
@@ -1059,6 +1195,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   useEffect(() => {
     const nextDeparturePoint = toDeparturePoint(guide.startPoint);
     setSelectedIds([]);
+    setDayCount(1);
+    setActiveDayIndex(0);
+    setDayPlans(createEmptyDayPlans(1));
+    setDraggedPlaceId(null);
     setSelectedLocalTransportIndex(null);
     setExpandedPlaceId(null);
     setExpandedStopIndexes([]);
@@ -1120,6 +1260,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   }, [analysisState]);
 
   useEffect(() => {
+    setDayPlans((current) => fitDayPlansToCount(current, dayCount, selectedIds, guide.places, departurePoint));
+    setActiveDayIndex((current) => Math.min(current, dayCount - 1));
+  }, [dayCount, departurePoint, guide.places, selectedIds]);
+
+  useEffect(() => {
     const query = departureQuery.trim();
 
     if (query.length < 2 || query === departurePoint.label) {
@@ -1155,6 +1300,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   }, [departurePoint.label, departureQuery]);
 
   const selectedPlaces = useMemo(() => guide.places.filter((place) => selectedIds.includes(place.id)), [guide.places, selectedIds]);
+  const placesById = useMemo(() => new Map(guide.places.map((place) => [place.id, place])), [guide.places]);
+  const selectedPlacesByDay = useMemo(
+    () => dayPlans.map((plan) => plan.placeIds.map((id) => placesById.get(id)).filter(Boolean) as TravelPlace[]),
+    [dayPlans, placesById]
+  );
+  const activeDayPlaces = selectedPlacesByDay[activeDayIndex] ?? [];
   const localTransport = selectedLocalTransportIndex === null ? null : CITY_TRANSPORT_OPTIONS[selectedLocalTransportIndex] ?? null;
   const placeCost = selectedPlaces.reduce((total, place) => total + place.cost, 0);
   const totalCost = placeCost + (localTransport?.price ?? 0);
@@ -1167,10 +1318,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     departurePoint != null &&
     analysisState !== 'loading';
 
-  const suggestedRoute = useMemo(() => analysisResult?.optimizedRoute || getSuggestedRoute(departurePoint, selectedPlaces), [analysisResult, departurePoint, selectedPlaces]);
-  const routeDistance = useMemo(() => analysisResult?.totalDistanceKm || getRouteDistance(suggestedRoute), [analysisResult, suggestedRoute]);
+  const suggestedRoute = useMemo(() => getClosedSuggestedRoute(departurePoint, activeDayPlaces), [activeDayPlaces, departurePoint]);
+  const routeDistance = useMemo(() => getRouteDistance(suggestedRoute), [suggestedRoute]);
   const mapCenter = mapFocusCenter;
   const mapBaseZoom = useMemo(() => getMapZoom(guide.places), [guide]);
+
+  useEffect(() => {
+    setLoadedTileSources(new Set());
+  }, [destination, mapBaseZoom]);
 
   const formatVND = (n: number) => n.toLocaleString('vi-VN') + 'đ';
   const mapZoom = Math.max(3, Math.min(19, mapBaseZoom + zoomOffset));
@@ -1180,10 +1335,47 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const activeDirectionPoints = useMemo(() => activeDirectionStep?.points.map(([lat, lng]) => getScreenPoint({ lat, lng }, mapCenter, mapZoom, mapPan)) ?? [], [activeDirectionStep, mapCenter, mapPan, mapZoom]);
   const roadRoutePolyline = useMemo(() => roadRoutePoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [roadRoutePoints]);
   const activeDirectionPolyline = useMemo(() => activeDirectionPoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [activeDirectionPoints]);
-  const fallbackRoutePolyline = useMemo(() => routeLinePoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [routeLinePoints]);
   const departureScreenPoint = useMemo(() => getScreenPoint(departurePoint, mapCenter, mapZoom, mapPan), [departurePoint, mapCenter, mapPan, mapZoom]);
-  const routeSimulationPathPoints = roadRoutePoints.length > 1 ? roadRoutePoints : routeLinePoints;
-  const canSimulateRoute = selectedPlaces.length > 0 && routeSimulationPathPoints.length > 1 && !routeLoading;
+  const dayRoutePreviews = useMemo<DayRoutePreview[]>(
+    () =>
+      selectedPlacesByDay.map((places, index) => {
+        const plan = dayPlans[index];
+        const route = getClosedSuggestedRoute(departurePoint, places);
+        const linePoints = route.map((stop) => getScreenPoint(stop, mapCenter, mapZoom, mapPan));
+        const distanceKm = getRouteDistance(route);
+        const visitHours = getDayVisitHours(places);
+        const travelHours = estimateTravelHours(distanceKm);
+
+        return {
+          day: index + 1,
+          startTime: plan?.startTime ?? '08:00',
+          color: DAY_ROUTE_COLORS[index % DAY_ROUTE_COLORS.length] ?? DEFAULT_DAY_ROUTE_COLOR,
+          places,
+          route,
+          linePoints,
+          polyline: linePoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '),
+          visitHours,
+          travelHours,
+          totalHours: visitHours + travelHours,
+          distanceKm,
+        };
+      }),
+    [dayPlans, departurePoint, mapCenter, mapPan, mapZoom, selectedPlacesByDay]
+  );
+  const selectedPlaceDayMeta = useMemo(() => {
+    const meta = new Map<string, { day: number; color: string; order: number }>();
+
+    dayRoutePreviews.forEach((day) => {
+      day.places.forEach((place, index) => {
+        meta.set(place.id, { day: day.day, color: day.color, order: index + 1 });
+      });
+    });
+
+    return meta;
+  }, [dayRoutePreviews]);
+  const activeDayPreview = dayRoutePreviews[activeDayIndex] ?? null;
+  const routeSimulationPathPoints = roadRoutePoints;
+  const canSimulateRoute = activeDayPlaces.length > 0 && routeSimulationPathPoints.length > 1 && !routeLoading;
   const routeSimulationFrame = useMemo(
     () => getRouteSimulationFrame(routeSimulationPathPoints, routeSimulationProgress),
     [routeSimulationPathPoints, routeSimulationProgress]
@@ -1197,16 +1389,15 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     if (!canSimulateRoute || routeSimulationProgress <= 0) return null;
 
     let activeIndex: number | null = null;
-    routeSimulationStopProgresses.slice(1).forEach((stopProgress, index) => {
+    routeSimulationStopProgresses.slice(1, activeDayPlaces.length + 1).forEach((stopProgress, index) => {
       if (routeSimulationProgress >= stopProgress - 0.02) {
         activeIndex = index;
       }
     });
 
     return activeIndex;
-  }, [canSimulateRoute, routeSimulationProgress, routeSimulationStopProgresses]);
-  const activeSimulationStop = activeSimulationPlaceIndex === null ? null : suggestedRoute[activeSimulationPlaceIndex + 1] ?? null;
-  const activeSimulationPlace = activeSimulationStop && 'id' in activeSimulationStop ? activeSimulationStop : null;
+  }, [activeDayPlaces.length, canSimulateRoute, routeSimulationProgress, routeSimulationStopProgresses]);
+  const activeSimulationPlace = activeSimulationPlaceIndex === null ? null : activeDayPlaces[activeSimulationPlaceIndex] ?? null;
 
   useEffect(() => {
     if (suggestedRoute.length < 2) {
@@ -1296,24 +1487,22 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const mapTiles = useMemo(() => {
     const centerX = lngToTileX(mapCenter.lng, mapZoom);
     const centerY = latToTileY(mapCenter.lat, mapZoom);
-    const keepBuffer = 8;
-    const tileGridSize = keepBuffer * 2 + 1;
-    const startX = Math.floor(centerX) - keepBuffer;
-    const startY = Math.floor(centerY) - keepBuffer;
-    const subdomains = ['a', 'b', 'c'];
+    const tileGridSize = MAP_TILE_BUFFER * 2 + 1;
+    const startX = Math.floor(centerX) - MAP_TILE_BUFFER;
+    const startY = Math.floor(centerY) - MAP_TILE_BUFFER;
     const maxTile = Math.pow(2, mapZoom);
 
     return Array.from({ length: tileGridSize * tileGridSize }, (_, index) => {
       const rawTileX = startX + (index % tileGridSize);
       const tileY = startY + Math.floor(index / tileGridSize);
       const tileX = ((rawTileX % maxTile) + maxTile) % maxTile;
-      const subdomain = subdomains[Math.abs(tileX + tileY + mapZoom) % subdomains.length] ?? 'a';
-      const src = `https://${subdomain}.tile.openstreetmap.org/${mapZoom}/${tileX}/${tileY}.png`;
+      const tileKey = mapZoom + '-' + tileX + '-' + tileY;
+      const src = getTileSource(0, mapZoom, tileX, tileY);
       return {
-        key: mapZoom + '-' + tileX + '-' + tileY,
+        key: tileKey,
         src,
-        fallbackSrc: `https://tile.openstreetmap.org/${mapZoom}/${tileX}/${tileY}.png`,
-        loaded: loadedTileSources.has(src),
+        fallbackSources: [getTileSource(1, mapZoom, tileX, tileY), getTileSource(2, mapZoom, tileX, tileY)],
+        loaded: loadedTileSources.has(tileKey),
         left: (rawTileX - centerX) * 256 + 768 + mapPan.x,
         top: (tileY - centerY) * 256 + 768 + mapPan.y,
       };
@@ -1410,6 +1599,41 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     setRouteSimulationStatus('paused');
   };
 
+  const updateDayCount = (nextDayCount: number) => {
+    const normalizedDayCount = Math.max(1, Math.min(MAX_TRIP_DAYS, nextDayCount));
+    setDayCount(normalizedDayCount);
+    resetAnalysis();
+  };
+
+  const autoDistributeSelectedPlaces = () => {
+    setDayPlans(distributePlacesAcrossDays(selectedPlaces, departurePoint, dayCount));
+    setActiveDayIndex(0);
+    resetAnalysis();
+  };
+
+  const movePlaceToDay = (placeId: string, targetDayIndex: number, targetIndex?: number) => {
+    setDayPlans((current) => movePlaceBetweenDayPlans(current, placeId, targetDayIndex, targetIndex));
+    setActiveDayIndex(targetDayIndex);
+    resetAnalysis();
+  };
+
+  const updateDayStartTime = (dayIndex: number, startTime: string) => {
+    setDayPlans((current) =>
+      current.map((plan, index) => (index === dayIndex ? { ...plan, startTime } : plan))
+    );
+    resetAnalysis();
+  };
+
+  const handlePlaceDragStart = (placeId: string) => {
+    setDraggedPlaceId(placeId);
+  };
+
+  const handlePlaceDrop = (targetDayIndex: number, targetIndex?: number) => {
+    if (!draggedPlaceId) return;
+    movePlaceToDay(draggedPlaceId, targetDayIndex, targetIndex);
+    setDraggedPlaceId(null);
+  };
+
   const resetAnalysis = () => {
     setAnalysisState('idle');
     setAnalysisStepIndex(0);
@@ -1418,13 +1642,22 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   };
 
   const togglePlace = (id: string) => {
-    setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    setSelectedIds((current) => {
+      if (current.includes(id)) {
+        setDayPlans((plans) => plans.map((plan) => ({ ...plan, placeIds: plan.placeIds.filter((placeId) => placeId !== id) })));
+        return current.filter((item) => item !== id);
+      }
+
+      setDayPlans((plans) => movePlaceBetweenDayPlans(plans, id, activeDayIndex));
+      return [...current, id];
+    });
     resetAnalysis();
   };
 
   const addPlaceToTrip = (id: string) => {
     if (!selectedIds.includes(id)) {
       setSelectedIds((current) => [...current, id]);
+      setDayPlans((plans) => movePlaceBetweenDayPlans(plans, id, activeDayIndex));
       resetAnalysis();
     }
     setSelectedPlace(null);
@@ -1535,10 +1768,23 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
       Điểm xuất phát: ${departurePoint.label} (${departurePoint.lat}, ${departurePoint.lng})
       Các địa điểm đã chọn: ${selectedPlaces.map((p) => p.name).join(', ')}
+      Số ngày vui chơi: ${dayCount}
+      Kế hoạch hiện tại theo ngày:
+      ${dayRoutePreviews.map((day) => `Ngày ${day.day}, xuất phát ${day.startTime}: ${day.places.map((place) => `${place.name} (${place.durationHours} giờ)`).join(', ') || 'Chưa có địa điểm'}; tổng ước tính ${day.totalHours.toFixed(1)} giờ`).join('\n      ')}
       Phương tiện di chuyển nội đô: ${localTransport?.label}
 
       Yêu cầu đầu ra JSON chính xác như sau:
       ${JSON.stringify({
+        days: [
+          {
+            day: 1,
+            title: 'string',
+            places: ['string'],
+            totalHours: 0,
+            totalDistanceKm: 0,
+            note: 'string',
+          },
+        ],
         optimizedRoute: [],
         routeExplanation: 'string',
         totalSummary: {
@@ -1571,6 +1817,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
       Calculate transport costs using these rates:
       ${Object.entries(TRANSPORT_RATES).map(([key, value]) => `- ${value.label}: ${value.min}-${value.max}đ/km`).join('\n      ')}
       Use actual distance between GPS coordinates to calculate realistic costs.
+      Chia lịch theo đúng ${dayCount} ngày. Mỗi ngày tối đa khoảng ${DAY_TIME_LIMIT_HOURS} giờ, bao gồm thời gian tham quan và thời gian di chuyển.
+      Nếu có quá nhiều địa điểm, hãy ưu tiên phân bổ cân bằng và ghi chú ngày nào đang hơi dày.
       
       Đảm bảo rằng optimizedRoute là một mảng các đối tượng địa điểm (bao gồm cả điểm xuất phát) theo thứ tự tối ưu.
       Đảm bảo rằng stops là một mảng các đối tượng phân tích chi phí cho từng điểm dừng (không bao gồm điểm xuất phát).
@@ -1610,9 +1858,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
   const retryTileOnce = (event: SyntheticEvent<HTMLImageElement>) => {
     const image = event.currentTarget;
-    if (image.dataset.fallbackSrc && image.dataset.fallbackTried !== 'true') {
-      image.dataset.fallbackTried = 'true';
-      image.src = image.dataset.fallbackSrc;
+    const fallbackSources = image.dataset.fallbackSources?.split('|').filter(Boolean) ?? [];
+    const fallbackIndex = Number(image.dataset.fallbackIndex ?? '0');
+
+    if (fallbackIndex < fallbackSources.length) {
+      image.dataset.fallbackIndex = String(fallbackIndex + 1);
+      image.src = fallbackSources[fallbackIndex]!;
       return;
     }
 
@@ -1620,7 +1871,9 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
     image.dataset.retried = 'true';
     window.setTimeout(() => {
-      image.src = image.src.split('?')[0] + '?retry=' + Date.now();
+      image.dataset.fallbackIndex = '0';
+      image.dataset.retried = 'false';
+      image.src = (image.dataset.primarySrc ?? image.src.split('?')[0]) + '?retry=' + Date.now();
     }, 800);
   };
 
@@ -1628,9 +1881,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     const image = event.currentTarget;
     image.classList.remove('leaflet-tile-loading');
     setLoadedTileSources((current) => {
-      if (current.has(image.src)) return current;
+      const tileKey = image.dataset.tileKey;
+      if (!tileKey || current.has(tileKey)) return current;
       const next = new Set(current);
-      next.add(image.src);
+      next.add(tileKey);
       return next;
     });
   };
@@ -1766,33 +2020,189 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Lịch trình theo ngày</p>
+                  <h3 className="mt-1 text-lg font-black text-[#0F172A]">{dayCount} ngày vui chơi</h3>
+                </div>
+                <div className="flex items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => updateDayCount(dayCount - 1)}
+                    disabled={dayCount <= 1}
+                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                    aria-label="Giảm số ngày"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="w-10 text-center text-sm font-black text-[#0F172A]">{dayCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => updateDayCount(dayCount + 1)}
+                    disabled={dayCount >= MAX_TRIP_DAYS}
+                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                    aria-label="Tăng số ngày"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {dayRoutePreviews.map((day) => (
+                  <button
+                    key={day.day}
+                    type="button"
+                    onClick={() => setActiveDayIndex(day.day - 1)}
+                    className={cn(
+                      'rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
+                      activeDayIndex === day.day - 1 ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white hover:border-sky-200'
+                    )}
+                  >
+                    <span className="flex items-center gap-2 text-xs font-black text-[#0F172A]">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: day.color }} />
+                      Ngày {day.day}
+                    </span>
+                    <span className={cn('mt-1 block text-[11px] font-bold', day.totalHours > DAY_TIME_LIMIT_HOURS ? 'text-red-600' : 'text-[#64748B]')}>
+                      {day.places.length} điểm · {day.totalHours.toFixed(1)}h
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  onClick={autoDistributeSelectedPlaces}
+                  disabled={selectedPlaces.length === 0}
+                  className="h-10 rounded-xl bg-[#0EA5E9] px-4 text-xs font-black text-white hover:bg-sky-500 disabled:bg-slate-300"
+                >
+                  AI chia lịch
+                </Button>
+                <div className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-[#64748B]">
+                  Tối đa {DAY_TIME_LIMIT_HOURS}h/ngày gồm tham quan và di chuyển
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {dayRoutePreviews.map((day) => (
+                  <div
+                    key={`day-plan-${day.day}`}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => handlePlaceDrop(day.day - 1)}
+                    className={cn(
+                      'rounded-2xl border p-3 transition-colors',
+                      activeDayIndex === day.day - 1 ? 'border-sky-300 bg-sky-50/70' : 'border-slate-200 bg-white'
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveDayIndex(day.day - 1)}
+                        className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-black text-[#0F172A]">
+                          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: day.color }} />
+                          Ngày {day.day}
+                        </span>
+                        <span className="mt-1 block text-xs font-semibold text-[#64748B]">
+                          {day.distanceKm.toFixed(1)} km · {day.visitHours.toFixed(1)}h chơi · {day.travelHours.toFixed(1)}h di chuyển
+                        </span>
+                      </button>
+                      <span className={cn('shrink-0 rounded-full px-2 py-1 text-[11px] font-black', day.totalHours > DAY_TIME_LIMIT_HOURS ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}>
+                        {day.totalHours.toFixed(1)}h
+                      </span>
+                    </div>
+
+                    <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2">
+                      <span className="text-xs font-black uppercase text-[#64748B]">Giờ xuất phát</span>
+                      <input
+                        type="time"
+                        value={day.startTime}
+                        onChange={(event) => updateDayStartTime(day.day - 1, event.target.value)}
+                        className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-[#0F172A] outline-none focus:border-[#0EA5E9] focus:ring-2 focus:ring-sky-100"
+                      />
+                    </label>
+
+                    <div className="mt-3 space-y-2">
+                      {day.places.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-3 py-4 text-center text-xs font-semibold text-[#64748B]">
+                          Kéo địa điểm vào ngày này
+                        </div>
+                      ) : (
+                        day.places.map((place, index) => (
+                          <div
+                            key={`${day.day}-${place.id}`}
+                            draggable
+                            onDragStart={() => handlePlaceDragStart(place.id)}
+                            onDragEnd={() => setDraggedPlaceId(null)}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={(event) => {
+                              event.stopPropagation();
+                              handlePlaceDrop(day.day - 1, index);
+                            }}
+                            className={cn(
+                              'flex cursor-grab items-center gap-3 rounded-xl border bg-white px-3 py-2 text-left shadow-sm active:cursor-grabbing',
+                              draggedPlaceId === place.id ? 'border-sky-300 opacity-60' : 'border-slate-100'
+                            )}
+                          >
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ backgroundColor: day.color }}>
+                              {index + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-black text-[#0F172A]">{place.name}</p>
+                              <p className="text-xs font-semibold text-[#64748B]">{place.durationHours}h · {place.bestTime}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => togglePlace(place.id)}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                              aria-label={`Bỏ ${place.name} khỏi lịch`}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Route preview</p>
-                <p className="mt-1 text-lg font-black text-[#0F172A]">{selectedPlaces.length > 0 ? `${suggestedRoute.length - 1} điểm theo thứ tự gợi ý` : 'Chưa có địa điểm nào'}</p>
+                <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Tóm tắt ngày đang xem</p>
+                <p className="mt-1 text-lg font-black text-[#0F172A]">{activeDayPlaces.length > 0 ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm` : 'Chưa có địa điểm nào'}</p>
               </div>
               <div className="rounded-full bg-[#F97316] px-3 py-1 text-xs font-black text-white">{routeDistance.toFixed(1)} km</div>
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {selectedPlaces.length === 0 ? (
-                <div className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-[#64748B]">Chọn địa điểm để FE dựng route preview</div>
-              ) : (
-                suggestedRoute.map((stop, index) => (
-                  <div key={stop.name + index} className={cn('inline-flex max-w-full items-center gap-2 rounded-full px-3 py-2 text-xs font-bold', index === 0 ? 'bg-green-100 text-green-950' : 'bg-sky-50 text-sky-900')}>
-                    <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white', index === 0 ? '📍' : index)}>
-                      {index === 0 ? '📍' : index}
-                    </span>
-                    <span className="truncate">{stop.name}</span>
-                  </div>
-                ))
-              )}
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="rounded-xl bg-slate-50 px-3 py-2">
+                <p className="text-[10px] font-black uppercase text-[#94A3B8]">Tham quan</p>
+                <p className="mt-1 text-sm font-black text-[#0F172A]">{activeDayPreview?.visitHours.toFixed(1) ?? '0.0'}h</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2">
+                <p className="text-[10px] font-black uppercase text-[#94A3B8]">Di chuyển</p>
+                <p className="mt-1 text-sm font-black text-[#0F172A]">{activeDayPreview?.travelHours.toFixed(1) ?? '0.0'}h</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-3 py-2">
+                <p className="text-[10px] font-black uppercase text-[#94A3B8]">Tổng</p>
+                <p className={cn('mt-1 text-sm font-black', (activeDayPreview?.totalHours ?? 0) > DAY_TIME_LIMIT_HOURS ? 'text-red-600' : 'text-[#0F172A]')}>{activeDayPreview?.totalHours.toFixed(1) ?? '0.0'}h</p>
+              </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            {guide.places.map((place) => {
+            {selectedPlaces.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm font-semibold text-[#64748B]">
+                Chưa có địa điểm nào trong lịch trình. Chọn marker trên bản đồ rồi bấm thêm vào chuyến đi.
+              </div>
+            ) : selectedPlaces.map((place) => {
               const Icon = CATEGORY_ICONS[place.category];
-              const selected = selectedIds.includes(place.id);
+              const dayMeta = selectedPlaceDayMeta.get(place.id);
+              const dayColor = dayMeta?.color ?? DEFAULT_DAY_ROUTE_COLOR;
               const tags = getPlaceTags(place, guide.center);
               const details = getPlaceDetails(place);
               const expanded = expandedPlaceId === place.id;
@@ -1802,8 +2212,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   key={place.id}
                   className={cn(
                     'relative overflow-hidden rounded-2xl border bg-white shadow-[0_4px_24px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.10)]',
-                    selected || expanded ? 'border-sky-400 bg-sky-50/60 ring-2 ring-sky-100 text-[#0F172A]' : 'border-slate-200 hover:border-sky-200'
+                    expanded ? 'ring-2 text-[#0F172A]' : ''
                   )}
+                  style={{
+                    borderColor: dayColor,
+                    backgroundColor: withAlpha(dayColor, expanded ? '1F' : '0F'),
+                    ['--tw-ring-color' as string]: withAlpha(dayColor, '33'),
+                  }}
                 >
                   <button
                     type="button"
@@ -1818,9 +2233,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                           imageUrl={place.imageUrl}
                         />
                         <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black text-[#0F172A] shadow-sm">
-                          <Icon className="h-3 w-3 text-[#0EA5E9]" />
+                          <Icon className="h-3 w-3" style={{ color: dayColor }} />
                           {categoryLabel}
                         </div>
+                        {dayMeta && (
+                          <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black text-white shadow-sm" style={{ backgroundColor: dayColor }}>
+                            Ngày {dayMeta.day}
+                          </div>
+                        )}
                       </div>
                     <div className="min-w-0 flex-1 pr-9">
                       <div className="flex min-w-0 items-start justify-between gap-2">
@@ -1844,7 +2264,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                           </span>
                         ))}
                       </div>
-                      <p className="mt-2 text-xs font-black text-[#0F172A]">{place.durationHours}h trải nghiệm · {selected ? 'Đã thêm vào lịch' : 'Chạm để xem chi tiết'}</p>
+                      <p className="mt-2 text-xs font-black text-[#0F172A]">{place.durationHours}h trải nghiệm · Đã thêm vào ngày {dayMeta?.day ?? activeDayIndex + 1}</p>
                     </div>
                   </button>
                   <button
@@ -1853,9 +2273,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       event.stopPropagation();
                       togglePlace(place.id);
                     }}
-                    className={cn('absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]', selected ? 'border-[#0EA5E9] bg-[#0EA5E9] text-white' : 'border-slate-300 bg-white text-transparent hover:border-sky-300 hover:text-sky-500')}
-                    aria-label={selected ? `Bỏ chọn ${place.name}` : `Chọn ${place.name}`}
-                    aria-pressed={selected}
+                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border text-xs text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                    style={{ borderColor: dayColor, backgroundColor: dayColor }}
+                    aria-label={`Bỏ chọn ${place.name}`}
+                    aria-pressed={true}
                   >
                     <Check className="h-3.5 w-3.5" />
                   </button>
@@ -2110,7 +2531,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     >
                       <span className="text-sm font-black uppercase tracking-wide">🗺️ Lộ trình gợi ý</span>
                       <span className="flex items-center gap-2 text-xs font-black">
-                        {selectedPlaces.length} điểm
+                        {activeDayPlaces.length} điểm
                         <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', directionsExpanded && 'rotate-180')} />
                       </span>
                     </button>
@@ -2128,7 +2549,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                               <div className="flex gap-3">
                                 <div className="flex w-8 shrink-0 flex-col items-center">
                                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#22C55E] text-sm font-black text-white">📍</div>
-                                  {selectedPlaces.length > 0 && <div className="mt-2 h-full min-h-8 border-l-2 border-dashed border-[#CBD5E1]" />}
+                                  {activeDayPlaces.length > 0 && <div className="mt-2 h-full min-h-8 border-l-2 border-dashed border-[#CBD5E1]" />}
                                 </div>
                                 <div className="min-w-0 flex-1 pb-2">
                                   <h4 className="text-base font-bold text-[#0F172A]">Xuất phát</h4>
@@ -2137,7 +2558,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                               </div>
                             </motion.div>
 
-                            {selectedPlaces.map((place, stopIndex) => {
+                            {activeDayPlaces.map((place, stopIndex) => {
                               const steps = routeDirections[stopIndex] ?? [];
                               const expanded = expandedStopIndexes.includes(stopIndex);
                               const legDistance = steps.reduce((total, step) => total + step.distance, 0);
@@ -2160,7 +2581,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                                   >
                                     <div className="flex w-8 shrink-0 flex-col items-center">
                                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0EA5E9] text-sm font-black text-white">{stopIndex + 2}</div>
-                                      {stopIndex < selectedPlaces.length - 1 && <div className="mt-2 h-full min-h-10 border-l-2 border-dashed border-[#CBD5E1]" />}
+                                      {stopIndex < activeDayPlaces.length - 1 && <div className="mt-2 h-full min-h-10 border-l-2 border-dashed border-[#CBD5E1]" />}
                                     </div>
                                     <div className="min-w-0 flex-1 pb-4">
                                       <div className="flex min-w-0 items-center justify-between gap-2">
@@ -2225,7 +2646,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 style={{ left: tile.left, top: tile.top }}
                 decoding="async"
                 draggable={false}
-                data-fallback-src={tile.fallbackSrc}
+                data-tile-key={tile.key}
+                data-primary-src={tile.src}
+                data-fallback-sources={tile.fallbackSources.join('|')}
+                data-fallback-index="0"
                 onLoad={markTileLoaded}
                 onError={retryTileOnce}
                 onDragStart={(event) => event.preventDefault()}
@@ -2239,11 +2663,6 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
               <polyline points={roadRoutePolyline} stroke="rgba(15, 23, 42, 0.16)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
               <polyline points={roadRoutePolyline} stroke="#F97316" strokeWidth="5" strokeOpacity="0.85" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : routeLinePoints.length > 1 && !routeLoading ? (
-            <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
-              <polyline points={fallbackRoutePolyline} stroke="rgba(15, 23, 42, 0.16)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points={fallbackRoutePolyline} stroke="#F97316" strokeWidth="5" strokeOpacity="0.45" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : null}
 
@@ -2298,6 +2717,25 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           </div>
 
           <div className="absolute left-4 top-28 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {dayRoutePreviews.map((day) => (
+                <button
+                  key={`simulation-day-${day.day}`}
+                  type="button"
+                  onClick={() => {
+                    setActiveDayIndex(day.day - 1);
+                    resetRouteSimulation();
+                  }}
+                  className={cn(
+                    'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
+                    activeDayIndex === day.day - 1 ? 'border-sky-300 bg-sky-50 text-[#0F172A]' : 'border-slate-200 bg-white text-[#64748B] hover:border-sky-200'
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: day.color }} />
+                  Ngày {day.day}
+                </button>
+              ))}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -2310,7 +2748,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 aria-label={routeSimulationStatus === 'playing' ? 'Tạm dừng đi thử lộ trình' : 'Đi thử lộ trình'}
               >
                 {routeSimulationStatus === 'playing' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                Đi thử lộ trình
+                {routeLoading ? 'Đang tải đường' : 'Đi thử lộ trình'}
               </button>
               <button
                 type="button"
@@ -2351,7 +2789,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             </div>
           </div>
 
-          {(routeLoading || routeError) && selectedPlaces.length > 0 && (
+          {(routeLoading || routeError) && activeDayPlaces.length > 0 && (
             <div className="absolute left-4 top-52 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-xs font-bold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
               {routeLoading ? (
                 <span className="inline-flex items-center gap-2">
@@ -2363,7 +2801,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           )}
 
           <div className="absolute bottom-3 left-4 z-30 max-w-[calc(100%-130px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] font-semibold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-            <span className="line-clamp-2">{selectedPlaces.length > 0 ? `Lộ trình gợi ý: ${suggestedRoute.map((stop) => stop.name).join(' -> ')}` : 'Chọn điểm để xem route preview'}</span>
+            <span className="line-clamp-2">{activeDayPlaces.length > 0 ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm, đi thử sẽ quay về điểm xuất phát` : 'Chọn điểm để xem route preview'}</span>
           </div>
           <div className="absolute bottom-3 right-3 z-30 rounded-lg bg-white/95 px-2 py-1 text-[10px] font-semibold text-[#64748B] shadow-sm">© OpenStreetMap contributors</div>
 
@@ -2379,34 +2817,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             <span className="truncate">📍 Xuất phát: {departurePoint.label}</span>
           </div>
 
-          {analysisState === 'complete'
-            ? routeLinePoints.slice(1).map((point, index) => (
-              <div
-                key={`numbered-route-step-${index}`}
-                className="pointer-events-none absolute z-30 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-[#0EA5E9] text-sm font-bold text-white opacity-0 shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-                style={{
-                  left: 'calc(50% + ' + point.x + 'px)',
-                  top: 'calc(50% + ' + point.y + 'px)',
-                  animation: 'markerPop 0.28s ease-out forwards',
-                  animationDelay: `${index * 200}ms`,
-                }}
-              >
-                {index + 1}
-              </div>
-            ))
-            : routeLinePoints.map((point, index) => (
-              <div
-                key={`route-step-${index}`}
-                className={cn('pointer-events-none absolute z-10 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-[11px] font-black text-white shadow-lg', index === 0 ? 'bg-[#22C55E]' : 'bg-[#0EA5E9]')}
-                style={{ left: 'calc(50% + ' + point.x + 'px)', top: 'calc(50% + ' + point.y + 'px)' }}
-              >
-                {index === 0 ? '📍' : index}
-              </div>
-            ))}
-
           {guide.places.map((place) => {
             const Icon = CATEGORY_ICONS[place.category];
             const selected = selectedIds.includes(place.id);
+            const dayMeta = selectedPlaceDayMeta.get(place.id);
+            const markerColor = dayMeta?.color ?? DEFAULT_DAY_ROUTE_COLOR;
             const simulationActive = activeSimulationPlace?.id === place.id;
             const markerOffset = MAP_MARKER_OFFSETS[place.id] ?? { x: 0, y: 0 };
             const placeX = (lngToTileX(place.lng, mapZoom) - lngToTileX(mapCenter.lng, mapZoom)) * 256 + mapPan.x;
@@ -2422,10 +2837,20 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   simulationActive
                     ? 'scale-125 border-[#FBBF24] bg-[#FBBF24] text-slate-950 ring-4 ring-amber-200/80'
                     : selected
-                      ? 'scale-110 border-[#0EA5E9] bg-[#0EA5E9] text-white ring-4 ring-sky-200/80'
+                      ? 'scale-110 text-white ring-4'
                       : 'border-white bg-white/95 text-[#0F172A] hover:scale-105 hover:border-sky-300 hover:text-[#0EA5E9]'
                 )}
-                style={{ left: 'calc(50% + ' + (placeX + markerOffset.x) + 'px)', top: 'calc(50% + ' + (placeY + markerOffset.y) + 'px)' }}
+                style={{
+                  left: 'calc(50% + ' + (placeX + markerOffset.x) + 'px)',
+                  top: 'calc(50% + ' + (placeY + markerOffset.y) + 'px)',
+                  ...(selected && !simulationActive
+                    ? {
+                        borderColor: markerColor,
+                        backgroundColor: markerColor,
+                        ['--tw-ring-color' as string]: withAlpha(markerColor, '33'),
+                      }
+                    : {}),
+                }}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className="truncate">{place.name}</span>
