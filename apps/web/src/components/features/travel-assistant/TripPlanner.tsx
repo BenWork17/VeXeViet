@@ -17,8 +17,11 @@ import {
   Minus,
   Move,
   Navigation,
+  Pause,
+  Play,
   Plus,
   RotateCcw,
+  SkipForward,
   Sparkles,
   Star,
   Utensils,
@@ -194,6 +197,7 @@ type PlaceCategory = 'landmark' | 'beach' | 'food' | 'culture' | 'nature';
 type TransportKind = 'route' | 'fallback';
 type OSRMProfile = 'driving' | 'walking' | 'cycling';
 type AnalysisState = 'idle' | 'loading' | 'complete';
+type RouteSimulationStatus = 'idle' | 'playing' | 'paused';
 
   type TravelPlace = {
     id: string;
@@ -249,6 +253,11 @@ type StartPoint = {
 
 type DeparturePoint = StartPoint & {
   label: string;
+};
+
+type MapPoint = {
+  x: number;
+  y: number;
 };
 
 type NominatimResult = {
@@ -668,11 +677,67 @@ function getScreenPoint(
   center: { lat: number; lng: number },
   zoom: number,
   pan: { x: number; y: number }
-): { x: number; y: number } {
+): MapPoint {
   return {
     x: (lngToTileX(point.lng, zoom) - lngToTileX(center.lng, zoom)) * 256 + pan.x,
     y: (latToTileY(point.lat, zoom) - latToTileY(center.lat, zoom)) * 256 + pan.y,
   };
+}
+
+function getPathDistance(points: MapPoint[]): number {
+  return points.slice(1).reduce((total, point, index) => {
+    const previous = points[index]!;
+    return total + Math.hypot(point.x - previous.x, point.y - previous.y);
+  }, 0);
+}
+
+function getRouteSimulationFrame(points: MapPoint[], progress: number): { points: MapPoint[]; head: MapPoint | null } {
+  if (points.length === 0) return { points: [], head: null };
+  if (points.length === 1) return { points, head: points[0]! };
+
+  const clampedProgress = Math.max(0, Math.min(1, progress));
+  const totalDistance = getPathDistance(points);
+  if (totalDistance <= 0) return { points: [points[0]!], head: points[0]! };
+
+  const targetDistance = totalDistance * clampedProgress;
+  const animatedPoints: MapPoint[] = [points[0]!];
+  let traveled = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1]!;
+    const current = points[index]!;
+    const segmentDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
+
+    if (traveled + segmentDistance >= targetDistance) {
+      const segmentProgress = segmentDistance === 0 ? 0 : (targetDistance - traveled) / segmentDistance;
+      const head = {
+        x: previous.x + (current.x - previous.x) * segmentProgress,
+        y: previous.y + (current.y - previous.y) * segmentProgress,
+      };
+      animatedPoints.push(head);
+      return { points: animatedPoints, head };
+    }
+
+    animatedPoints.push(current);
+    traveled += segmentDistance;
+  }
+
+  return { points, head: points[points.length - 1]! };
+}
+
+function getStopProgresses(points: MapPoint[]): number[] {
+  if (points.length < 2) return points.map(() => 0);
+
+  const totalDistance = getPathDistance(points);
+  if (totalDistance <= 0) return points.map(() => 0);
+
+  let traveled = 0;
+  return points.map((point, index) => {
+    if (index === 0) return 0;
+    const previous = points[index - 1]!;
+    traveled += Math.hypot(point.x - previous.x, point.y - previous.y);
+    return Math.max(0, Math.min(1, traveled / totalDistance));
+  });
 }
 
 function getSuggestedRoute(startPoint: StartPoint, places: TravelPlace[]): Array<StartPoint | TravelPlace> {
@@ -957,6 +1022,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [expandedStopIndexes, setExpandedStopIndexes] = useState<number[]>([]);
   const [zoomOffset, setZoomOffset] = useState(DEFAULT_ZOOM_OFFSET);
   const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
+  const [loadedTileSources, setLoadedTileSources] = useState<Set<string>>(() => new Set());
   const [isPanning, setIsPanning] = useState(false);
   const [departurePoint, setDeparturePoint] = useState<DeparturePoint>(() => toDeparturePoint(guide.startPoint));
   const [departureQuery, setDepartureQuery] = useState(guide.startPoint.name);
@@ -968,6 +1034,9 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [routeDirections, setRouteDirections] = useState<RouteDirectionStep[][]>([]);
   const [directionsExpanded, setDirectionsExpanded] = useState(false);
   const [activeDirectionId, setActiveDirectionId] = useState<string | null>(null);
+  const [routeSimulationStatus, setRouteSimulationStatus] = useState<RouteSimulationStatus>('idle');
+  const [routeSimulationProgress, setRouteSimulationProgress] = useState(0);
+  const [routeSimulationSpeed, setRouteSimulationSpeed] = useState<1 | 2>(1);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [mapFocusCenter, setMapFocusCenter] = useState(() => getMapCenter([guide.startPoint, ...guide.places]));
@@ -979,6 +1048,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   });
   const departureMarkerRef = useRef<DeparturePoint | null>(toDeparturePoint(guide.startPoint));
   const dragState = useRef<{ startX: number; startY: number; panX: number; panY: number; frame: number | null } | null>(null);
+  const routeSimulationFrameRef = useRef<number | null>(null);
+  const routeSimulationLastTickRef = useRef<number | null>(null);
 
   // State for validation errors
   const [landmarkError, setLandmarkError] = useState<string | null>(null);
@@ -1006,6 +1077,9 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     setRoadRoute([]);
     setRouteDirections([]);
     setRouteError(null);
+    setRouteSimulationStatus('idle');
+    setRouteSimulationProgress(0);
+    setRouteSimulationSpeed(1);
     // Clear validation errors on guide change
     setLandmarkError(null);
     setTransportError(null);
@@ -1108,6 +1182,31 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const activeDirectionPolyline = useMemo(() => activeDirectionPoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [activeDirectionPoints]);
   const fallbackRoutePolyline = useMemo(() => routeLinePoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [routeLinePoints]);
   const departureScreenPoint = useMemo(() => getScreenPoint(departurePoint, mapCenter, mapZoom, mapPan), [departurePoint, mapCenter, mapPan, mapZoom]);
+  const routeSimulationPathPoints = roadRoutePoints.length > 1 ? roadRoutePoints : routeLinePoints;
+  const canSimulateRoute = selectedPlaces.length > 0 && routeSimulationPathPoints.length > 1 && !routeLoading;
+  const routeSimulationFrame = useMemo(
+    () => getRouteSimulationFrame(routeSimulationPathPoints, routeSimulationProgress),
+    [routeSimulationPathPoints, routeSimulationProgress]
+  );
+  const routeSimulationPolyline = useMemo(
+    () => routeSimulationFrame.points.map((point) => `${768 + point.x},${768 + point.y}`).join(' '),
+    [routeSimulationFrame.points]
+  );
+  const routeSimulationStopProgresses = useMemo(() => getStopProgresses(routeLinePoints), [routeLinePoints]);
+  const activeSimulationPlaceIndex = useMemo(() => {
+    if (!canSimulateRoute || routeSimulationProgress <= 0) return null;
+
+    let activeIndex: number | null = null;
+    routeSimulationStopProgresses.slice(1).forEach((stopProgress, index) => {
+      if (routeSimulationProgress >= stopProgress - 0.02) {
+        activeIndex = index;
+      }
+    });
+
+    return activeIndex;
+  }, [canSimulateRoute, routeSimulationProgress, routeSimulationStopProgresses]);
+  const activeSimulationStop = activeSimulationPlaceIndex === null ? null : suggestedRoute[activeSimulationPlaceIndex + 1] ?? null;
+  const activeSimulationPlace = activeSimulationStop && 'id' in activeSimulationStop ? activeSimulationStop : null;
 
   useEffect(() => {
     if (suggestedRoute.length < 2) {
@@ -1145,27 +1244,81 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     };
   }, [localTransport, suggestedRoute]);
 
+  useEffect(() => {
+    if (canSimulateRoute) return;
+
+    setRouteSimulationStatus('idle');
+    setRouteSimulationProgress(0);
+    routeSimulationLastTickRef.current = null;
+    if (routeSimulationFrameRef.current !== null) {
+      cancelAnimationFrame(routeSimulationFrameRef.current);
+      routeSimulationFrameRef.current = null;
+    }
+  }, [canSimulateRoute]);
+
+  useEffect(() => {
+    if (routeSimulationStatus !== 'playing' || !canSimulateRoute) {
+      routeSimulationLastTickRef.current = null;
+      if (routeSimulationFrameRef.current !== null) {
+        cancelAnimationFrame(routeSimulationFrameRef.current);
+        routeSimulationFrameRef.current = null;
+      }
+      return;
+    }
+
+    const durationMs = 12000;
+    const tick = (timestamp: number) => {
+      const previousTimestamp = routeSimulationLastTickRef.current ?? timestamp;
+      routeSimulationLastTickRef.current = timestamp;
+      const delta = timestamp - previousTimestamp;
+
+      setRouteSimulationProgress((current) => {
+        const next = Math.min(1, current + (delta / durationMs) * routeSimulationSpeed);
+        if (next >= 1) {
+          setRouteSimulationStatus('idle');
+        }
+        return next;
+      });
+
+      routeSimulationFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    routeSimulationFrameRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (routeSimulationFrameRef.current !== null) {
+        cancelAnimationFrame(routeSimulationFrameRef.current);
+        routeSimulationFrameRef.current = null;
+      }
+    };
+  }, [canSimulateRoute, routeSimulationSpeed, routeSimulationStatus]);
+
   const mapTiles = useMemo(() => {
     const centerX = lngToTileX(mapCenter.lng, mapZoom);
     const centerY = latToTileY(mapCenter.lat, mapZoom);
-    const keepBuffer = 6;
+    const keepBuffer = 8;
     const tileGridSize = keepBuffer * 2 + 1;
     const startX = Math.floor(centerX) - keepBuffer;
     const startY = Math.floor(centerY) - keepBuffer;
     const subdomains = ['a', 'b', 'c'];
+    const maxTile = Math.pow(2, mapZoom);
 
     return Array.from({ length: tileGridSize * tileGridSize }, (_, index) => {
-      const tileX = startX + (index % tileGridSize);
+      const rawTileX = startX + (index % tileGridSize);
       const tileY = startY + Math.floor(index / tileGridSize);
+      const tileX = ((rawTileX % maxTile) + maxTile) % maxTile;
       const subdomain = subdomains[Math.abs(tileX + tileY + mapZoom) % subdomains.length] ?? 'a';
+      const src = `https://${subdomain}.tile.openstreetmap.org/${mapZoom}/${tileX}/${tileY}.png`;
       return {
         key: mapZoom + '-' + tileX + '-' + tileY,
-        src: `https://${subdomain}.tile.openstreetmap.org/${mapZoom}/${tileX}/${tileY}.png`,
-        left: (tileX - centerX) * 256 + 768 + mapPan.x,
+        src,
+        fallbackSrc: `https://tile.openstreetmap.org/${mapZoom}/${tileX}/${tileY}.png`,
+        loaded: loadedTileSources.has(src),
+        left: (rawTileX - centerX) * 256 + 768 + mapPan.x,
         top: (tileY - centerY) * 256 + 768 + mapPan.y,
       };
     });
-  }, [mapCenter, mapPan, mapZoom]);
+  }, [loadedTileSources, mapCenter, mapPan, mapZoom]);
 
   const handleMapPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
@@ -1212,7 +1365,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   };
 
   const handleMapWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (selectedPlace && target.closest('[data-place-modal="true"]')) return;
+
     event.preventDefault();
+    if (selectedPlace) return;
+
     setZoomOffset((current) => Math.max(3 - mapBaseZoom, Math.min(19 - mapBaseZoom, current + (event.deltaY < 0 ? 1 : -1))));
   };
 
@@ -1224,9 +1382,39 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     window.setTimeout(() => mapRef.current.invalidateSize({ animate: false }), 200);
   };
 
+  const toggleRouteSimulation = () => {
+    if (!canSimulateRoute) return;
+
+    setRouteSimulationStatus((current) => {
+      if (current === 'playing') return 'paused';
+      if (routeSimulationProgress >= 1) {
+        setRouteSimulationProgress(0);
+      }
+      return 'playing';
+    });
+  };
+
+  const resetRouteSimulation = () => {
+    setRouteSimulationStatus('idle');
+    setRouteSimulationProgress(0);
+  };
+
+  const skipToNextSimulationStop = () => {
+    if (!canSimulateRoute) return;
+
+    const nextStopProgress = routeSimulationStopProgresses
+      .slice(1)
+      .find((stopProgress) => stopProgress > routeSimulationProgress + 0.03);
+
+    setRouteSimulationProgress(nextStopProgress ?? 1);
+    setRouteSimulationStatus('paused');
+  };
+
   const resetAnalysis = () => {
     setAnalysisState('idle');
     setAnalysisStepIndex(0);
+    setRouteSimulationStatus('idle');
+    setRouteSimulationProgress(0);
   };
 
   const togglePlace = (id: string) => {
@@ -1422,16 +1610,29 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
   const retryTileOnce = (event: SyntheticEvent<HTMLImageElement>) => {
     const image = event.currentTarget;
+    if (image.dataset.fallbackSrc && image.dataset.fallbackTried !== 'true') {
+      image.dataset.fallbackTried = 'true';
+      image.src = image.dataset.fallbackSrc;
+      return;
+    }
+
     if (image.dataset.retried === 'true') return;
 
     image.dataset.retried = 'true';
     window.setTimeout(() => {
       image.src = image.src.split('?')[0] + '?retry=' + Date.now();
-    }, 2000);
+    }, 800);
   };
 
   const markTileLoaded = (event: SyntheticEvent<HTMLImageElement>) => {
-    event.currentTarget.classList.remove('leaflet-tile-loading');
+    const image = event.currentTarget;
+    image.classList.remove('leaflet-tile-loading');
+    setLoadedTileSources((current) => {
+      if (current.has(image.src)) return current;
+      const next = new Set(current);
+      next.add(image.src);
+      return next;
+    });
   };
 
   return (
@@ -1481,12 +1682,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
         }
 
         .leaflet-tile {
-          background: #e8f4f8;
+          background: #dbeafe;
+          image-rendering: auto;
+          opacity: 1;
+          transition: opacity 0.18s ease-out;
         }
 
         .leaflet-tile-loading {
-          opacity: 0.5;
-          transition: opacity 0.3s;
+          opacity: 0.78;
         }
       `}</style>
       <aside className="order-2 z-20 max-h-none overflow-visible rounded-t-2xl border-t border-slate-200 bg-white px-4 py-5 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] lg:order-1 lg:h-screen lg:overflow-y-auto lg:rounded-none lg:border-r lg:border-t-0 lg:px-6 lg:py-6 lg:shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
@@ -2018,9 +2221,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 key={tile.key}
                 src={tile.src}
                 alt=""
-                className="leaflet-tile leaflet-tile-loading pointer-events-none absolute h-64 w-64 select-none [-webkit-user-drag:none]"
+                className={cn('leaflet-tile pointer-events-none absolute h-64 w-64 select-none [-webkit-user-drag:none]', !tile.loaded && 'leaflet-tile-loading')}
                 style={{ left: tile.left, top: tile.top }}
+                decoding="async"
                 draggable={false}
+                data-fallback-src={tile.fallbackSrc}
                 onLoad={markTileLoaded}
                 onError={retryTileOnce}
                 onDragStart={(event) => event.preventDefault()}
@@ -2042,6 +2247,38 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             </svg>
           ) : null}
 
+          {canSimulateRoute && routeSimulationFrame.points.length > 1 && (
+            <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
+              <polyline points={routeSimulationPolyline} stroke="rgba(14, 165, 233, 0.20)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={routeSimulationPolyline} stroke="#0EA5E9" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={routeSimulationPolyline} stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+
+          {canSimulateRoute && routeSimulationFrame.head && routeSimulationProgress > 0 && (
+            <div
+              className="pointer-events-none absolute z-40 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#0EA5E9] text-white shadow-[0_8px_24px_rgba(14,165,233,0.38)]"
+              style={{
+                left: 'calc(50% + ' + routeSimulationFrame.head.x + 'px)',
+                top: 'calc(50% + ' + routeSimulationFrame.head.y + 'px)',
+              }}
+            >
+              <Navigation className="h-4 w-4" />
+            </div>
+          )}
+
+          {canSimulateRoute && activeSimulationPlace && routeSimulationFrame.head && routeSimulationProgress > 0 && (
+            <div
+              className="pointer-events-none absolute z-40 max-w-[220px] -translate-x-1/2 rounded-full border border-sky-200 bg-white/95 px-3 py-1.5 text-xs font-black text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
+              style={{
+                left: 'calc(50% + ' + routeSimulationFrame.head.x + 'px)',
+                top: 'calc(50% + ' + (routeSimulationFrame.head.y - 48) + 'px)',
+              }}
+            >
+              <span className="block truncate">{activeSimulationPlace.name}</span>
+            </div>
+          )}
+
           {activeDirectionPoints.length > 1 && (
             <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
               <polyline points={activeDirectionPolyline} stroke="#FBBF24" strokeWidth="8" strokeOpacity="0.95" strokeLinecap="round" strokeLinejoin="round" />
@@ -2060,8 +2297,62 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             <button type="button" onClick={resetMapView} className="flex h-11 w-11 items-center justify-center text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]" aria-label="Đặt lại bản đồ"><RotateCcw className="h-4 w-4" /></button>
           </div>
 
+          <div className="absolute left-4 top-28 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleRouteSimulation}
+                disabled={!canSimulateRoute}
+                className={cn(
+                  'inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-black text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
+                  canSimulateRoute ? 'bg-[#0EA5E9] hover:bg-sky-500' : 'cursor-not-allowed bg-slate-300'
+                )}
+                aria-label={routeSimulationStatus === 'playing' ? 'Tạm dừng đi thử lộ trình' : 'Đi thử lộ trình'}
+              >
+                {routeSimulationStatus === 'playing' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                Đi thử lộ trình
+              </button>
+              <button
+                type="button"
+                onClick={resetRouteSimulation}
+                disabled={!canSimulateRoute || routeSimulationProgress === 0}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] disabled:cursor-not-allowed disabled:text-slate-300"
+                aria-label="Chạy lại lộ trình"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={skipToNextSimulationStop}
+                disabled={!canSimulateRoute || routeSimulationProgress >= 1}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] disabled:cursor-not-allowed disabled:text-slate-300"
+                aria-label="Tới điểm tiếp theo"
+              >
+                <SkipForward className="h-4 w-4" />
+              </button>
+              <div className="flex h-10 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                {[1, 2].map((speed) => (
+                  <button
+                    key={speed}
+                    type="button"
+                    onClick={() => setRouteSimulationSpeed(speed as 1 | 2)}
+                    className={cn(
+                      'w-11 text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
+                      routeSimulationSpeed === speed ? 'bg-[#0EA5E9] text-white' : 'text-[#64748B] hover:bg-sky-50 hover:text-[#0EA5E9]'
+                    )}
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full rounded-full bg-[linear-gradient(90deg,#0EA5E9,#FBBF24)] transition-[width] duration-150" style={{ width: `${Math.round(routeSimulationProgress * 100)}%` }} />
+            </div>
+          </div>
+
           {(routeLoading || routeError) && selectedPlaces.length > 0 && (
-            <div className="absolute left-4 top-28 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-xs font-bold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
+            <div className="absolute left-4 top-52 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-xs font-bold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
               {routeLoading ? (
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-[#F97316]" />
@@ -2116,6 +2407,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           {guide.places.map((place) => {
             const Icon = CATEGORY_ICONS[place.category];
             const selected = selectedIds.includes(place.id);
+            const simulationActive = activeSimulationPlace?.id === place.id;
             const markerOffset = MAP_MARKER_OFFSETS[place.id] ?? { x: 0, y: 0 };
             const placeX = (lngToTileX(place.lng, mapZoom) - lngToTileX(mapCenter.lng, mapZoom)) * 256 + mapPan.x;
             const placeY = (latToTileY(place.lat, mapZoom) - latToTileY(mapCenter.lat, mapZoom)) * 256 + mapPan.y;
@@ -2127,7 +2419,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 onClick={() => setSelectedPlace(place)}
                 className={cn(
                   'absolute z-20 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-2 text-xs font-black shadow-[0_4px_24px_rgba(0,0,0,0.12)] transition-[transform,box-shadow,background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] focus-visible:ring-offset-2',
-                  selected ? 'scale-110 border-[#0EA5E9] bg-[#0EA5E9] text-white ring-4 ring-sky-200/80' : 'border-white bg-white/95 text-[#0F172A] hover:scale-105 hover:border-sky-300 hover:text-[#0EA5E9]'
+                  simulationActive
+                    ? 'scale-125 border-[#FBBF24] bg-[#FBBF24] text-slate-950 ring-4 ring-amber-200/80'
+                    : selected
+                      ? 'scale-110 border-[#0EA5E9] bg-[#0EA5E9] text-white ring-4 ring-sky-200/80'
+                      : 'border-white bg-white/95 text-[#0F172A] hover:scale-105 hover:border-sky-300 hover:text-[#0EA5E9]'
                 )}
                 style={{ left: 'calc(50% + ' + (placeX + markerOffset.x) + 'px)', top: 'calc(50% + ' + (placeY + markerOffset.y) + 'px)' }}
               >
@@ -2149,6 +2445,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
+                  data-place-modal="true"
                   className="absolute left-1/2 top-1/2 z-[100] flex max-h-[calc(100%-32px)] w-[min(390px,calc(100%-32px))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
                   style={{ x: '-50%', y: '-50%' }}
                 >
