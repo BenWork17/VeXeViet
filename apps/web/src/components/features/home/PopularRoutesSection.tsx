@@ -14,28 +14,23 @@ export function PopularRoutesSection() {
   );
 
   return (
-    <section className="relative py-20 overflow-hidden">
+    <section id="popular-routes" className="relative overflow-hidden py-20">
       {/* Background Elements */}
       <div className="absolute inset-0 -z-10">
         {/* Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50/30" />
-        
-        {/* Decorative Circles */}
-        <div className="absolute top-20 -left-20 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 -right-20 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-white" />
         
         {/* Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(0,0,0,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.025)_1px,transparent_1px)] bg-[size:56px_56px]" />
       </div>
 
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="max-w-3xl mx-auto text-center mb-14">
+        <div className="mx-auto mb-12 max-w-3xl text-center">
           {/* Badge */}
           <div className="inline-flex items-center justify-center mb-6">
-            <span className="inline-flex items-center px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
+            <span className="inline-flex items-center rounded-lg border border-primary/20 bg-primary/10 px-4 py-2">
               <span className="relative flex h-2 w-2 mr-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
               <span className="text-xs font-bold text-primary uppercase tracking-wider">Được yêu thích nhất</span>
@@ -43,13 +38,13 @@ export function PopularRoutesSection() {
           </div>
 
           {/* Title with Gradient */}
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4">
+          <h2 className="mb-4 text-4xl font-black text-gray-950 md:text-5xl">
             Tuyến đường{' '}
             <span className="relative inline-block">
-              <span className="relative z-10 bg-gradient-to-r from-primary via-blue-600 to-secondary bg-clip-text text-transparent">
+              <span className="relative z-10 text-primary">
                 nổi bật
               </span>
-              <span className="absolute -bottom-2 left-0 w-full h-3 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-sm" />
+              <span className="absolute -bottom-1 left-0 h-1.5 w-full rounded-sm bg-secondary/80" />
             </span>
           </h2>
 
@@ -65,7 +60,7 @@ export function PopularRoutesSection() {
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="bg-white rounded-2xl overflow-hidden border border-gray-100"
+                className="overflow-hidden rounded-xl border border-gray-100 bg-white"
               >
                 {/* Skeleton Header */}
                 <div className="h-24 bg-gradient-to-r from-gray-200 to-gray-300 animate-pulse" />
@@ -126,7 +121,7 @@ export function PopularRoutesSection() {
             <a 
               href="/routes"
               className={cn(
-                "inline-flex items-center px-8 py-4 rounded-full",
+                "inline-flex items-center rounded-lg px-8 py-4",
                 "bg-gray-900 text-white font-semibold",
                 "hover:bg-primary hover:shadow-lg hover:shadow-primary/25",
                 "transition-all duration-300",
@@ -147,10 +142,6 @@ export function PopularRoutesSection() {
         )}
       </div>
 
-      {/* Large Decorative Text */}
-      <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 text-[15vw] font-black text-gray-100/50 select-none pointer-events-none whitespace-nowrap">
-        VEXEVIET
-      </div>
     </section>
   );
 }

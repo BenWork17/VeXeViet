@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { Button, cn } from '@vexeviet/ui';
 import { SearchForm, type SearchFormValues } from '@/components/features/search/SearchForm';
 import { useRouter } from 'next/navigation';
-import { HeroBusAnimation } from '@/components/HeroBusAnimation';
 import { PopularRoutesSection } from '@/components/features/home/PopularRoutesSection';
 import { StatsSection } from '@/components/features/home/StatsSection';
+import { Clock3, Compass, MapPin, Search, ShieldCheck, Star, TicketCheck } from 'lucide-react';
 
 export default function HomePage() {
   const router = useRouter();
-  const [triggerBusExit, setTriggerBusExit] = useState(false);
+  const [searchPanelOpen, setSearchPanelOpen] = useState(false);
 
   const handleSearch = (values: SearchFormValues) => {
     // Format date as local date (YYYY-MM-DD) without timezone conversion
@@ -32,116 +32,52 @@ export default function HomePage() {
       params.set('returnDate', `${returnYear}-${returnMonth}-${returnDay}`)
     }
 
-    setTriggerBusExit(true);
-    setTimeout(() => {
-      router.push(`/search?${params.toString()}`);
-    }, 1200);
+    router.push(`/search?${params.toString()}`);
   };
 
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center overflow-hidden py-20 -mt-16">
+      <section className="relative min-h-[86vh] flex items-center overflow-hidden pb-28 pt-28 -mt-16">
         {/* Background Layers */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-blue-50" />
-        
-        {/* Animated Background Pattern */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.05)_1px,transparent_0)] bg-[size:40px_40px]" />
-        </div>
-
-        {/* Decorative Gradient Blobs */}
-        <div className="absolute top-0 right-0 w-1/2 h-full">
-          <div className="absolute top-20 right-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-40 right-40 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" />
-        </div>
-
-        {/* Bus Animation */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
-          <HeroBusAnimation triggerExit={triggerBusExit} />
-        </div>
+        <div className="absolute inset-0 bg-white" />
+        <div className="absolute inset-0 hidden bg-[url('/images/hero-vietnam-bus.jpg')] bg-no-repeat md:block md:bg-[length:74%_auto] md:bg-[position:right_-17rem_top_5rem] lg:bg-[length:64%_auto] lg:bg-[position:right_-7rem_top_5rem] xl:bg-[length:62%_auto] xl:bg-[position:right_-5rem_top_4.75rem]" />
 
         {/* Content */}
         <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl">
+          <div className="max-w-[660px]">
             {/* Status Badge */}
-            <div className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary to-blue-600 text-white mb-8 shadow-lg shadow-primary/25">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-              </span>
-              <span className="text-xs font-bold tracking-widest uppercase">Premium Travel Experience</span>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white/90 px-3 py-2 text-xs font-bold uppercase tracking-wide text-primary shadow-sm backdrop-blur">
+              <Compass className="h-4 w-4" />
+              <span>Nền tảng đặt vé xe Việt Nam</span>
             </div>
             
             {/* Main Heading */}
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black mb-8 leading-[1.1]">
-              <span className="text-gray-900">Khám phá</span>
-              <br />
-              <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-primary via-blue-600 to-secondary bg-clip-text text-transparent">
-                  Việt Nam
+            <h1 className="mb-5 max-w-[660px] text-4xl font-black leading-[1.02] text-gray-950 sm:text-5xl lg:text-[72px]">
+              <span className="block">Khám phá Việt Nam</span>
+              <span className="mt-2 block text-gray-900">
+                cùng{' '}
+                <span className="relative inline-block whitespace-nowrap text-primary drop-shadow-[0_8px_22px_rgba(37,99,235,0.18)]">
+                  VeXeViet
                 </span>
-                {/* Underline Effect */}
-                <span className="absolute -bottom-2 left-0 w-full h-3 bg-gradient-to-r from-primary/30 to-secondary/30 rounded-full blur-sm" />
-              </span>
-              <br />
-              <span className="text-gray-900">cùng </span>
-              <span className="relative inline-block">
-                <span className="text-secondary font-black">VeXeViet</span>
-                {/* Sparkle Effect */}
-                <span className="absolute -top-1 -right-4 text-2xl animate-bounce">✨</span>
               </span>
             </h1>
             
             {/* Subtitle */}
-            <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-2xl leading-relaxed">
+            <p className="mb-7 max-w-xl text-base leading-7 text-gray-600 md:text-lg">
               Hành trình đẳng cấp với dịch vụ đặt vé xe khách hàng đầu.{' '}
               <span className="font-semibold text-gray-900">An toàn. Tiện nghi. Đáng tin cậy.</span>
             </p>
             
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-4 mb-12">
-              <Button 
-                size="lg" 
-                className={cn(
-                  "rounded-full px-10 py-7 text-lg font-bold",
-                  "bg-gradient-to-r from-primary to-blue-600 text-white",
-                  "hover:shadow-xl hover:shadow-primary/30 hover:scale-105",
-                  "transition-all duration-300"
-                )}
-              >
-                <span className="mr-2">🚀</span>
-                Bắt đầu hành trình
-              </Button>
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className={cn(
-                  "rounded-full px-10 py-7 text-lg font-bold",
-                  "border-2 border-gray-300 text-gray-700",
-                  "hover:border-gray-900 hover:bg-gray-900 hover:text-white",
-                  "transition-all duration-300"
-                )}
-              >
-                Tìm hiểu thêm
-              </Button>
-            </div>
-
             {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500">
-              <div className="flex items-center space-x-2">
-                <div className="flex -space-x-2">
-                  {['😊', '🥰', '😄', '🤩'].map((emoji, i) => (
-                    <div key={i} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center ring-2 ring-white text-sm">
-                      {emoji}
-                    </div>
-                  ))}
-                </div>
-                <span className="font-medium">50K+ khách hàng hài lòng</span>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white/80 px-3 py-2 shadow-sm backdrop-blur">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span className="font-semibold">50K+ khách hàng hài lòng</span>
               </div>
-              <div className="flex items-center space-x-1">
-                <span className="text-yellow-500">⭐⭐⭐⭐⭐</span>
-                <span className="font-medium">4.9/5 đánh giá</span>
+              <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white/80 px-3 py-2 shadow-sm backdrop-blur">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span className="font-semibold">4.9/5 đánh giá</span>
               </div>
             </div>
           </div>
@@ -149,47 +85,103 @@ export default function HomePage() {
       </section>
 
       {/* Search Widget - Floating */}
-      <section className="container mx-auto px-4 relative z-30 -mt-20 mb-16">
+      <section className="container mx-auto px-4 relative z-30 -mt-24 mb-16">
         <div className={cn(
-          "relative p-1.5 rounded-[2rem] overflow-visible",
-          "bg-gradient-to-r from-primary via-blue-500 to-secondary",
-          "shadow-2xl shadow-primary/25"
+          "relative overflow-hidden rounded-2xl border border-slate-200 bg-white",
+          "shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
         )}>
-          {/* Animated gradient border */}
-          <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-primary via-blue-500 to-secondary animate-gradient-x opacity-70 blur-sm -z-10" />
-          
-          {/* Inner content */}
-          <div className="relative bg-white rounded-[1.5rem] p-6 md:p-8 lg:p-10">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-              <div className="flex items-center space-x-4">
-                {/* Icon */}
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/30">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
+          <div
+            className={cn(
+              "flex w-[200%] transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              searchPanelOpen ? "-translate-x-1/2" : "translate-x-0"
+            )}
+          >
+            <div className="w-1/2 shrink-0 p-6 md:p-8 lg:p-9">
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center">
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-                    Tìm chuyến xe của bạn
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-primary">
+                    <TicketCheck className="h-4 w-4" />
+                    Tìm vé nhanh trong vài bước
+                  </div>
+                  <h2 className="text-2xl font-black leading-tight text-gray-950 md:text-3xl">
+                    Sẵn sàng chọn chuyến xe phù hợp cho hành trình của bạn?
                   </h2>
-                  <p className="text-sm text-gray-500">Nhập thông tin để tìm chuyến xe phù hợp nhất</p>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600 md:text-base">
+                    Nhập nơi đi, điểm đến và ngày khởi hành để xem chuyến xe, giá vé, thời gian và số ghế còn trống.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button
+                      type="button"
+                      onClick={() => setSearchPanelOpen(true)}
+                      className="h-12 rounded-lg bg-primary px-6 font-bold text-white shadow-lg shadow-primary/20 hover:bg-blue-700"
+                    >
+                      <Search className="mr-2 h-4 w-4" />
+                      Mở form tìm chuyến
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('popular-routes')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="h-12 rounded-lg border-slate-300 px-6 font-bold text-gray-700 hover:bg-gray-900 hover:text-white"
+                    >
+                      Xem tuyến nổi bật
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Trust badges */}
-              <div className="flex items-center space-x-3">
-                <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-green-50 text-green-700 text-xs font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-                  Đặt vé 24/7
-                </span>
-                <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
-                  ⚡ Xác nhận tức thì
-                </span>
+
+                <div className="grid gap-3">
+                  {[
+                    { icon: MapPin, title: 'Chọn tuyến', text: 'Lọc nhanh theo điểm đi và điểm đến.' },
+                    { icon: Clock3, title: 'So sánh giờ', text: 'Xem thời gian chạy và loại xe phù hợp.' },
+                    { icon: ShieldCheck, title: 'Đặt vé an tâm', text: 'Thông tin rõ ràng trước khi thanh toán.' },
+                  ].map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <div key={item.title} className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
+                          <Icon className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-gray-950">{item.title}</h3>
+                          <p className="mt-1 text-sm leading-5 text-gray-600">{item.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            
-            <SearchForm onSubmit={handleSearch} />
+
+            <div className="w-1/2 shrink-0 p-6 md:p-8 lg:p-9">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div className="flex items-center space-x-4">
+                  {/* Icon */}
+                  <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                    <Search className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                      Tìm chuyến xe của bạn
+                    </h2>
+                    <p className="text-sm text-gray-500">Nhập thông tin để tìm chuyến xe phù hợp nhất</p>
+                  </div>
+                </div>
+
+                {/* Trust badges */}
+                <div className="flex items-center space-x-3">
+                  <span className="inline-flex items-center rounded-lg bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700">
+                    <span className="mr-2 h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                    Đặt vé 24/7
+                  </span>
+                  <span className="inline-flex items-center rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                    ⚡ Xác nhận tức thì
+                  </span>
+                </div>
+              </div>
+
+              <SearchForm onSubmit={handleSearch} />
+            </div>
           </div>
         </div>
       </section>
