@@ -85,10 +85,6 @@ export function getLayoutType(busTemplate: BusTemplate): BusLayoutType | null {
     if (totalSeats === 34) return 'LIMOUSINE_34';
   }
   
-  if (busType === 'VIP') {
-    if (totalSeats === 29) return 'VIP_29';
-  }
-  
   if (busType === 'STANDARD') {
     if (totalSeats === 45) return 'STANDARD_45';
   }

@@ -8,22 +8,18 @@
 import type {
   Route as BERoute,
   RouteDetail as BERouteDetail,
-  Operator as BEOperator,
-  PickupPoint as BEPickupPoint,
-  DropoffPoint as BEDropoffPoint,
+  RoutePickupPoint as BERoutePickupPoint,
+  RouteDropoffPoint as BERouteDropoffPoint,
   Booking as BEBooking,
   User as BEUser,
 } from '@vexeviet/types';
 
 import type {
   Route as FERoute,
-  Operator as FEOperator,
   PickupPoint as FEPickupPoint,
   DropoffPoint as FEDropoffPoint,
   Booking as FEBooking,
   User as FEUser,
-  Amenity,
-  Policy,
 } from '@/types/models';
 
 // ========================
@@ -34,23 +30,29 @@ import type {
  * Convert BE Route to FE Route format
  */
 export function adaptBERouteToFE(beRoute: BERoute): FERoute {
+  const departure = beRoute.departureLocation ?? beRoute.origin ?? beRoute.departureCity ?? '';
+  const arrival = beRoute.arrivalLocation ?? beRoute.destination ?? beRoute.arrivalCity ?? '';
+
   return {
     id: beRoute.id,
     operator: {
       id: beRoute.operator?.id ?? beRoute.operatorId,
-      name: beRoute.operator?.name ?? 'Unknown Operator',
+      name:
+        beRoute.operator?.name ??
+        ([beRoute.operator?.firstName, beRoute.operator?.lastName].filter(Boolean).join(' ') ||
+          'Unknown Operator'),
       logoUrl: beRoute.operator?.logo ?? '/images/default-operator.png',
       rating: beRoute.operator?.rating ?? 0,
       totalReviews: beRoute.operator?.totalTrips ?? 0,
     },
-    busType: beRoute.vehicleType,
-    licensePlate: '', // Not provided by BE yet
-    departureTime: `2026-01-01T${beRoute.departureTime}:00Z`, // Convert HH:mm to ISO
-    arrivalTime: `2026-01-01T${beRoute.arrivalTime}:00Z`,
-    departureLocation: beRoute.departureCity,
-    arrivalLocation: beRoute.arrivalCity,
+    busType: beRoute.busType ?? beRoute.vehicleType ?? 'STANDARD',
+    licensePlate: beRoute.licensePlate ?? '',
+    departureTime: normalizeDateTime(beRoute.departureTime),
+    arrivalTime: normalizeDateTime(beRoute.arrivalTime),
+    departureLocation: departure,
+    arrivalLocation: arrival,
     duration: formatDurationMinutes(beRoute.duration),
-    price: beRoute.price,
+    price: typeof beRoute.price === 'string' ? Number(beRoute.price) : beRoute.price,
     availableSeats: beRoute.availableSeats,
     amenities: beRoute.amenities.map((name, idx) => ({
       id: `amenity-${idx}`,
@@ -59,8 +61,8 @@ export function adaptBERouteToFE(beRoute: BERoute): FERoute {
     })),
     pickupPoints: beRoute.pickupPoints.map(adaptBEPickupPointToFE),
     dropoffPoints: beRoute.dropoffPoints.map(adaptBEDropoffPointToFE),
-    policies: [], // Not provided by BE in basic Route
-    images: [], // Not provided by BE in basic Route
+    policies: [],
+    images: beRoute.images ?? [],
   };
 }
 
@@ -103,37 +105,37 @@ export function adaptFERouteToBE(feRoute: FERoute): Partial<BERoute> {
 // Pickup/Dropoff Adapters
 // ========================
 
-function adaptBEPickupPointToFE(bePoint: BEPickupPoint): FEPickupPoint {
+function adaptBEPickupPointToFE(bePoint: BERoutePickupPoint): FEPickupPoint {
   return {
-    id: bePoint.id,
+    id: bePoint.id ?? `${bePoint.location}-${bePoint.time}`,
     time: bePoint.time,
-    location: bePoint.name,
+    location: bePoint.location,
     address: bePoint.address,
   };
 }
 
-function adaptBEDropoffPointToFE(bePoint: BEDropoffPoint): FEDropoffPoint {
+function adaptBEDropoffPointToFE(bePoint: BERouteDropoffPoint): FEDropoffPoint {
   return {
-    id: bePoint.id,
+    id: bePoint.id ?? `${bePoint.location}-${bePoint.time}`,
     time: bePoint.time,
-    location: bePoint.name,
+    location: bePoint.location,
     address: bePoint.address,
   };
 }
 
-function adaptFEPickupPointToBE(fePoint: FEPickupPoint): BEPickupPoint {
+function adaptFEPickupPointToBE(fePoint: FEPickupPoint): BERoutePickupPoint {
   return {
     id: fePoint.id,
-    name: fePoint.location,
+    location: fePoint.location,
     address: fePoint.address,
     time: fePoint.time,
   };
 }
 
-function adaptFEDropoffPointToBE(fePoint: FEDropoffPoint): BEDropoffPoint {
+function adaptFEDropoffPointToBE(fePoint: FEDropoffPoint): BERouteDropoffPoint {
   return {
     id: fePoint.id,
-    name: fePoint.location,
+    location: fePoint.location,
     address: fePoint.address,
     time: fePoint.time,
   };
@@ -209,10 +211,23 @@ function parseDurationToMinutes(duration: string): number {
 function extractTimeFromISO(isoString: string): string {
   try {
     const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) {
+      const matched = isoString.match(/^(\d{2}:\d{2})/);
+      return matched?.[1] ?? '00:00';
+    }
+
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   } catch {
     return '00:00';
   }
+}
+
+function normalizeDateTime(value: string): string {
+  if (/^\d{2}:\d{2}$/.test(value)) {
+    return `2026-01-01T${value}:00Z`;
+  }
+
+  return value;
 }
 
 function getAmenityIcon(name: string): string {

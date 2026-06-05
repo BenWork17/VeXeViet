@@ -1,14 +1,16 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PaymentForm } from '@/components/features/booking/PaymentForm/PaymentForm';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
 import { initiatePayment } from '@/lib/api/payment';
+import { createBooking, generateIdempotencyKey } from '@/lib/api/bookings';
 import { PaymentMethod } from '@/types/payment';
 import { useAppSelector, useAppDispatch } from '@/lib/hooks/redux';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
-import { selectBooking, clearHoldInfo, resetBooking } from '@/store/slices/bookingSlice';
+import { selectBooking, setBookingId, clearHoldInfo, resetBooking } from '@/store/slices/bookingSlice';
+import type { PassengerInfo } from '@/components/features/booking/PassengerInfoForm';
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -17,6 +19,7 @@ export default function PaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
+  const idempotencyKeyRef = useRef(generateIdempotencyKey());
 
   // Use the seat hold hook
   const { 
@@ -31,6 +34,19 @@ export default function PaymentPage() {
     },
   });
 
+  // Load passenger info from session storage
+  const [passengerInfo, setPassengerInfo] = useState<PassengerInfo | null>(null);
+  useEffect(() => {
+    const stored = sessionStorage.getItem('vexeviet_passenger_info');
+    if (stored) {
+      try {
+        setPassengerInfo(JSON.parse(stored));
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }, []);
+
   // Check for expired hold on mount
   useEffect(() => {
     if (isExpired && holdId) {
@@ -41,17 +57,13 @@ export default function PaymentPage() {
   // Handle return to seat selection
   const handleReturnToSeatSelection = useCallback(async () => {
     try {
-      // Try to release the hold (it might already be expired on backend)
       await release();
     } catch {
       // Ignore errors - hold might already be expired
     }
     
-    // Clear local hold state
     clearHold();
     dispatch(clearHoldInfo());
-    
-    // Navigate back to search
     router.push('/search');
   }, [release, clearHold, dispatch, router]);
 
@@ -74,7 +86,6 @@ export default function PaymentPage() {
   }
 
   const handlePaymentMethodSelect = async (method: PaymentMethod) => {
-    // Check if hold has expired before proceeding
     if (isExpired) {
       setShowExpiredModal(true);
       return;
@@ -84,31 +95,67 @@ export default function PaymentPage() {
     setError(null);
 
     try {
-      // Create booking with holdId
-      const bookingId = 'BK-' + Date.now();
+      // Step 1: Create booking via API (POST /bookings)
+      const seatLabels = booking.heldSeats.length > 0 ? booking.heldSeats : booking.selectedSeats;
       
-      // In a real app, we would first call the booking API with holdId
-      // const bookingResponse = await createBooking({
-      //   holdId: holdId!,
-      //   passengers: [...],
-      //   ...
-      // });
-      
-      const response = await initiatePayment(bookingId, method, booking.totalPrice);
+      const departureDate: string = booking.currentRoute!.departureTime
+        ? new Date(booking.currentRoute!.departureTime).toISOString().split('T')[0]!
+        : new Date().toISOString().split('T')[0]!;
 
-      if (response.success && response.paymentUrl) {
-        // Redirect to payment gateway
-        window.location.href = response.paymentUrl;
+      // Build passengers array from form data stored in sessionStorage
+      const passengers = passengerInfo?.passengers
+        ? passengerInfo.passengers.map(p => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            seatNumber: p.seatNumber,
+            idNumber: p.idNumber || undefined,
+            dateOfBirth: p.dateOfBirth || undefined,
+          }))
+        : seatLabels.map((seatNumber) => {
+            const nameParts = (passengerInfo?.fullName || 'Guest').split(' ');
+            const lastName = nameParts[0] || '';
+            const firstName = nameParts.slice(1).join(' ') || nameParts[0] || '';
+            return { firstName, lastName, seatNumber };
+          });
+
+      const bookingResponse = await createBooking({
+        routeId: booking.currentRoute!.id,
+        departureDate,
+        seats: seatLabels,
+        passengers,
+        pickupPointId: 'p1',
+        dropoffPointId: 'd1',
+        contactInfo: {
+          email: passengerInfo?.email || '',
+          phone: passengerInfo?.phone || '',
+          fullName: passengerInfo?.fullName || '',
+        },
+        idempotencyKey: idempotencyKeyRef.current,
+        notes: '',
+      });
+
+      // Store bookingId in Redux
+      dispatch(setBookingId(bookingResponse.bookingId));
+
+      // Step 2: Create payment (POST /payments) → get VNPay URL
+      const paymentResponse = await initiatePayment(
+        bookingResponse.bookingId,
+        method,
+        bookingResponse.totalAmount || booking.totalPrice,
+      );
+
+      if (paymentResponse.success && paymentResponse.paymentUrl) {
+        // Redirect browser to VNPay (NOT iframe!)
+        window.location.href = paymentResponse.paymentUrl;
       } else {
-        throw new Error('Invalid payment response');
+        throw new Error('Không nhận được link thanh toán từ server');
       }
     } catch (err) {
       setIsProcessing(false);
       const errorMessage = err instanceof Error ? err.message : 'Có lỗi xảy ra khi xử lý thanh toán';
       setError(errorMessage);
-      
-      // Show alert for critical errors
-      alert('Lỗi thanh toán: ' + errorMessage);
+      // Generate new idempotency key for retry
+      idempotencyKeyRef.current = generateIdempotencyKey();
     }
   };
 
@@ -122,9 +169,14 @@ export default function PaymentPage() {
   return (
     <>
       <div className="container mx-auto px-4 py-8 max-w-5xl">
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            ⚠️ {error}
+          </div>
+        )}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <PaymentForm
-            bookingId={holdId || 'BK-' + Date.now()}
+            bookingId={booking.bookingId || holdId || ''}
             expiresAt={expiresAt || undefined}
             onExpire={handleHoldExpire}
             tripDetails={{

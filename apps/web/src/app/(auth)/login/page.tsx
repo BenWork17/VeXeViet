@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -35,7 +35,7 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-export default function AuthPage() {
+function AuthPageContent() {
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -185,9 +185,17 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full group relative flex items-center justify-center h-14 bg-slate-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-2xl hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 disabled:opacity-50 active:scale-95 shadow-xl shadow-slate-200 dark:shadow-none"
+                aria-busy={isLoggingIn}
+                className="w-full group relative flex items-center justify-center h-14 bg-slate-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-2xl hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-xl shadow-slate-200 dark:shadow-none"
               >
-                {isLoggingIn ? <Loader2 className="animate-spin h-6 w-6" /> : <span>Đăng nhập</span>}
+                {isLoggingIn ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="animate-spin h-5 w-5" />
+                    <span>Đang đăng nhập...</span>
+                  </span>
+                ) : (
+                  <span>Đăng nhập</span>
+                )}
               </button>
             </form>
           </div>
@@ -350,5 +358,13 @@ export default function AuthPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white dark:bg-zinc-950" />}>
+      <AuthPageContent />
+    </Suspense>
   );
 }

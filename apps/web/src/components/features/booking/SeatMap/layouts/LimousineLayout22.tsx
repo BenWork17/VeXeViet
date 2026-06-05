@@ -27,7 +27,7 @@ function LimousineSeat({
     return <div className="w-16 h-20" />;
   }
 
-  const isBooked = seat.status === 'BOOKED' || seat.status === 'SOLD';
+  const isBooked = seat.status !== 'AVAILABLE' && seat.status !== 'HELD';
   const isHeld = seat.status === 'HELD';
   const isAvailable = seat.status === 'AVAILABLE' && seat.isSelectable;
 
@@ -65,8 +65,10 @@ function LimousineSeat({
       )}
       
       <Armchair className={cn('w-6 h-6', isBooked && 'opacity-40')} />
-      <span className="text-xs font-bold">{seat.seatLabel}</span>
-      <span className="text-[8px] opacity-80">
+      <span className={cn('text-xs font-black leading-none', isSelected ? 'text-white' : 'text-emerald-800')}>
+        {seat.seatLabel}
+      </span>
+      <span className={cn('text-[8px] leading-none', isSelected ? 'text-white/90' : 'text-emerald-700/80')}>
         {(seat.finalPrice / 1000).toFixed(0)}k
       </span>
     </button>

@@ -30,7 +30,7 @@ export function SleeperSeatMap({
   const renderSeat = (seat: SeatDetail | undefined) => {
     if (!seat) return <div className="w-16 h-20" />;
 
-    const isBooked = seat.status === 'BOOKED' || seat.status === 'SOLD';
+    const isBooked = seat.status !== 'AVAILABLE' && seat.status !== 'HELD';
     const isHeld = seat.status === 'HELD';
     const isAvailable = seat.status === 'AVAILABLE' && seat.isSelectable;
     const isSelected = selectedSeats.includes(seat.id);

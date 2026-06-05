@@ -35,17 +35,8 @@ const steps = [
 export function BookingSteps() {
   const pathname = usePathname();
 
-  // Find the current step by checking from most specific to least specific
-  const infoIndex = steps.findIndex(s => s.id === 'info');
-  const paymentIndex = steps.findIndex(s => s.id === 'payment');
-  const doneIndex = steps.findIndex(s => s.id === 'done');
-  const seatsIndex = steps.findIndex(s => s.id === 'seats');
-
-  let currentStepIndex = -1;
-  if (steps[doneIndex].pattern.test(pathname)) currentStepIndex = doneIndex;
-  else if (steps[paymentIndex].pattern.test(pathname)) currentStepIndex = paymentIndex;
-  else if (steps[infoIndex].pattern.test(pathname)) currentStepIndex = infoIndex;
-  else if (steps[seatsIndex].pattern.test(pathname)) currentStepIndex = seatsIndex;
+  // Find current step from most specific to least specific
+  const currentStepIndex = steps.findIndex((step) => step.pattern.test(pathname));
 
   return (
     <div className="w-full bg-white border-b sticky top-0 z-50">

@@ -27,6 +27,8 @@ function formatCurrency(amount: number): string {
 
 export function TicketCard({ booking }: TicketCardProps) {
   const firstPassenger = booking.passengers[0];
+  if (!firstPassenger) return null;
+
   const allSeats = booking.passengers.map((p) => p.seatNumber).join(', ');
 
   return (

@@ -183,6 +183,14 @@ body {
   }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
++++++++
+
++++++++
+
+
 .animate-fadeIn {
   animation: fadeIn 0.2s ease-out;
 }
@@ -287,4 +295,12 @@ body {
     padding: 0 !important;
     margin: 0 !important;
   }
+}
+
+.travel-font-display {
+  font-family: "Bricolage Grotesque", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+}
+
+.travel-font-body {
+  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
 }

@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 import { Button, cn } from '@vexeviet/ui';
-import { Menu, X, User as UserIcon } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Menu, X, User as UserIcon, Loader2, MapPinned } from 'lucide-react';
+import { useState, useEffect, useTransition } from 'react';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { ThemeSwitcher } from '@/components/theme';
 import { useThemeContext } from '@/components/theme/ThemeProvider';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPendingNavigation, startNavigation] = useTransition();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, logout, isLoggingOut } = useAuth();
@@ -68,6 +70,14 @@ export function Header() {
             >
               Search
             </Link>
+            <Link
+              href="/travel"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold hover:text-primary transition-colors"
+              style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
+            >
+              <MapPinned className="h-4 w-4" />
+              Map & Du lịch
+            </Link>
             {user && (
               <Link 
                 href="/profile" 
@@ -107,16 +117,23 @@ export function Header() {
               </div>
             ) : (
               <div className="hidden md:flex items-center space-x-2">
-                <Link href="/login">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="hover:text-primary"
-                    style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
-                  >
-                    Login
-                  </Button>
-                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startNavigation(() => router.push('/login'))}
+                  disabled={isPendingNavigation}
+                  className="hover:text-primary"
+                  style={{ color: isTransparent ? (isDark ? '#f3f4f6' : '#1f2937') : (isDark ? '#e5e7eb' : '#374151') }}
+                >
+                  {isPendingNavigation ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    'Login'
+                  )}
+                </Button>
                 <Link href="/register">
                   <Button 
                     size="sm"
@@ -159,6 +176,15 @@ export function Header() {
               >
                 Search
               </Link>
+              <Link
+                href="/travel"
+                className="flex items-center gap-2 px-4 py-2 text-base font-medium rounded-lg transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+                style={{ color: isDark ? '#e5e7eb' : '#374151' }}
+              >
+                <MapPinned className="h-4 w-4" />
+                Map & Du lịch
+              </Link>
               {user ? (
                 <>
                   <Link
@@ -182,9 +208,24 @@ export function Header() {
                 </>
               ) : (
                 <div className="flex flex-col space-y-2 px-4 pt-2">
-                  <Link href="/login" onClick={() => setIsMenuOpen(false)}>
-                    <Button variant="outline" className="w-full">Login</Button>
-                  </Link>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      startNavigation(() => router.push('/login'));
+                    }}
+                    disabled={isPendingNavigation}
+                  >
+                    {isPendingNavigation ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading...
+                      </span>
+                    ) : (
+                      'Login'
+                    )}
+                  </Button>
                   <Link href="/register" onClick={() => setIsMenuOpen(false)}>
                     <Button className="w-full">Sign Up</Button>
                   </Link>

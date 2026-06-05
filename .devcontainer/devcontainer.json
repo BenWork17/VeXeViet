@@ -1,25 +1,29 @@
 {
-	"name": "Node.js & TypeScript",
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
-	"features": {},
+    "name": "Node.js & TypeScript",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+    "features": {},
 
-	"containerEnv": {
-		"HTTP_PROXY": "http://host.docker.internal:8317",
-		"HTTPS_PROXY": "http://host.docker.internal:8317",
-		"NO_PROXY": "localhost,127.0.0.1,host.docker.internal,192.168.65.254,172.28.16.1",
-		"NODE_TLS_REJECT_UNAUTHORIZED": "0"
-	},
+    "containerEnv": {
+        // Đã loại bỏ hoàn toàn HTTP_PROXY và HTTPS_PROXY hệ thống để tránh vòng lặp vô hạn
+        "NO_PROXY": "localhost,127.0.0.1,host.docker.internal,192.168.65.254,172.28.16.1",
+        "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+    },
 
-	"runArgs": [
-		"--add-host=host.docker.internal:host-gateway",
-		"--dns=8.8.8.8",
-		"--dns=1.1.1.1"
-	],
-	"mounts": [
-		"source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
-		"source=${localWorkspaceFolderBasename}-web-node_modules,target=${containerWorkspaceFolder}/apps/web/node_modules,type=volume"
-	],
-	"postCreateCommand": "bash .devcontainer/setup-proxy.sh"
+    "runArgs": [
+        "--add-host=host.docker.internal:host-gateway",
+        "--dns=8.8.8.8",
+        "--dns=1.1.1.1"
+    ],
+    "mounts": [
+        "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+        "source=${localWorkspaceFolderBasename}-web-node_modules,target=${containerWorkspaceFolder}/apps/web/node_modules,type=volume"
+    ],
+    "postCreateCommand": "bash .devcontainer/setup-proxy.sh",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "saoudrizwan.claude-dev"
+            ]
+        }
+    }
 }
-
-

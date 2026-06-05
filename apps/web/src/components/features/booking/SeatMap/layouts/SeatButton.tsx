@@ -39,7 +39,7 @@ export function SeatButton({
     return <div className={cn(sizeClasses[size])} />;
   }
 
-  const isBooked = seat.status === 'BOOKED' || seat.status === 'SOLD';
+  const isBooked = seat.status !== 'AVAILABLE' && seat.status !== 'HELD';
   const isHeld = seat.status === 'HELD';
   const isAvailable = seat.status === 'AVAILABLE' && seat.isSelectable;
 
@@ -78,9 +78,11 @@ export function SeatButton({
       aria-label={`${seat.seatLabel}, ${seat.status}, ${seat.finalPrice.toLocaleString('vi-VN')}đ`}
     >
       <Icon className={cn(iconSizes[size], isBooked && 'opacity-40')} />
-      <span className="text-[10px] font-bold">{seat.seatLabel}</span>
+      <span className={cn('text-[10px] leading-none font-black', isSelected ? 'text-white' : 'text-slate-700')}>
+        {seat.seatLabel}
+      </span>
       {showPrice && (
-        <span className="text-[8px] opacity-80">
+        <span className={cn('text-[8px] leading-none', isSelected ? 'text-white/90' : 'text-slate-500')}>
           {(seat.finalPrice / 1000).toFixed(0)}k
         </span>
       )}

@@ -14,16 +14,11 @@ export { useSearchRoutes, useRoute, usePopularRoutes, useCities, routeKeys } fro
 // Booking hooks
 export {
   useMyBookings,
-  useBooking,
+  useBookingDetail,
   useCreateBooking,
   useCancelBooking,
-  useSeatAvailability,
-  useCheckSeats,
-  useHoldSeats,
-  useReleaseSeats,
-  useBookingFlow,
+  useBookingByCode,
   bookingKeys,
-  seatKeys,
 } from './useBookings';
 
 // Seat holding hook

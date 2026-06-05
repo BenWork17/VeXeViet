@@ -185,7 +185,7 @@ function PaymentResultContent() {
                     if (result.bookingId) {
                       router.push(`/booking/success/${result.bookingId}`);
                     } else {
-                      router.push('/profile/bookings');
+                      router.push('/profile');
                     }
                   }}
                   className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"

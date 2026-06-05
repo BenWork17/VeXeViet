@@ -48,10 +48,10 @@ const paymentMethods: PaymentMethodOption[] = [
     logo: '🔵',
   },
   {
-    id: 'CREDIT_CARD',
-    name: 'Thẻ tín dụng',
-    description: 'Thẻ quốc tế (Visa, Mastercard)',
-    logo: '💳',
+    id: 'BANK_TRANSFER',
+    name: 'Chuyển khoản ngân hàng',
+    description: 'Thanh toán qua tài khoản ngân hàng',
+    logo: '🏦',
   },
 ];
 

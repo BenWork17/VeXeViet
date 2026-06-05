@@ -27,7 +27,7 @@ function StandardSeat({
     return <div className="w-11 h-13" />;
   }
 
-  const isBooked = seat.status === 'BOOKED' || seat.status === 'SOLD';
+  const isBooked = seat.status !== 'AVAILABLE' && seat.status !== 'HELD';
   const isHeld = seat.status === 'HELD';
   const isAvailable = seat.status === 'AVAILABLE' && seat.isSelectable;
 
@@ -55,8 +55,10 @@ function StandardSeat({
       aria-label={`Ghế ${seat.seatLabel}, ${seat.status}, ${seat.finalPrice.toLocaleString('vi-VN')}đ`}
     >
       <Armchair className={cn('w-4 h-4', isBooked && 'opacity-40')} />
-      <span className="text-[8px] font-bold">{seat.seatLabel}</span>
-      <span className="text-[6px] opacity-80">
+      <span className={cn('text-[9px] leading-none font-black', isSelected ? 'text-white' : 'text-slate-700')}>
+        {seat.seatLabel}
+      </span>
+      <span className={cn('text-[7px] leading-none', isSelected ? 'text-white/90' : 'text-slate-500')}>
         {(seat.finalPrice / 1000).toFixed(0)}k
       </span>
     </button>
@@ -69,8 +71,11 @@ export function StandardLayout45({
   selectedSeats,
   onSeatSelect,
 }: LayoutProps) {
-  const rowsPerFloor = busTemplate.rowsPerFloor || 12;
   const columns = busTemplate.columns || ['A', 'B', '_', 'C', 'D'];
+  const seatColumnsCount = columns.filter((c) => c !== '_').length;
+  const maxSeatRow = seats.reduce((max, seat) => Math.max(max, seat.row || 0), 0);
+  const inferredRowsBySeatCount = seatColumnsCount > 0 ? Math.ceil(seats.length / seatColumnsCount) : 0;
+  const rowsPerFloor = Math.max(maxSeatRow, inferredRowsBySeatCount, 1);
 
   const getSeatAtPosition = (row: number, column: string) => {
     return seats.find(

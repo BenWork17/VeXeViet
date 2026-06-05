@@ -36,6 +36,7 @@ export {
   getMyBookings,
   getBookingById,
   cancelBooking,
+  getBookingByCode,
   confirmBooking,
   getSeatAvailability,
   checkSeats,
@@ -43,6 +44,9 @@ export {
   releaseSeats,
   generateIdempotencyKey,
 } from './bookings';
+
+// Payment API
+export { initiatePayment, getPaymentStatus } from './payment';
 
 // Mock APIs (for development/fallback)
 export { mockSearchRoutes } from '@vexeviet/api-client';

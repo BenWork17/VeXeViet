@@ -182,7 +182,7 @@ export function FilterPanel({
             max={priceRange.max}
             step={50000}
             value={localPriceRange}
-            onValueChange={(value) => {
+            onValueChange={(value: number[]) => {
               handlePriceChange(value);
               debouncedPriceUpdate(value);
             }}

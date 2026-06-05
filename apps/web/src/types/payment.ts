@@ -1,6 +1,14 @@
-export type PaymentMethod = 'VNPAY' | 'MOMO' | 'ZALOPAY' | 'CREDIT_CARD';
+export type PaymentMethod = 'VNPAY' | 'MOMO' | 'ZALOPAY' | 'BANK_TRANSFER' | 'CASH';
 
-export type PaymentStatus = 'COMPLETED' | 'FAILED' | 'CANCELLED';
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED';
 
 export interface InitiatePaymentRequest {
   bookingId: string;
@@ -35,6 +43,15 @@ export interface PaymentResultParams {
   bankCode?: string;
   message?: string;
   responseCode?: string;
-  // Legacy fields
   bookingId?: string;
+}
+
+export interface PaymentStatusPollingResponse {
+  paymentId: string;
+  bookingId: string;
+  transactionRef: string;
+  status: PaymentStatus;
+  isFinal: boolean;
+  paidAt: string | null;
+  expiredAt: string | null;
 }

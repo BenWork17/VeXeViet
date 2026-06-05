@@ -107,7 +107,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <Button
                   onClick={this.handleReload}
                   className="flex-1"
-                  variant="default"
+                  variant="primary"
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Tải lại trang

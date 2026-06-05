@@ -32,8 +32,7 @@ interface BusTypePreviewProps {
   className?: string;
 }
 
-// Configuration for each bus type
-const BUS_TYPE_CONFIG: Record<string, {
+type BusTypeConfig = {
   name: string;
   description: string;
   icon: React.ElementType;
@@ -42,7 +41,10 @@ const BUS_TYPE_CONFIG: Record<string, {
   borderColor: string;
   amenities: { icon: React.ElementType; label: string }[];
   seatPreview: 'sleeper' | 'cabin' | 'limousine' | 'vip' | 'standard';
-}> = {
+};
+
+// Configuration for each bus type
+const BUS_TYPE_CONFIG: Record<string, BusTypeConfig> = {
   'SLEEPER': {
     name: 'Xe Giường Nằm',
     description: '2 tầng, giường nằm thoải mái',
@@ -220,7 +222,7 @@ function MiniSeat({
   );
 }
 
-const PREVIEW_COMPONENTS: Record<string, React.ComponentType> = {
+const PREVIEW_COMPONENTS: Record<BusTypeConfig['seatPreview'], React.ComponentType> = {
   sleeper: SleeperPreview,
   cabin: CabinPreview,
   limousine: LimousinePreview,
@@ -228,9 +230,23 @@ const PREVIEW_COMPONENTS: Record<string, React.ComponentType> = {
   standard: StandardPreview,
 };
 
+const DEFAULT_BUS_TYPE_CONFIG: BusTypeConfig = {
+  name: 'Xe Ghế Ngồi',
+  description: 'Tiêu chuẩn, giá phải chăng',
+  icon: Armchair,
+  color: 'text-green-600',
+  bgGradient: 'from-green-50 to-emerald-50',
+  borderColor: 'border-green-200',
+  amenities: [
+    { icon: Snowflake, label: 'Điều hòa' },
+    { icon: Wifi, label: 'Wifi' },
+  ],
+  seatPreview: 'standard',
+};
+
 export function BusTypePreview({ busType, totalSeats, className }: BusTypePreviewProps) {
   const type = busType.toUpperCase();
-  const config = BUS_TYPE_CONFIG[type] || BUS_TYPE_CONFIG['STANDARD'];
+  const config = BUS_TYPE_CONFIG[type] ?? DEFAULT_BUS_TYPE_CONFIG;
   const Icon = config.icon;
   const PreviewComponent = PREVIEW_COMPONENTS[config.seatPreview];
 
@@ -339,7 +355,7 @@ export function BusTypePreview({ busType, totalSeats, className }: BusTypePrevie
 // Compact version for cards/lists
 export function BusTypeBadge({ busType, className }: { busType: BusType | string; className?: string }) {
   const type = busType.toUpperCase();
-  const config = BUS_TYPE_CONFIG[type] || BUS_TYPE_CONFIG['STANDARD'];
+  const config = BUS_TYPE_CONFIG[type] ?? DEFAULT_BUS_TYPE_CONFIG;
   const Icon = config.icon;
 
   return (

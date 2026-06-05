@@ -307,6 +307,7 @@ export interface Passenger {
   lastName: string;
   seatNumber: string;        // e.g., "A1"
   idNumber?: string;         // Optional ID card number
+  dateOfBirth?: string;      // YYYY-MM-DD
   phone?: string;
 }
 
@@ -460,10 +461,7 @@ export interface HoldSeatsResponse {
 
 // Seat - Release
 export interface ReleaseSeatsRequest {
-  routeId: string;
-  departureDate: string;
-  seats: string[];
-  holdId?: string;
+  holdId: string;
 }
 
 export interface ReleaseSeatsResponse {
@@ -552,6 +550,14 @@ export const API_ENDPOINTS = {
   SEATS_CHECK: '/seats/check',
   SEATS_HOLD: '/seats/hold',
   SEATS_RELEASE: '/seats/release',
+
+  // Payments
+  PAYMENTS_CREATE: '/payments',
+  PAYMENTS_STATUS: '/payments/status',
+  PAYMENTS_BY_ID: (id: string) => `/payments/${id}`,
+
+  // Booking by code (public)
+  BOOKINGS_BY_CODE: (code: string) => `/bookings/code/${code}`,
 } as const;
 
 // ========================

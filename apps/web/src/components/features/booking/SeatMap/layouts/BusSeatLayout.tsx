@@ -56,10 +56,6 @@ function FallbackLayout({ busTemplate, seats, selectedSeats, onSeatSelect }: Lay
     return <LimousineLayout34 busTemplate={busTemplate} seats={seats} selectedSeats={selectedSeats} onSeatSelect={onSeatSelect} />;
   }
 
-  if (busType === 'VIP') {
-    return <VIPLayout29 busTemplate={busTemplate} seats={seats} selectedSeats={selectedSeats} onSeatSelect={onSeatSelect} />;
-  }
-
   // Default to standard layout
   return <StandardLayout45 busTemplate={busTemplate} seats={seats} selectedSeats={selectedSeats} onSeatSelect={onSeatSelect} />;
 }

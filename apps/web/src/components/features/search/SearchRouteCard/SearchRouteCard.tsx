@@ -16,6 +16,7 @@ import {
   Route as RouteIcon,
   Info,
   Building2,
+  type LucideIcon,
 } from 'lucide-react';
 import type { Route } from '@vexeviet/types';
 import { Button } from '@vexeviet/ui'
@@ -74,7 +75,7 @@ const BUS_TYPE_CONFIG: Record<string, {
 };
 
 // Amenity icons mapping
-const AMENITY_ICONS: Record<string, { icon: React.ComponentType<{ size?: number }>; label: string }> = {
+const AMENITY_ICONS: Record<string, { icon: LucideIcon; label: string }> = {
   WiFi: { icon: Wifi, label: 'WiFi' },
   wifi: { icon: Wifi, label: 'WiFi' },
   'Air Conditioning': { icon: Wind, label: 'Điều hòa' },
@@ -148,7 +149,7 @@ export function SearchRouteCard({ route, onBook, className }: SearchRouteCardPro
   const [isExpanded, setIsExpanded] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
 
-  const busConfig = BUS_TYPE_CONFIG[route.busType] || BUS_TYPE_CONFIG.STANDARD;
+  const busConfig = BUS_TYPE_CONFIG[route.busType] ?? BUS_TYPE_CONFIG.STANDARD!;
   const seatStatus = getSeatStatus(route.availableSeats, route.totalSeats);
   const operatorName = route.operator?.name || 
                        (route.operator?.firstName && route.operator?.lastName 

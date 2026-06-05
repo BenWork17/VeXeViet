@@ -7,7 +7,8 @@ import {
   getMyBookings, 
   getBookingById, 
   cancelBooking,
-  createBooking
+  createBooking,
+  getBookingByCode,
 } from '@/lib/api/bookings';
 import { CancelBookingRequest, CreateBookingRequest } from '@vexeviet/types';
 
@@ -16,6 +17,7 @@ export const bookingKeys = {
   lists: () => [...bookingKeys.all, 'list'] as const,
   my: () => [...bookingKeys.lists(), 'my'] as const,
   detail: (id: string) => [...bookingKeys.all, 'detail', id] as const,
+  byCode: (code: string) => [...bookingKeys.all, 'code', code] as const,
 };
 
 /**
@@ -68,5 +70,16 @@ export function useCreateBooking() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
     },
+  });
+}
+
+/**
+ * Hook to get booking by booking code (public)
+ */
+export function useBookingByCode(code: string) {
+  return useQuery({
+    queryKey: bookingKeys.byCode(code),
+    queryFn: () => getBookingByCode(code),
+    enabled: !!code,
   });
 }

@@ -22,7 +22,7 @@ const CARD_VARIANTS = [
   { gradient: 'from-amber-500 to-orange-500', glow: 'shadow-amber-500/20' },
   { gradient: 'from-emerald-500 to-teal-500', glow: 'shadow-emerald-500/20' },
   { gradient: 'from-violet-500 to-purple-500', glow: 'shadow-violet-500/20' },
-];
+] as const;
 
 interface PopularRouteCardProps {
   route: Route;
@@ -34,7 +34,7 @@ export const PopularRouteCard = memo(({ route, index }: PopularRouteCardProps) =
   const [isNavigating, setIsNavigating] = useState(false);
   const price = typeof route.price === 'string' ? parseFloat(route.price) : route.price;
   const formattedPrice = formatCurrency(price);
-  const variant = CARD_VARIANTS[index % CARD_VARIANTS.length];
+  const variant = CARD_VARIANTS[index % CARD_VARIANTS.length] ?? CARD_VARIANTS[0];
   
   return (
     <Link

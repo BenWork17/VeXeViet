@@ -1,5 +1,4 @@
 module.exports = {
-  extends: ['prettier'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 2020,

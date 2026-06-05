@@ -28,7 +28,7 @@ function CabinButton({
     return <div className="w-20 h-28" />;
   }
 
-  const isBooked = seat.status === 'BOOKED' || seat.status === 'SOLD';
+  const isBooked = seat.status !== 'AVAILABLE' && seat.status !== 'HELD';
   const isHeld = seat.status === 'HELD';
   const isAvailable = seat.status === 'AVAILABLE' && seat.isSelectable;
 
@@ -64,8 +64,10 @@ function CabinButton({
       )}
       
       <Bed className={cn('w-6 h-6', isBooked && 'opacity-40')} />
-      <span className="text-xs font-bold">{seat.seatLabel}</span>
-      <span className="text-[9px] opacity-80">
+      <span className={cn('text-xs font-black leading-none', isSelected ? 'text-white' : 'text-purple-800')}>
+        {seat.seatLabel}
+      </span>
+      <span className={cn('text-[9px] leading-none', isSelected ? 'text-white/90' : 'text-purple-700/80')}>
         {(seat.finalPrice / 1000).toFixed(0)}k
       </span>
       

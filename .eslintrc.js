@@ -1,5 +1,5 @@
 module.exports = {
   root: true,
   ignorePatterns: ['apps/**', 'packages/**'],
-  extends: ['@vexeviet/config/eslint/base'],
+  extends: ['./packages/config/eslint/base.js'],
 }

@@ -7,6 +7,26 @@ const nextConfig = {
   eslint: {
     dirs: ['src'],
   },
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'upload.wikimedia.org' },
+      { protocol: 'https', hostname: 'placehold.co' },
+    ],
+    unoptimized: true,
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "img-src 'self' data: https://upload.wikimedia.org https://placehold.co blob: *;"
+          }
+        ]
+      }
+    ]
+  }
 };
 
 const pwaConfig = withPWA({

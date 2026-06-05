@@ -68,6 +68,16 @@ export async function cancelBooking(id: string, data?: CancelBookingRequest): Pr
 }
 
 /**
+ * Get booking by booking code (public - no auth required)
+ */
+export async function getBookingByCode(code: string): Promise<Booking> {
+  const response = await apiClient.get<ApiResponse<Booking>>(
+    API_ENDPOINTS.BOOKINGS_BY_CODE(code)
+  );
+  return response.data.data;
+}
+
+/**
  * Confirm a booking (Internal API - called by Payment Service)
  */
 export async function confirmBooking(id: string): Promise<ConfirmBookingResponse> {

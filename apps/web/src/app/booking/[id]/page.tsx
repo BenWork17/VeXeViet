@@ -9,6 +9,7 @@ import { SeatConflictModal } from '@/components/features/booking/SeatConflictMod
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
 import { setSeats, setTotalPrice, setStep, clearHoldInfo } from '@/store/slices/bookingSlice';
 import { getSeatAvailability } from '@/lib/api/bookings';
@@ -19,6 +20,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { currentRoute } = useAppSelector((state) => state.booking);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   // For standard/limousine buses
@@ -74,6 +76,13 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   const isSleeper = busTypeDisplay === 'SLEEPER';
 
   useEffect(() => {
+    if (isAuthLoading) return;
+
+    if (!isAuthenticated || !user) {
+      router.replace(`/login?redirect=${encodeURIComponent(`/booking/${routeId}`)}`);
+      return;
+    }
+
     if (!currentRoute) {
       router.push(`/routes/${routeId}`);
       return;
@@ -139,18 +148,6 @@ export default function BookingPage({ params }: { params: { id: string } }) {
               columns: ['A', '_', 'B'],
               layoutImage: null
             };
-          } else if (detectedBusType === 'VIP') {
-            // VIP bus fallback
-            availability.busTemplate = {
-              id: 'auto-vip',
-              name: 'Ghế Ngồi VIP 29 Chỗ',
-              busType: 'VIP',
-              totalSeats: seatCount,
-              floors: 1,
-              rowsPerFloor: 8,
-              columns: ['A', 'B', '_', 'C', 'D'],
-              layoutImage: null
-            };
           } else {
             // Standard bus fallback
             availability.busTemplate = {
@@ -184,7 +181,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
           const row = s.row || (rowMatch ? parseInt(rowMatch[0]) : Math.floor(index / 4) + 1);
           
           const colMatch = label.match(/[A-Z]/);
-          const column = s.column || (colMatch ? colMatch[0] : ['A', 'B', 'C', 'D'][index % 4]);
+          const column = s.column || (colMatch ? colMatch[0] : ['A', 'B', 'C', 'D'][index % 4] || 'A');
 
           return {
             ...s,
@@ -216,7 +213,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
     }
 
     fetchSeats();
-  }, [routeId, currentRoute, router]);
+  }, [routeId, currentRoute, router, isAuthenticated, user, isAuthLoading]);
 
   const generateFallbackSeats = (): SeatData[] => {
     const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -277,8 +274,8 @@ export default function BookingPage({ params }: { params: { id: string } }) {
     try {
       // Hold seats before continuing
       const departureDate = currentRoute?.departureTime 
-        ? new Date(currentRoute.departureTime).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
+        ? new Date(currentRoute.departureTime).toISOString().split('T')[0] || ''
+        : new Date().toISOString().split('T')[0] || '';
 
       // Map selected seat IDs back to seat numbers/labels as expected by backend
       const seatLabels = selectedSeats.map(id => {
@@ -311,7 +308,12 @@ export default function BookingPage({ params }: { params: { id: string } }) {
 
   const handleRefreshSeats = async () => {
     setShowConflictModal(false);
-    await refreshSeatAvailability();
+
+    const departureDate = currentRoute?.departureTime
+      ? new Date(currentRoute.departureTime).toISOString().split('T')[0] || ''
+      : new Date().toISOString().split('T')[0] || '';
+
+    await refreshSeatAvailability(routeId, departureDate);
   };
 
   const handleExpiredReturn = async () => {
@@ -328,6 +330,15 @@ export default function BookingPage({ params }: { params: { id: string } }) {
       return seat?.seatLabel || id;
     });
   };
+
+  if (isAuthLoading || !isAuthenticated || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-slate-500 font-medium">Đang kiểm tra đăng nhập...</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
