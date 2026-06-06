@@ -460,14 +460,16 @@ function SearchPageContent() {
                   key="empty"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white rounded-3xl border-2 border-gray-100 border-dashed p-20 text-center"
+                  className="relative overflow-hidden rounded-3xl border border-white/25 bg-[#073F48] p-10 text-center shadow-2xl shadow-teal-950/20 md:p-20"
                 >
-                  <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(15,118,110,0.34)_0%,rgba(7,63,72,0.82)_52%,rgba(3,50,59,0.94)_100%)]" />
+                  <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/50 to-transparent" />
+                  <div className="relative z-10 mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full border border-white/20 bg-white/15 text-amber-100 shadow-xl shadow-teal-950/20 backdrop-blur">
                     <Bus className="w-12 h-12" />
                   </div>
-                  <h3 className="text-2xl font-black text-gray-900 mb-2">Không tìm thấy kết quả</h3>
-                  <p className="text-gray-500 max-w-sm mx-auto mb-8">Chúng tôi không tìm thấy chuyến xe nào phù hợp với yêu cầu của bạn. Hãy thử thay đổi bộ lọc hoặc ngày đi.</p>
-                  <Button variant="outline" size="lg" onClick={() => dispatch(resetFilters())} className="rounded-2xl px-8">Xóa tất cả bộ lọc</Button>
+                  <h3 className="relative z-10 mb-2 text-2xl font-black text-white">Không tìm thấy kết quả</h3>
+                  <p className="relative z-10 mx-auto mb-8 max-w-sm text-teal-50/90">Chúng tôi không tìm thấy chuyến xe nào phù hợp với yêu cầu của bạn. Hãy thử thay đổi bộ lọc hoặc ngày đi.</p>
+                  <Button variant="secondary" size="lg" onClick={() => dispatch(resetFilters())} className="relative z-10 rounded-2xl px-8 font-bold shadow-lg shadow-teal-950/20">Xóa tất cả bộ lọc</Button>
                 </motion.div>
               ) : (
                 <motion.div
