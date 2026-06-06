@@ -35,8 +35,8 @@ const DEFAULT_ZOOM_OFFSET = 4;
 const MAX_TRIP_DAYS = 5;
 const DAY_TIME_LIMIT_HOURS = 12;
 const DEFAULT_CITY_SPEED_KMH = 24;
-const DAY_ROUTE_COLORS = ['#0EA5E9', '#F97316', '#22C55E', '#A855F7', '#EF4444'];
-const DEFAULT_DAY_ROUTE_COLOR = '#0EA5E9';
+const DAY_ROUTE_COLORS = ['#0F766E', '#FBBF24', '#22C55E', '#38BDF8', '#EF4444'];
+const DEFAULT_DAY_ROUTE_COLOR = '#0F766E';
 const MAP_TILE_SUBDOMAINS = ['a', 'b', 'c'];
 const MAP_TILE_BUFFER = 8;
 
@@ -194,7 +194,7 @@ const LandmarkImage = ({ wikiSlug, name, imageUrl }: { wikiSlug?: string; name: 
           style={{
             width: 18,
             height: 18,
-            border: '2px solid #0EA5E9',
+            border: '2px solid #0F766E',
             borderTopColor: 'transparent',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
@@ -1895,7 +1895,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
       className={cn(
-        'grid min-h-screen bg-[#F8FAFC] text-[#0F172A] lg:h-screen lg:grid-cols-[minmax(380px,40%)_minmax(0,60%)] lg:overflow-hidden',
+        'grid min-h-screen bg-[#063C45] text-[#0F172A] lg:h-screen lg:grid-cols-[minmax(380px,40%)_minmax(0,60%)] lg:overflow-hidden',
         className
       )}
     >
@@ -1908,7 +1908,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
         .ai-progress-bar {
           height: 3px;
           border-radius: 2px;
-          background: linear-gradient(90deg, #0EA5E9, #F97316);
+          background: linear-gradient(90deg, #0F766E, #FBBF24);
           animation: aiProgress 3s ease-out forwards;
         }
 
@@ -1946,19 +1946,19 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           opacity: 0.78;
         }
       `}</style>
-      <aside className="order-2 z-20 max-h-none overflow-visible rounded-t-2xl border-t border-slate-200 bg-white px-4 py-5 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] lg:order-1 lg:h-screen lg:overflow-y-auto lg:rounded-none lg:border-r lg:border-t-0 lg:px-6 lg:py-6 lg:shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+      <aside className="order-2 z-20 max-h-none overflow-visible rounded-t-2xl border-t border-white/20 bg-[#063C45] px-4 py-5 shadow-[0_-8px_30px_rgba(3,50,59,0.28)] lg:order-1 lg:h-screen lg:overflow-y-auto lg:rounded-none lg:border-r lg:border-t-0 lg:px-6 lg:py-6 lg:shadow-[18px_0_55px_rgba(3,50,59,0.22)]">
         <div className="mx-auto max-w-[620px] space-y-5 pb-4">
           {controls}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_18px_45px_rgba(3,50,59,0.20)] backdrop-blur">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Bản đồ điểm đến</p>
                 <h2 className="travel-font-display mt-1 text-2xl font-black text-[#0F172A]">{guide.center}</h2>
                 <p className="mt-1 text-sm leading-6 text-[#64748B]">Chọn sticker trên bản đồ hoặc danh sách để dựng route preview.</p>
               </div>
-              <div className="rounded-xl bg-sky-50 px-3 py-2 text-right">
-                <p className="text-[11px] font-bold uppercase text-[#0EA5E9]">Đã chọn</p>
+              <div className="rounded-xl bg-teal-50 px-3 py-2 text-right">
+                <p className="text-[11px] font-bold uppercase text-[#0F766E]">Đã chọn</p>
                 <p className="text-lg font-black text-[#0F172A]">{selectedPlaces.length}/{guide.places.length}</p>
               </div>
             </div>
@@ -1967,16 +1967,16 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 <p className="text-[11px] font-bold uppercase text-[#64748B]">Chi phí điểm</p>
                 <p className="mt-1 text-sm font-black text-[#0F172A]">{formatMoney(placeCost)}</p>
               </div>
-              <div className="rounded-xl bg-orange-50 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase text-orange-700">Lộ trình</p>
+              <div className="rounded-xl bg-amber-50 px-3 py-3">
+                <p className="text-[11px] font-bold uppercase text-amber-700">Lộ trình</p>
                 <p className="mt-1 text-sm font-black text-[#0F172A]">{routeDistance.toFixed(1)} km</p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_18px_45px_rgba(3,50,59,0.18)] backdrop-blur">
             <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-              <Navigation className="h-4 w-4 text-[#22C55E]" />
+              <Navigation className="h-4 w-4 text-[#0F766E]" />
               Điểm xuất phát
             </div>
             <div className="relative">
@@ -1988,9 +1988,9 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   setDepartureError(null);
                 }}
                 placeholder="Nhập điểm xuất phát của bạn..."
-                className="h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0EA5E9] focus:ring-2 focus:ring-sky-100"
+                className="h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0F766E] focus:ring-2 focus:ring-teal-100"
               />
-              {departureLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-[#0EA5E9]" />}
+              {departureLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-[#0F766E]" />}
               {departureSuggestions.length > 0 && (
                 <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.16)]">
                   {departureSuggestions.map((suggestion) => (
@@ -1998,7 +1998,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       key={suggestion.place_id}
                       type="button"
                       onClick={() => selectDeparture(suggestion)}
-                      className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold leading-5 text-[#0F172A] transition-colors last:border-b-0 hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                      className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold leading-5 text-[#0F172A] transition-colors last:border-b-0 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                     >
                       <span className="line-clamp-2">{suggestion.display_name}</span>
                     </button>
@@ -2010,7 +2010,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
               type="button"
               onClick={useCurrentLocation}
               disabled={isLocating}
-              className="mt-3 h-11 w-full rounded-xl border border-green-200 bg-green-50 font-black text-green-700 shadow-none hover:bg-green-100"
+              className="mt-3 h-11 w-full rounded-xl border border-teal-200 bg-teal-50 font-black text-teal-700 shadow-none hover:bg-teal-100"
             >
               {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
               📍 Dùng vị trí hiện tại
@@ -2019,7 +2019,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             <p className="mt-2 line-clamp-2 text-xs font-semibold text-[#64748B]">Đang dùng: {departurePoint.label}</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_18px_45px_rgba(3,50,59,0.18)] backdrop-blur">
             <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -2031,7 +2031,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     type="button"
                     onClick={() => updateDayCount(dayCount - 1)}
                     disabled={dayCount <= 1}
-                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-teal-50 disabled:cursor-not-allowed disabled:text-slate-300"
                     aria-label="Giảm số ngày"
                   >
                     <Minus className="h-4 w-4" />
@@ -2041,7 +2041,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     type="button"
                     onClick={() => updateDayCount(dayCount + 1)}
                     disabled={dayCount >= MAX_TRIP_DAYS}
-                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-sky-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-teal-50 disabled:cursor-not-allowed disabled:text-slate-300"
                     aria-label="Tăng số ngày"
                   >
                     <Plus className="h-4 w-4" />
@@ -2056,8 +2056,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     type="button"
                     onClick={() => setActiveDayIndex(day.day - 1)}
                     className={cn(
-                      'rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
-                      activeDayIndex === day.day - 1 ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white hover:border-sky-200'
+                      'rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
+                      activeDayIndex === day.day - 1 ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:border-teal-200'
                     )}
                   >
                     <span className="flex items-center gap-2 text-xs font-black text-[#0F172A]">
@@ -2076,7 +2076,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   type="button"
                   onClick={autoDistributeSelectedPlaces}
                   disabled={selectedPlaces.length === 0}
-                  className="h-10 rounded-xl bg-[#0EA5E9] px-4 text-xs font-black text-white hover:bg-sky-500 disabled:bg-slate-300"
+                  className="h-10 rounded-xl bg-[#0F766E] px-4 text-xs font-black text-white hover:bg-teal-500 disabled:bg-slate-300"
                 >
                   AI chia lịch
                 </Button>
@@ -2093,14 +2093,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     onDrop={() => handlePlaceDrop(day.day - 1)}
                     className={cn(
                       'rounded-2xl border p-3 transition-colors',
-                      activeDayIndex === day.day - 1 ? 'border-sky-300 bg-sky-50/70' : 'border-slate-200 bg-white'
+                      activeDayIndex === day.day - 1 ? 'border-teal-300 bg-teal-50/70' : 'border-slate-200 bg-white'
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => setActiveDayIndex(day.day - 1)}
-                        className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                        className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                       >
                         <span className="flex items-center gap-2 text-sm font-black text-[#0F172A]">
                           <span className="h-3 w-3 rounded-full" style={{ backgroundColor: day.color }} />
@@ -2121,7 +2121,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                         type="time"
                         value={day.startTime}
                         onChange={(event) => updateDayStartTime(day.day - 1, event.target.value)}
-                        className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-[#0F172A] outline-none focus:border-[#0EA5E9] focus:ring-2 focus:ring-sky-100"
+                        className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-[#0F172A] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-teal-100"
                       />
                     </label>
 
@@ -2144,7 +2144,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                             }}
                             className={cn(
                               'flex cursor-grab items-center gap-3 rounded-xl border bg-white px-3 py-2 text-left shadow-sm active:cursor-grabbing',
-                              draggedPlaceId === place.id ? 'border-sky-300 opacity-60' : 'border-slate-100'
+                              draggedPlaceId === place.id ? 'border-teal-300 opacity-60' : 'border-slate-100'
                             )}
                           >
                             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ backgroundColor: day.color }}>
@@ -2176,7 +2176,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Tóm tắt ngày đang xem</p>
                 <p className="mt-1 text-lg font-black text-[#0F172A]">{activeDayPlaces.length > 0 ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm` : 'Chưa có địa điểm nào'}</p>
               </div>
-              <div className="rounded-full bg-[#F97316] px-3 py-1 text-xs font-black text-white">{routeDistance.toFixed(1)} km</div>
+              <div className="rounded-full bg-[#FBBF24] px-3 py-1 text-xs font-black text-white">{routeDistance.toFixed(1)} km</div>
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2">
               <div className="rounded-xl bg-slate-50 px-3 py-2">
@@ -2223,7 +2223,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   <button
                     type="button"
                     onClick={() => togglePlaceDetails(place.id)}
-                    className="relative flex w-full gap-3 p-3.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                    className="relative flex w-full gap-3 p-3.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                     aria-expanded={expanded}
                   >
                       <div className="relative h-24 w-[132px] shrink-0 overflow-hidden rounded-xl bg-gray-100">
@@ -2259,7 +2259,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {tags.slice(0, 3).map((tag) => (
-                          <span key={tag} className="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700">
+                          <span key={tag} className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-700">
                             {tag}
                           </span>
                         ))}
@@ -2273,7 +2273,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       event.stopPropagation();
                       togglePlace(place.id);
                     }}
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border text-xs text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border text-xs text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                     style={{ borderColor: dayColor, backgroundColor: dayColor }}
                     aria-label={`Bỏ chọn ${place.name}`}
                     aria-pressed={true}
@@ -2281,7 +2281,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     <Check className="h-3.5 w-3.5" />
                   </button>
                   <div className={cn('overflow-hidden bg-[#F8FAFC] transition-[max-height] duration-300 ease-in-out', expanded ? 'max-h-[760px]' : 'max-h-0')}>
-                    <div className="space-y-4 border-t border-sky-100 px-4 py-4">
+                    <div className="space-y-4 border-t border-teal-100 px-4 py-4">
                       <div>
                         <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#64748B]">Ảnh đại diện</p>
                         <div className="h-36 overflow-hidden rounded-xl border border-white bg-white shadow-sm">
@@ -2332,7 +2332,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                           ))}
                         </ul>
                       </div>
-                      <div className="rounded-xl border border-orange-100 bg-orange-50 p-3 text-sm font-semibold leading-6 text-orange-950">
+                      <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
                         <p className="font-black">Giờ mở cửa: {details.hours}</p>
                         <p className="mt-1">Tip: {details.tip}</p>
                       </div>
@@ -2345,7 +2345,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
             <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-              <Car className="h-4 w-4 text-[#F97316]" />
+              <Car className="h-4 w-4 text-[#FBBF24]" />
               Phương tiện di chuyển trong thành phố
             </div>
             <div className="space-y-2">
@@ -2360,8 +2360,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       resetAnalysis();
                     }}
                     className={cn(
-                      'w-full rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]',
-                      selected ? 'border-[#F97316] bg-orange-50 shadow-sm' : 'border-slate-100 bg-slate-50 hover:border-slate-300'
+                      'w-full rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]',
+                      selected ? 'border-[#FBBF24] bg-amber-50 shadow-sm' : 'border-slate-100 bg-slate-50 hover:border-slate-300'
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -2376,13 +2376,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
             <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-              <Bot className="h-4 w-4 text-[#0EA5E9]" />
+              <Bot className="h-4 w-4 text-[#0F766E]" />
               AI lịch trình
             </div>
             <div className="space-y-2 text-sm">
-              <div className={cn('flex items-center gap-2', localTransport ? 'text-orange-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> Phương tiện nội đô</div>
+              <div className={cn('flex items-center gap-2', localTransport ? 'text-amber-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> Phương tiện nội đô</div>
               {transportError && <p className="mt-1 text-xs font-semibold text-red-600">{transportError}</p>}
-              <div className={cn('flex items-center gap-2', selectedPlaces.length >= 2 ? 'text-sky-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> {selectedPlaces.length} địa điểm đã chọn</div>
+              <div className={cn('flex items-center gap-2', selectedPlaces.length >= 2 ? 'text-teal-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> {selectedPlaces.length} địa điểm đã chọn</div>
               {landmarkError && <p className="mt-1 text-xs font-semibold text-red-600">{landmarkError}</p>}
               <div className={cn('flex items-center gap-2', departurePoint ? 'text-green-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> Điểm xuất phát</div>
               {departurePointError && <p className="mt-1 text-xs font-semibold text-red-600">{departurePointError}</p>}
@@ -2392,7 +2392,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
               disabled={analysisState === 'loading'} // Only disable if loading, validation handled by messages
               onClick={startAnalysis}
               className={cn(
-                'mt-4 h-12 w-full rounded-xl bg-[#0EA5E9] font-black text-white shadow-lg shadow-sky-200 hover:bg-sky-500',
+                'mt-4 h-12 w-full rounded-xl bg-[#0F766E] font-black text-white shadow-lg shadow-teal-900/20 hover:bg-teal-500',
                 analysisState === 'loading' && 'animate-pulse cursor-not-allowed'
               )}
             >
@@ -2403,13 +2403,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
           <AnimatePresence mode="wait">
             {analysisState === 'idle' ? (
-              <motion.div key="waiting" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="rounded-2xl border border-dashed border-sky-200 bg-sky-50 p-4 text-sm text-sky-800">
+              <motion.div key="waiting" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="rounded-2xl border border-dashed border-teal-200 bg-teal-50 p-4 text-sm text-sky-800">
                 AI sẽ chỉ tạo lịch trình sau khi bạn chọn đủ phương tiện và địa điểm rồi bấm phân tích.
               </motion.div>
             ) : analysisState === 'loading' ? (
-              <motion.div key="ai-loading" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="overflow-hidden rounded-2xl border border-sky-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+              <motion.div key="ai-loading" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="overflow-hidden rounded-2xl border border-teal-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
                 <div className="flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                  <Bot className="h-4 w-4 animate-pulse text-[#0EA5E9]" />
+                  <Bot className="h-4 w-4 animate-pulse text-[#0F766E]" />
                   <span>AI đang phân tích lộ trình</span>
                   <span className="ai-processing-dots" />
                 </div>
@@ -2432,11 +2432,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             ) : (
               <motion.div key="analysis" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-3">
                 <div className="h-[3px] overflow-hidden rounded bg-slate-100">
-                  <div className="h-full w-full rounded bg-[linear-gradient(90deg,#0EA5E9,#F97316)] shadow-[0_0_18px_rgba(249,115,22,0.55)]" />
+                  <div className="h-full w-full rounded bg-[linear-gradient(90deg,#0F766E,#FBBF24)] shadow-[0_0_18px_rgba(249,115,22,0.55)]" />
                 </div>
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
                   <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                    <Star className="h-4 w-4 text-[#F97316]" />
+                    <Star className="h-4 w-4 text-[#FBBF24]" />
                     Lộ trình AI đề xuất
                   </div>
                   <div className="space-y-2 text-sm text-[#64748B]">
@@ -2449,7 +2449,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   <motion.div key={place.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + index * 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0EA5E9] text-xs font-black text-white">{index + 1}</span>
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0F766E] text-xs font-black text-white">{index + 1}</span>
                         <h4 className="truncate font-black text-[#0F172A]">{place.name}</h4>
                       </div>
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-[#64748B]">{place.bestTime}</span>
@@ -2466,7 +2466,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   <>
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + selectedPlaces.length * 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
                       <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                        <Star className="h-4 w-4 text-[#F97316]" />
+                        <Star className="h-4 w-4 text-[#FBBF24]" />
                         Lộ trình AI đề xuất
                       </div>
                       <p className="text-sm text-[#64748B]">{analysisResult.routeExplanation}</p>
@@ -2477,15 +2477,15 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       {analysisResult.stops.map((stop, index) => (
                         <div key={stop.place + index} className="py-2">
                           <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0EA5E9] text-xs font-black text-white">{stop.order}</span>
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0F766E] text-xs font-black text-white">{stop.order}</span>
                             <p className="font-bold text-[#0F172A]">{stop.place}</p>
                           </div>
                           <div className="ml-8 mt-1 text-sm text-[#64748B]">
                             {stop.activityCost.entranceFee.min > 0 && (
-                              <p>🎫 Vào cửa: <span className="font-semibold text-[#0EA5E9]">{formatVND(stop.activityCost.entranceFee.min)} - {formatVND(stop.activityCost.entranceFee.max)}</span></p>
+                              <p>🎫 Vào cửa: <span className="font-semibold text-[#0F766E]">{formatVND(stop.activityCost.entranceFee.min)} - {formatVND(stop.activityCost.entranceFee.max)}</span></p>
                             )}
                             {stop.activityCost.servicesCost.min > 0 && (
-                              <p>🎪 Dịch vụ: <span className="font-semibold text-[#0EA5E9]">{formatVND(stop.activityCost.servicesCost.min)} - {formatVND(stop.activityCost.servicesCost.max)}</span></p>
+                              <p>🎪 Dịch vụ: <span className="font-semibold text-[#0F766E]">{formatVND(stop.activityCost.servicesCost.min)} - {formatVND(stop.activityCost.servicesCost.max)}</span></p>
                             )}
                             {stop.activityCost.note && <p className="mt-1 text-xs italic text-[#64748B]">📝 {stop.activityCost.note}</p>}
                           </div>
@@ -2502,7 +2502,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                               <p className="font-bold text-[#0F172A]">{index === 0 ? departurePoint.name : analysisResult.stops[index - 1]?.place} → {stop.place}</p>
                               <div className="ml-0 mt-1 text-sm text-[#64748B]">
                                 <p>📍 {stop.transportFromPrevious.distanceKm.toFixed(1)} km × {formatVND(stop.transportFromPrevious.costPerKm.min)} - {formatVND(stop.transportFromPrevious.costPerKm.max)}/km</p>
-                                <p>💰 <span className="font-semibold text-[#0EA5E9]">{formatVND(stop.transportFromPrevious.totalCost.min)} - {formatVND(stop.transportFromPrevious.totalCost.max)}</span></p>
+                                <p>💰 <span className="font-semibold text-[#0F766E]">{formatVND(stop.transportFromPrevious.totalCost.min)} - {formatVND(stop.transportFromPrevious.totalCost.max)}</span></p>
                                 {stop.transportFromPrevious.note && <p className="mt-1 text-xs italic text-[#64748B]">📝 {stop.transportFromPrevious.note}</p>}
                               </div>
                             </>
@@ -2514,9 +2514,9 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + selectedPlaces.length * 0.1 + 0.3 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
                       <div className="mb-3 text-sm font-black text-[#0F172A]">Dự toán chi phí</div>
                       <div className="space-y-2 text-sm text-[#64748B]">
-                        <div className="flex justify-between gap-3"><span>🎯 Tham quan & dịch vụ</span><span className="font-bold text-[#0EA5E9]">{formatVND(analysisResult.totalSummary.activityCostTotal.min)} - {formatVND(analysisResult.totalSummary.activityCostTotal.max)}</span></div>
-                        <div className="flex justify-between gap-3"><span>🚗 Di chuyển</span><span className="font-bold text-[#0EA5E9]">{formatVND(analysisResult.totalSummary.transportCostTotal.min)} - {formatVND(analysisResult.totalSummary.transportCostTotal.max)}</span></div>
-                        <div className="flex justify-between gap-3 border-t border-slate-100 pt-2 text-base font-black text-[#0F172A]"><span>💰 Tổng cộng (mỗi người)</span><span className="font-bold text-[#0EA5E9]">{formatVND(analysisResult.totalSummary.grandTotal.min)} - {formatVND(analysisResult.totalSummary.grandTotal.max)}</span></div>
+                        <div className="flex justify-between gap-3"><span>🎯 Tham quan & dịch vụ</span><span className="font-bold text-[#0F766E]">{formatVND(analysisResult.totalSummary.activityCostTotal.min)} - {formatVND(analysisResult.totalSummary.activityCostTotal.max)}</span></div>
+                        <div className="flex justify-between gap-3"><span>🚗 Di chuyển</span><span className="font-bold text-[#0F766E]">{formatVND(analysisResult.totalSummary.transportCostTotal.min)} - {formatVND(analysisResult.totalSummary.transportCostTotal.max)}</span></div>
+                        <div className="flex justify-between gap-3 border-t border-slate-100 pt-2 text-base font-black text-[#0F172A]"><span>💰 Tổng cộng (mỗi người)</span><span className="font-bold text-[#0F766E]">{formatVND(analysisResult.totalSummary.grandTotal.min)} - {formatVND(analysisResult.totalSummary.grandTotal.max)}</span></div>
                       </div>
                     </motion.div>
                   </>
@@ -2527,7 +2527,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     <button
                       type="button"
                       onClick={() => setDirectionsExpanded((current) => !current)}
-                      className="flex w-full items-center justify-between gap-3 bg-[linear-gradient(135deg,#0EA5E9,#0284C7)] px-4 py-4 text-left text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                      className="flex w-full items-center justify-between gap-3 bg-[linear-gradient(135deg,#0F766E,#063C45)] px-4 py-4 text-left text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                     >
                       <span className="text-sm font-black uppercase tracking-wide">🗺️ Lộ trình gợi ý</span>
                       <span className="flex items-center gap-2 text-xs font-black">
@@ -2576,17 +2576,17 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                                   <button
                                     type="button"
                                     onClick={() => toggleStopDetails(stopIndex)}
-                                    className="flex w-full gap-3 rounded-xl py-2 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]"
+                                    className="flex w-full gap-3 rounded-xl py-2 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                                     aria-expanded={expanded}
                                   >
                                     <div className="flex w-8 shrink-0 flex-col items-center">
-                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0EA5E9] text-sm font-black text-white">{stopIndex + 2}</div>
+                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0F766E] text-sm font-black text-white">{stopIndex + 2}</div>
                                       {stopIndex < activeDayPlaces.length - 1 && <div className="mt-2 h-full min-h-10 border-l-2 border-dashed border-[#CBD5E1]" />}
                                     </div>
                                     <div className="min-w-0 flex-1 pb-4">
                                       <div className="flex min-w-0 items-center justify-between gap-2">
                                         <h4 className="truncate text-base font-bold text-[#0F172A]">{place.name}</h4>
-                                        <span className="shrink-0 rounded-full bg-orange-100 px-2 py-1 text-xs font-bold text-orange-600">
+                                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
                                           ~{minutes} phút {localTransport?.icon ?? '🛵'}
                                         </span>
                                       </div>
@@ -2622,7 +2622,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
         </div>
       </aside>
 
-      <div className="order-1 min-h-[62vh] bg-[#E0F2FE] lg:order-2 lg:h-screen lg:overflow-hidden">
+      <div className="order-1 min-h-[62vh] bg-[#E6F4F1] lg:order-2 lg:h-screen lg:overflow-hidden">
         <div
           ref={mapContainerRef}
           className={cn(
@@ -2656,27 +2656,27 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
               />
             ))}
           </div>
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,.02),rgba(14,165,233,.10))]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,.02),rgba(15,118,110,.14))]" />
           <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/50" />
 
           {roadRoutePoints.length > 1 ? (
             <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
               <polyline points={roadRoutePolyline} stroke="rgba(15, 23, 42, 0.16)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points={roadRoutePolyline} stroke="#F97316" strokeWidth="5" strokeOpacity="0.85" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={roadRoutePolyline} stroke="#FBBF24" strokeWidth="5" strokeOpacity="0.85" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : null}
 
           {canSimulateRoute && routeSimulationFrame.points.length > 1 && (
             <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
-              <polyline points={routeSimulationPolyline} stroke="rgba(14, 165, 233, 0.20)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points={routeSimulationPolyline} stroke="#0EA5E9" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={routeSimulationPolyline} stroke="rgba(15, 118, 110, 0.20)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
+              <polyline points={routeSimulationPolyline} stroke="#0F766E" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
               <polyline points={routeSimulationPolyline} stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
 
           {canSimulateRoute && routeSimulationFrame.head && routeSimulationProgress > 0 && (
             <div
-              className="pointer-events-none absolute z-40 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#0EA5E9] text-white shadow-[0_8px_24px_rgba(14,165,233,0.38)]"
+              className="pointer-events-none absolute z-40 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#0F766E] text-white shadow-[0_8px_24px_rgba(15,118,110,0.38)]"
               style={{
                 left: 'calc(50% + ' + routeSimulationFrame.head.x + 'px)',
                 top: 'calc(50% + ' + routeSimulationFrame.head.y + 'px)',
@@ -2688,7 +2688,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
           {canSimulateRoute && activeSimulationPlace && routeSimulationFrame.head && routeSimulationProgress > 0 && (
             <div
-              className="pointer-events-none absolute z-40 max-w-[220px] -translate-x-1/2 rounded-full border border-sky-200 bg-white/95 px-3 py-1.5 text-xs font-black text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
+              className="pointer-events-none absolute z-40 max-w-[220px] -translate-x-1/2 rounded-full border border-teal-200 bg-white/95 px-3 py-1.5 text-xs font-black text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
               style={{
                 left: 'calc(50% + ' + routeSimulationFrame.head.x + 'px)',
                 top: 'calc(50% + ' + (routeSimulationFrame.head.y - 48) + 'px)',
@@ -2705,15 +2705,15 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           )}
 
           <div className="absolute left-4 top-4 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#0EA5E9]"><Move className="h-3.5 w-3.5" /> Bản đồ tương tác</div>
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#0F766E]"><Move className="h-3.5 w-3.5" /> Bản đồ tương tác</div>
             <div className="mt-1 truncate text-sm font-black text-[#0F172A]">{origin || 'Nơi ở'} → {destination || 'Thành phố'}</div>
             <div className="mt-1 text-[11px] font-semibold text-[#64748B]">Kéo để di chuyển · Cuộn để zoom · Chọn sticker</div>
           </div>
 
           <div className="absolute right-4 top-4 z-30 flex flex-col overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
-            <button type="button" onClick={() => setZoomOffset((current) => Math.min(19 - mapBaseZoom, current + 1))} className="flex h-11 w-11 items-center justify-center border-b border-slate-100 text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]" aria-label="Phóng to bản đồ"><Plus className="h-4 w-4" /></button>
-            <button type="button" onClick={() => setZoomOffset((current) => Math.max(3 - mapBaseZoom, current - 1))} className="flex h-11 w-11 items-center justify-center border-b border-slate-100 text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]" aria-label="Thu nhỏ bản đồ"><Minus className="h-4 w-4" /></button>
-            <button type="button" onClick={resetMapView} className="flex h-11 w-11 items-center justify-center text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]" aria-label="Đặt lại bản đồ"><RotateCcw className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setZoomOffset((current) => Math.min(19 - mapBaseZoom, current + 1))} className="flex h-11 w-11 items-center justify-center border-b border-slate-100 text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" aria-label="Phóng to bản đồ"><Plus className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setZoomOffset((current) => Math.max(3 - mapBaseZoom, current - 1))} className="flex h-11 w-11 items-center justify-center border-b border-slate-100 text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" aria-label="Thu nhỏ bản đồ"><Minus className="h-4 w-4" /></button>
+            <button type="button" onClick={resetMapView} className="flex h-11 w-11 items-center justify-center text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" aria-label="Đặt lại bản đồ"><RotateCcw className="h-4 w-4" /></button>
           </div>
 
           <div className="absolute left-4 top-28 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
@@ -2727,8 +2727,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     resetRouteSimulation();
                   }}
                   className={cn(
-                    'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
-                    activeDayIndex === day.day - 1 ? 'border-sky-300 bg-sky-50 text-[#0F172A]' : 'border-slate-200 bg-white text-[#64748B] hover:border-sky-200'
+                    'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
+                    activeDayIndex === day.day - 1 ? 'border-teal-300 bg-teal-50 text-[#0F172A]' : 'border-slate-200 bg-white text-[#64748B] hover:border-teal-200'
                   )}
                 >
                   <span className="h-2 w-2 rounded-full" style={{ backgroundColor: day.color }} />
@@ -2742,8 +2742,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 onClick={toggleRouteSimulation}
                 disabled={!canSimulateRoute}
                 className={cn(
-                  'inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-black text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
-                  canSimulateRoute ? 'bg-[#0EA5E9] hover:bg-sky-500' : 'cursor-not-allowed bg-slate-300'
+                  'inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-black text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
+                  canSimulateRoute ? 'bg-[#0F766E] hover:bg-teal-500' : 'cursor-not-allowed bg-slate-300'
                 )}
                 aria-label={routeSimulationStatus === 'playing' ? 'Tạm dừng đi thử lộ trình' : 'Đi thử lộ trình'}
               >
@@ -2754,7 +2754,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 type="button"
                 onClick={resetRouteSimulation}
                 disabled={!canSimulateRoute || routeSimulationProgress === 0}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] disabled:cursor-not-allowed disabled:text-slate-300"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] disabled:cursor-not-allowed disabled:text-slate-300"
                 aria-label="Chạy lại lộ trình"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -2763,7 +2763,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 type="button"
                 onClick={skipToNextSimulationStop}
                 disabled={!canSimulateRoute || routeSimulationProgress >= 1}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-sky-50 hover:text-[#0EA5E9] disabled:cursor-not-allowed disabled:text-slate-300"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] disabled:cursor-not-allowed disabled:text-slate-300"
                 aria-label="Tới điểm tiếp theo"
               >
                 <SkipForward className="h-4 w-4" />
@@ -2775,8 +2775,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     type="button"
                     onClick={() => setRouteSimulationSpeed(speed as 1 | 2)}
                     className={cn(
-                      'w-11 text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
-                      routeSimulationSpeed === speed ? 'bg-[#0EA5E9] text-white' : 'text-[#64748B] hover:bg-sky-50 hover:text-[#0EA5E9]'
+                      'w-11 text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
+                      routeSimulationSpeed === speed ? 'bg-[#0F766E] text-white' : 'text-[#64748B] hover:bg-teal-50 hover:text-[#0F766E]'
                     )}
                   >
                     {speed}x
@@ -2785,7 +2785,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
               </div>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-[linear-gradient(90deg,#0EA5E9,#FBBF24)] transition-[width] duration-150" style={{ width: `${Math.round(routeSimulationProgress * 100)}%` }} />
+              <div className="h-full rounded-full bg-[linear-gradient(90deg,#0F766E,#FBBF24)] transition-[width] duration-150" style={{ width: `${Math.round(routeSimulationProgress * 100)}%` }} />
             </div>
           </div>
 
@@ -2793,7 +2793,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             <div className="absolute left-4 top-52 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-xs font-bold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
               {routeLoading ? (
                 <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#F97316]" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FBBF24]" />
                   OSRM đang dựng tuyến đường...
                 </span>
               ) : routeError}
@@ -2806,7 +2806,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           <div className="absolute bottom-3 right-3 z-30 rounded-lg bg-white/95 px-2 py-1 text-[10px] font-semibold text-[#64748B] shadow-sm">© OpenStreetMap contributors</div>
 
           <div
-            className="absolute z-[1000] flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-green-200 bg-green-50/95 px-3 py-2 text-xs font-black text-green-950 shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
+            className="pointer-events-none absolute z-10 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-green-200 bg-green-50/95 px-3 py-2 text-xs font-black text-green-950 shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
             style={{
               left: 'calc(50% + ' + departureScreenPoint.x + 'px)',
               top: 'calc(50% + ' + departureScreenPoint.y + 'px)',
@@ -2833,12 +2833,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 type="button"
                 onClick={() => setSelectedPlace(place)}
                 className={cn(
-                  'absolute z-20 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-2 text-xs font-black shadow-[0_4px_24px_rgba(0,0,0,0.12)] transition-[transform,box-shadow,background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9] focus-visible:ring-offset-2',
+                  'absolute z-20 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-2 text-xs font-black shadow-[0_4px_24px_rgba(0,0,0,0.12)] transition-[transform,box-shadow,background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2',
                   simulationActive
                     ? 'scale-125 border-[#FBBF24] bg-[#FBBF24] text-slate-950 ring-4 ring-amber-200/80'
                     : selected
                       ? 'scale-110 text-white ring-4'
-                      : 'border-white bg-white/95 text-[#0F172A] hover:scale-105 hover:border-sky-300 hover:text-[#0EA5E9]'
+                      : 'border-white bg-white/95 text-[#0F172A] hover:scale-105 hover:border-teal-300 hover:text-[#0F766E]'
                 )}
                 style={{
                   left: 'calc(50% + ' + (placeX + markerOffset.x) + 'px)',
@@ -2889,12 +2889,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   </div>
                   <div className="overflow-y-auto p-4">
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="rounded-xl bg-sky-50 px-3 py-2">
-                        <p className="text-[10px] font-black uppercase text-sky-700">Rating</p>
+                      <div className="rounded-xl bg-teal-50 px-3 py-2">
+                        <p className="text-[10px] font-black uppercase text-teal-700">Rating</p>
                         <p className="mt-1 text-sm font-black text-[#0F172A]">{getPlaceRating(selectedPlace)}</p>
                       </div>
-                      <div className="rounded-xl bg-orange-50 px-3 py-2">
-                        <p className="text-[10px] font-black uppercase text-orange-700">Giờ đẹp</p>
+                      <div className="rounded-xl bg-amber-50 px-3 py-2">
+                        <p className="text-[10px] font-black uppercase text-amber-700">Giờ đẹp</p>
                         <p className="mt-1 text-sm font-black text-[#0F172A]">{selectedPlace.bestTime}</p>
                       </div>
                       <div className="rounded-xl bg-green-50 px-3 py-2">
@@ -2906,7 +2906,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-sm font-black text-[#0F172A]">Nên làm tại đây</p>
-                        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-[#0EA5E9] shadow-sm">
+                        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-[#0F766E] shadow-sm">
                           {selectedActivities.length}/{details.activities.length}
                         </span>
                       </div>
@@ -2920,17 +2920,17 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                               type="button"
                               onClick={() => togglePlaceActivity(selectedPlace.id, activity)}
                               className={cn(
-                                'flex min-h-10 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0EA5E9]',
+                                'flex min-h-10 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
                                 activitySelected
-                                  ? 'border-sky-300 bg-white text-[#0F172A] shadow-sm'
-                                  : 'border-transparent bg-white/70 text-[#475569] hover:border-sky-200 hover:bg-white'
+                                  ? 'border-teal-300 bg-white text-[#0F172A] shadow-sm'
+                                  : 'border-transparent bg-white/70 text-[#475569] hover:border-teal-200 hover:bg-white'
                               )}
                               aria-pressed={activitySelected}
                             >
                               <span
                                 className={cn(
                                   'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
-                                  activitySelected ? 'border-[#0EA5E9] bg-[#0EA5E9] text-white' : 'border-slate-300 bg-white text-transparent'
+                                  activitySelected ? 'border-[#0F766E] bg-[#0F766E] text-white' : 'border-slate-300 bg-white text-transparent'
                                 )}
                               >
                                 <Check className="h-3.5 w-3.5" />
@@ -2946,13 +2946,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                         </p>
                       )}
                     </div>
-                    <div className="mt-3 rounded-xl border border-orange-100 bg-orange-50 p-3 text-sm font-semibold leading-6 text-orange-950">
+                    <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
                       {details.tip}
                     </div>
                     <Button
                       type="button"
                       onClick={() => addPlaceToTrip(selectedPlace.id)}
-                      className={cn('mt-4 h-11 w-full rounded-xl font-black text-white', selected ? 'bg-[#22C55E] hover:bg-green-500' : 'bg-[#0EA5E9] hover:bg-sky-500')}
+                      className={cn('mt-4 h-11 w-full rounded-xl font-black text-white', selected ? 'bg-[#22C55E] hover:bg-green-500' : 'bg-[#0F766E] hover:bg-teal-500')}
                     >
                       {selected ? 'Đã thêm vào chuyến đi' : 'Thêm vào chuyến đi'}
                     </Button>
