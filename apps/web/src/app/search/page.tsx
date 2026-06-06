@@ -260,41 +260,25 @@ function SearchPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="relative isolate min-h-screen overflow-hidden bg-[#063C45]">
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[url('/images/search-heritage-bg.png')] bg-cover bg-top bg-no-repeat" />
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[linear-gradient(180deg,rgba(3,50,59,0.08)_0%,rgba(3,50,59,0.30)_42%,rgba(3,50,59,0.74)_100%)]" />
+
       {/* 1. Hero Section - Modern & Gradient */}
-      <div className="relative overflow-hidden bg-primary pt-24 pb-32 lg:pt-32 lg:pb-48">
-        {/* Animated Background Shapes */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.2, 1],
-              rotate: [0, 90, 0],
-              opacity: [0.1, 0.2, 0.1]
-            }}
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-white/20 rounded-full blur-[120px]"
-          />
-          <motion.div 
-            animate={{ 
-              scale: [1.2, 1, 1.2],
-              rotate: [90, 0, 90],
-              opacity: [0.1, 0.15, 0.1]
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-blue-400/20 rounded-full blur-[100px]"
-          />
-        </div>
+      <div className="relative z-10 overflow-hidden pt-24 pb-32 lg:pt-32 lg:pb-48">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_32%,rgba(250,204,21,0.16),transparent_28%),linear-gradient(180deg,rgba(3,50,59,0.08),rgba(3,50,59,0.36))]" />
+        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#063C45]/70 to-transparent" />
 
         <div className="container mx-auto px-4 relative z-10">
           <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="max-w-4xl mx-auto text-center space-y-6"
           >
             {/* Search Summary Header */}
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8">
               <div className="text-center md:text-right">
-                <p className="text-blue-100 text-sm font-medium uppercase tracking-widest mb-1">Điểm đi</p>
+                <p className="text-amber-100/90 text-sm font-medium uppercase tracking-widest mb-1">Điểm đi</p>
                 <h1 className="text-3xl md:text-5xl font-black text-white">{origin || 'Hà Nội'}</h1>
               </div>
               
@@ -302,7 +286,7 @@ function SearchPageContent() {
                 <motion.div 
                   animate={{ x: [0, 10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-md"
+                  className="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center border border-white/20 shadow-lg shadow-amber-400/10 backdrop-blur-md"
                 >
                   <ArrowRight className="text-white w-6 h-6" />
                 </motion.div>
@@ -310,23 +294,23 @@ function SearchPageContent() {
               </div>
 
               <div className="text-center md:text-left">
-                <p className="text-blue-100 text-sm font-medium uppercase tracking-widest mb-1">Điểm đến</p>
+                <p className="text-amber-100/90 text-sm font-medium uppercase tracking-widest mb-1">Điểm đến</p>
                 <h1 className="text-3xl md:text-5xl font-black text-white">{destination || 'Đà Nẵng'}</h1>
               </div>
             </div>
 
             {/* Sub Info */}
             <div className="flex flex-wrap items-center justify-center gap-6 pt-4">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-semibold">
-                <CalendarIcon className="w-4 h-4 text-blue-300" />
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/12 backdrop-blur-md border border-white/20 text-white text-sm font-semibold shadow-sm">
+                <CalendarIcon className="w-4 h-4 text-amber-200" />
                 {departureDateStr ? format(new Date(departureDateStr), 'dd/MM/yyyy') : 'Chọn ngày'}
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-semibold">
-                <Users className="w-4 h-4 text-blue-300" />
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/12 backdrop-blur-md border border-white/20 text-white text-sm font-semibold shadow-sm">
+                <Users className="w-4 h-4 text-amber-200" />
                 {passengers} hành khách
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-semibold uppercase tracking-wide">
-                <Bus className="w-4 h-4 text-blue-300" />
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/12 backdrop-blur-md border border-white/20 text-white text-sm font-semibold uppercase tracking-wide shadow-sm">
+                <Bus className="w-4 h-4 text-amber-200" />
                 Tất cả loại xe
               </div>
             </div>
@@ -335,12 +319,12 @@ function SearchPageContent() {
       </div>
 
       {/* 2. Floating Search Form Integration */}
-      <div className="container mx-auto px-4 -mt-16 relative z-30">
+      <div className="container mx-auto px-4 -mt-16 relative z-20">
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 border border-gray-100"
+          className="rounded-3xl border border-white/70 bg-white/95 p-6 shadow-2xl shadow-teal-950/20 backdrop-blur md:p-8"
         >
           <SearchForm 
             isLoading={loading}
@@ -355,7 +339,7 @@ function SearchPageContent() {
       </div>
 
       {/* 3. Main Content Area */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-12 relative z-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Sidebar Filters - Desktop */}
@@ -367,10 +351,10 @@ function SearchPageContent() {
             >
               <FilterPanel className="shadow-xl shadow-gray-200/50" />
               
-              <div className="mt-6 p-6 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white overflow-hidden relative">
+                <div className="mt-6 p-6 rounded-3xl bg-gradient-to-br from-[#0F766E] to-[#0B4B61] text-white overflow-hidden relative shadow-xl shadow-teal-950/20">
                 <div className="relative z-10">
                   <h4 className="font-black text-xl mb-2">Ưu đãi đặc biệt</h4>
-                  <p className="text-blue-100 text-sm mb-4">Giảm ngay 20% khi đặt vé khứ hồi trong hôm nay!</p>
+                  <p className="text-teal-50 text-sm mb-4">Giảm ngay 20% khi đặt vé khứ hồi trong hôm nay!</p>
                   <Button variant="secondary" className="w-full font-bold">Nhận mã ngay</Button>
                 </div>
                 <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
@@ -382,7 +366,7 @@ function SearchPageContent() {
           <main className="lg:col-span-9 space-y-8">
             
             {/* Results Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 rounded-3xl border border-white/60 bg-white/92 p-5 shadow-xl shadow-teal-950/10 backdrop-blur">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                   <Filter className="w-5 h-5" />
