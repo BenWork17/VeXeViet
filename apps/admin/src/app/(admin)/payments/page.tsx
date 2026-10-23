@@ -1,6 +1,6 @@
 import { AlertTriangle, CreditCard, ShieldCheck } from 'lucide-react';
-import { PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
-import { payments } from '@/lib/mock-data';
+import { ActionButton, ChartPanel, DonutChart, ManagementQueue, PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
+import { paymentProviderSummary, payments } from '@/lib/mock-data';
 import { formatDateTime, formatVnd } from '@/lib/format';
 
 export default function PaymentsPage() {
@@ -20,8 +20,31 @@ export default function PaymentsPage() {
         <StatCard label="Tổng giao dịch" value={String(payments.length)} helper="Mock payment service" icon={CreditCard} />
       </div>
 
+      <div className="mb-6 grid gap-6 xl:grid-cols-[380px_1fr]">
+        <ChartPanel title="Tỷ trọng cổng thanh toán">
+          <DonutChart data={paymentProviderSummary} />
+        </ChartPanel>
+        <Panel className="p-5">
+          <h2 className="text-lg font-black text-slate-950">Reconciliation queue</h2>
+          <div className="mt-4">
+            <ManagementQueue
+              items={[
+                { title: 'VNPay pending quá 15 phút', description: 'Tự động gọi provider status API trước khi release ghế.', badge: 'Check', tone: 'amber' },
+                { title: 'Payment failed sau khi giữ ghế', description: 'Đồng bộ lại Booking Service để tránh ghế bị treo.', badge: 'Urgent', tone: 'red' },
+                { title: 'Hoàn tiền thủ công', description: 'Cần luồng approve 2 bước cho refund giá trị cao.', badge: 'Policy', tone: 'teal' },
+              ]}
+            />
+          </div>
+        </Panel>
+      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <TableShell>
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
+            <ActionButton>Đối soát lại</ActionButton>
+            <ActionButton tone="secondary">Đồng bộ booking</ActionButton>
+            <ActionButton tone="danger">Mở case lỗi</ActionButton>
+          </div>
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-400">
               <tr>

@@ -1,9 +1,13 @@
-import { Plus, Route as RouteIcon } from 'lucide-react';
-import { PageHeader, Panel, StatusBadge, TableShell } from '@/components/ui';
-import { backendContractNotes, routes } from '@/lib/mock-data';
+import { Bus, CircleDollarSign, Gauge, Plus, Route as RouteIcon } from 'lucide-react';
+import { ActionButton, ChartPanel, MiniBarChart, PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
+import { backendContractNotes, routeDemandSummary, routes } from '@/lib/mock-data';
 import { formatVnd } from '@/lib/format';
 
 export default function RoutesPage() {
+  const activeRoutes = routes.filter((route) => route.status === 'ACTIVE').length;
+  const soldOutRoutes = routes.filter((route) => route.availableSeats === 0).length;
+  const averagePrice = Math.round(routes.reduce((sum, route) => sum + route.price, 0) / routes.length);
+
   return (
     <>
       <PageHeader
@@ -17,9 +21,34 @@ export default function RoutesPage() {
           </button>
         }
       />
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <StatCard label="Tuyến active" value={String(activeRoutes)} helper="Đang mở bán" icon={Bus} />
+        <StatCard label="Hết ghế" value={String(soldOutRoutes)} helper="Cần đóng/mở chuyến" icon={Gauge} tone="amber" />
+        <StatCard label="Giá trung bình" value={formatVnd(averagePrice)} helper="Theo mock route" icon={CircleDollarSign} tone="green" />
+      </div>
+
+      <div className="mb-6 grid gap-6 xl:grid-cols-[1fr_380px]">
+        <ChartPanel title="Hiệu suất tuyến theo booking">
+          <MiniBarChart data={routeDemandSummary} />
+        </ChartPanel>
+        <Panel className="p-5">
+          <h2 className="text-lg font-black text-slate-950">Tác vụ điều phối</h2>
+          <div className="mt-4 grid gap-3">
+            <ActionButton>Mở thêm chuyến</ActionButton>
+            <ActionButton tone="secondary">Điều chỉnh giá vé</ActionButton>
+            <ActionButton tone="secondary">Khóa ghế bảo trì</ActionButton>
+            <ActionButton tone="danger">Đóng bán tuyến hết ghế</ActionButton>
+          </div>
+        </Panel>
+      </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <TableShell>
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
+            <ActionButton>Cập nhật trạng thái</ActionButton>
+            <ActionButton tone="secondary">Nhân bản lịch chạy</ActionButton>
+            <ActionButton tone="secondary">Import CSV</ActionButton>
+          </div>
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-400">
               <tr>

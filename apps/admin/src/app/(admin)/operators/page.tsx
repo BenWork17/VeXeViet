@@ -1,8 +1,11 @@
-import { Building2, Plus } from 'lucide-react';
-import { PageHeader, StatusBadge, TableShell } from '@/components/ui';
+import { Building2, Plus, Ticket, UserCheck } from 'lucide-react';
+import { ActionButton, ChartPanel, MiniBarChart, PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
 import { operators } from '@/lib/mock-data';
 
 export default function OperatorsPage() {
+  const reviewCount = operators.filter((operator) => operator.status === 'REVIEW').length;
+  const totalMonthlyBookings = operators.reduce((sum, operator) => sum + operator.monthlyBookings, 0);
+
   return (
     <>
       <PageHeader
@@ -16,7 +19,33 @@ export default function OperatorsPage() {
           </button>
         }
       />
+      <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <StatCard label="Nhà xe active" value={String(operators.filter((operator) => operator.status === 'ACTIVE').length)} helper="Đủ điều kiện bán vé" icon={UserCheck} />
+        <StatCard label="Chờ duyệt" value={String(reviewCount)} helper="Cần kiểm tra hồ sơ" icon={Building2} tone="amber" />
+        <StatCard label="Booking/tháng" value={String(totalMonthlyBookings)} helper="Tổng từ partner" icon={Ticket} tone="green" />
+      </div>
+      <div className="mb-6 grid gap-6 xl:grid-cols-[1fr_380px]">
+        <ChartPanel title="Booking theo nhà xe">
+          <MiniBarChart data={operators.map((operator) => ({ label: operator.name, value: operator.monthlyBookings || 1, tone: operator.status === 'REVIEW' ? 'amber' : 'teal' }))} />
+        </ChartPanel>
+        <Panel className="p-5">
+          <h2 className="text-lg font-black text-slate-950">Quy trình duyệt partner</h2>
+          <div className="mt-4 space-y-3 text-sm font-semibold text-slate-600">
+            {['Xác minh giấy phép vận tải', 'Kiểm tra thông tin liên hệ', 'Gán operator admin', 'Mở tuyến thử nghiệm'].map((step) => (
+              <div key={step} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3">
+                <span className="h-2.5 w-2.5 rounded-full bg-teal-600" />
+                {step}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
       <TableShell>
+        <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
+          <ActionButton>Duyệt partner</ActionButton>
+          <ActionButton tone="secondary">Gán nhân sự</ActionButton>
+          <ActionButton tone="danger">Tạm khóa</ActionButton>
+        </div>
         <table className="min-w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-400">
             <tr>

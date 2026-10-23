@@ -1,6 +1,16 @@
 import { AlertTriangle, CreditCard, Route, Ticket, Users } from 'lucide-react';
-import { PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
-import { backendContractNotes, bookings, operators, payments, routes } from '@/lib/mock-data';
+import { ChartPanel, DonutChart, ManagementQueue, MiniBarChart, PageHeader, Panel, SparkAreaChart, StatCard, StatusBadge, TableShell } from '@/components/ui';
+import {
+  adminQueues,
+  backendContractNotes,
+  bookingStatusSummary,
+  bookings,
+  operators,
+  payments,
+  revenueTrend,
+  routeDemandSummary,
+  routes,
+} from '@/lib/mock-data';
 import { formatDateTime, formatVnd } from '@/lib/format';
 
 export default function DashboardPage() {
@@ -21,6 +31,28 @@ export default function DashboardPage() {
         <StatCard label="Doanh thu hoàn tất" value={formatVnd(revenue)} helper="Từ payment COMPLETED" icon={CreditCard} tone="green" />
         <StatCard label="Payment cần xử lý" value={String(pendingPayments)} helper="Pending hoặc failed" icon={AlertTriangle} tone="amber" />
         <StatCard label="Tuyến đang mở" value={String(activeRoutes)} helper={`${operators.length} nhà xe trong mock`} icon={Route} tone="teal" />
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <ChartPanel title="Xu hướng doanh thu 7 ngày" description="Đơn vị hiển thị theo triệu VND, dùng để nhìn nhanh ngày cao điểm và ngày cần kích cầu.">
+          <SparkAreaChart data={revenueTrend} />
+        </ChartPanel>
+        <ChartPanel title="Phân bổ trạng thái booking" description="Giúp đội vận hành thấy ngay lượng booking pending hoặc expired cần xử lý.">
+          <DonutChart data={bookingStatusSummary} />
+        </ChartPanel>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <ChartPanel title="Nhu cầu theo tuyến" description="Ưu tiên mở thêm chuyến cho tuyến có nhu cầu cao.">
+          <MiniBarChart data={routeDemandSummary} />
+        </ChartPanel>
+        <Panel className="p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Users className="h-5 w-5 text-teal-700" />
+            <h2 className="text-lg font-black text-slate-950">Queue quản lý cần xử lý</h2>
+          </div>
+          <ManagementQueue items={adminQueues} />
+        </Panel>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_380px]">

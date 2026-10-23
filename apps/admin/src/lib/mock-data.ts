@@ -100,3 +100,51 @@ export const backendContractNotes = [
   'Seat status cho admin nên có BLOCKED để khóa ghế bảo trì, nhưng docs/api-types.ts hiện chỉ có AVAILABLE/HELD/BOOKED.',
   'Cần bổ sung endpoints admin list users, list payments, list all bookings, audit logs nếu backend chưa có.',
 ];
+
+export const revenueTrend = [
+  { label: 'T2', value: 420 },
+  { label: 'T3', value: 560 },
+  { label: 'T4', value: 480 },
+  { label: 'T5', value: 720 },
+  { label: 'T6', value: 810 },
+  { label: 'T7', value: 940 },
+  { label: 'CN', value: 760 },
+];
+
+export const bookingStatusSummary = [
+  { label: 'Confirmed', value: 38, color: '#10b981' },
+  { label: 'Pending', value: 14, color: '#f59e0b' },
+  { label: 'Expired', value: 7, color: '#ef4444' },
+  { label: 'Cancelled', value: 4, color: '#64748b' },
+];
+
+export const routeDemandSummary = [
+  { label: 'TP.HCM - Da Lat', value: 184, tone: 'teal' as const },
+  { label: 'Hue - Da Nang', value: 92, tone: 'green' as const },
+  { label: 'Da Nang - Hoi An', value: 64, tone: 'amber' as const },
+  { label: 'Ha Noi - Sapa', value: 51, tone: 'teal' as const },
+];
+
+export const paymentProviderSummary = [
+  { label: 'VNPay', value: 48, color: '#0f766e' },
+  { label: 'Momo', value: 31, color: '#f59e0b' },
+  { label: 'ZaloPay', value: 19, color: '#38bdf8' },
+];
+
+export const adminQueues = [
+  { title: 'Duyệt nhà xe mới', description: '1 partner đang chờ xác minh hồ sơ và giấy phép vận tải.', badge: 'Review', tone: 'amber' as const },
+  { title: 'Đối soát payment lỗi', description: 'Booking VXV9K2P1 failed payment nhưng vẫn cần kiểm tra trạng thái ghế.', badge: 'Urgent', tone: 'red' as const },
+  { title: 'Tuyến hết ghế', description: 'Đà Nẵng - Hội An Shuttle cần đóng bán hoặc mở chuyến bổ sung.', badge: 'Action', tone: 'teal' as const },
+];
+
+export const userRoleSummary = [
+  { label: 'Customer', value: 1240, tone: 'teal' as const },
+  { label: 'Operator', value: 36, tone: 'amber' as const },
+  { label: 'Admin', value: 4, tone: 'green' as const },
+];
+
+export const auditSeveritySummary = [
+  { label: 'Info', value: 42, tone: 'green' as const },
+  { label: 'Warning', value: 9, tone: 'amber' as const },
+  { label: 'Danger', value: 3, tone: 'red' as const },
+];

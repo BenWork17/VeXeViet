@@ -71,3 +71,150 @@ export function EmptyState({ title, description }: { title: string; description:
     </div>
   );
 }
+
+export function ActionButton({
+  children,
+  tone = 'primary',
+}: {
+  children: React.ReactNode;
+  tone?: 'primary' | 'secondary' | 'danger';
+}) {
+  const tones = {
+    primary: 'bg-[#063C45] text-white hover:bg-teal-900',
+    secondary: 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+    danger: 'border border-red-100 bg-red-50 text-red-700 hover:bg-red-100',
+  };
+
+  return <button className={clsx('rounded-xl px-3 py-2 text-xs font-black transition-colors', tones[tone])}>{children}</button>;
+}
+
+export function ChartPanel({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <Panel className="p-5">
+      <div className="mb-5">
+        <h2 className="text-lg font-black text-slate-950">{title}</h2>
+        {description ? <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">{description}</p> : null}
+      </div>
+      {children}
+    </Panel>
+  );
+}
+
+export function MiniBarChart({ data }: { data: Array<{ label: string; value: number; tone?: 'teal' | 'amber' | 'red' | 'green' }> }) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+  const tones = {
+    teal: 'bg-teal-600',
+    amber: 'bg-amber-500',
+    red: 'bg-red-500',
+    green: 'bg-emerald-500',
+  };
+
+  return (
+    <div className="space-y-4">
+      {data.map((item) => (
+        <div key={item.label}>
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-bold text-slate-700">{item.label}</span>
+            <span className="font-black text-slate-950">{item.value}</span>
+          </div>
+          <div className="h-3 rounded-full bg-slate-100">
+            <div className={clsx('h-3 rounded-full', tones[item.tone ?? 'teal'])} style={{ width: `${Math.max((item.value / max) * 100, 8)}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SparkAreaChart({ data }: { data: Array<{ label: string; value: number }> }) {
+  const max = Math.max(...data.map((item) => item.value), 1);
+  const points = data
+    .map((item, index) => {
+      const x = data.length === 1 ? 0 : (index / (data.length - 1)) * 100;
+      const y = 100 - (item.value / max) * 82 - 8;
+      return `${x},${y}`;
+    })
+    .join(' ');
+  const fillPoints = `0,100 ${points} 100,100`;
+
+  return (
+    <div>
+      <svg viewBox="0 0 100 100" className="h-48 w-full overflow-visible" role="img" aria-label="Trend chart">
+        <defs>
+          <linearGradient id="adminTrendFill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#0f766e" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#0f766e" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <polyline points={fillPoints} fill="url(#adminTrendFill)" stroke="none" />
+        <polyline points={points} fill="none" stroke="#0f766e" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+        {data.map((item, index) => {
+          const x = data.length === 1 ? 0 : (index / (data.length - 1)) * 100;
+          const y = 100 - (item.value / max) * 82 - 8;
+          return <circle key={item.label} cx={x} cy={y} r="2.2" fill="#f59e0b" stroke="#fff" strokeWidth="1" />;
+        })}
+      </svg>
+      <div className="mt-2 flex justify-between text-xs font-black text-slate-400">
+        {data.map((item) => (
+          <span key={item.label}>{item.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function DonutChart({ data }: { data: Array<{ label: string; value: number; color: string }> }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0) || 1;
+  let current = 0;
+
+  const gradient = data
+    .map((item) => {
+      const start = current;
+      current += (item.value / total) * 100;
+      return `${item.color} ${start}% ${current}%`;
+    })
+    .join(', ');
+
+  return (
+    <div className="flex items-center gap-6">
+      <div className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(${gradient})` }}>
+        <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">
+          <span className="text-2xl font-black text-slate-950">{total}</span>
+        </div>
+      </div>
+      <div className="min-w-0 flex-1 space-y-3">
+        {data.map((item) => (
+          <div key={item.label} className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex items-center gap-2 font-bold text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+              {item.label}
+            </span>
+            <span className="font-black text-slate-950">{item.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ManagementQueue({
+  items,
+}: {
+  items: Array<{ title: string; description: string; badge: string; tone?: 'teal' | 'amber' | 'green' | 'red' | 'slate' | 'blue' }>;
+}) {
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item.title} className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-black text-slate-950">{item.title}</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">{item.description}</p>
+            </div>
+            <StatusBadge label={item.badge} tone={item.tone ?? 'slate'} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
