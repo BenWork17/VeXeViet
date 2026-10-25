@@ -3,62 +3,105 @@
 @variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Optimistic VF", "Montserrat", "Helvetica", "Arial", "Noto Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Optimistic VF", "Montserrat", "Helvetica", "Arial", "Noto Sans", ui-sans-serif, system-ui, sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  
+
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
-  
+
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  
-  /* Modern Vietnamese Luxury: Blue and Gold */
+
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  
+  --color-primary-deep: var(--primary-deep);
+  --color-primary-soft: var(--primary-soft);
+
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  
+
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  
+
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  
+
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  
+
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  
-  --radius-lg: 1rem;
-  --radius-md: 0.75rem;
-  --radius-sm: 0.5rem;
+
+  --color-ink-button: var(--ink-button);
+  --color-on-ink-button: var(--on-ink-button);
+  --color-ink-deep: var(--ink-deep);
+  --color-ink: var(--ink);
+  --color-charcoal: var(--charcoal);
+  --color-slate: var(--slate);
+  --color-steel: var(--steel);
+  --color-stone: var(--stone);
+  --color-hairline: var(--hairline);
+  --color-hairline-soft: var(--hairline-soft);
+  --color-surface-soft: var(--surface-soft);
+  --color-canvas: var(--canvas);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-3xl: 32px;
+  --radius-feature: 40px;
+  --radius-full: 100px;
 }
 
 :root {
   --background: #ffffff;
-  --foreground: #0f172a;
+  --foreground: #0a1317;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #0a1317;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #2563eb;
+  --popover-foreground: #0a1317;
+
+  --primary: #0064e0;
+  --primary-deep: #0457cb;
+  --primary-soft: #0091ff;
   --primary-foreground: #ffffff;
-  --secondary: #d97706;
+
+  --secondary: #000000;
   --secondary-foreground: #ffffff;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #ef4444;
+
+  --muted: #f1f4f7;
+  --muted-foreground: #5d6c7b;
+
+  --accent: #f1f4f7;
+  --accent-foreground: #0a1317;
+
+  --destructive: #e41e3f;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #2563eb;
+
+  --border: #ced0d4;
+  --input: #ced0d4;
+  --ring: #0064e0;
+
+  --ink-button: #000000;
+  --on-ink-button: #ffffff;
+  --ink-deep: #0a1317;
+  --ink: #1c1e21;
+  --charcoal: #444950;
+  --slate: #4b4c4f;
+  --steel: #5d6c7b;
+  --stone: #8595a4;
+  --hairline: #ced0d4;
+  --hairline-soft: #dee3e9;
+  --surface-soft: #f1f4f7;
+  --canvas: #ffffff;
+  --disabled-text: #bcc0c4;
 }
 
 .dark {
@@ -68,244 +111,80 @@
   --card-foreground: #f8fafc;
   --popover: #09090b;
   --popover-foreground: #f8fafc;
-  --primary: #3b82f6;
+
+  --primary: #0064e0;
+  --primary-deep: #0457cb;
+  --primary-soft: #0091ff;
   --primary-foreground: #ffffff;
-  --secondary: #d97706;
+
+  --secondary: #ffffff;
   --secondary-foreground: #000000;
+
   --muted: #18181b;
   --muted-foreground: #a1a1aa;
+
   --accent: #18181b;
   --accent-foreground: #f8fafc;
-  --destructive: #7f1d1d;
+
+  --destructive: #e41e3f;
   --destructive-foreground: #f8fafc;
+
   --border: #27272a;
   --input: #27272a;
-  --ring: #3b82f6;
-}
+  --ring: #0064e0;
 
-@media (prefers-color-scheme: dark) {
-  /* No changes needed here as we use .dark class or system pref */
-}
-
-@keyframes gradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+  --ink-button: #ffffff;
+  --on-ink-button: #000000;
+  --ink-deep: #f8fafc;
+  --ink: #e4e4e7;
+  --charcoal: #d4d4d8;
+  --slate: #a1a1aa;
+  --steel: #71717a;
+  --stone: #52525b;
+  --hairline: #27272a;
+  --hairline-soft: #27272a;
+  --surface-soft: #18181b;
+  --canvas: #09090b;
+  --disabled-text: #52525b;
 }
 
 * {
   box-sizing: border-box;
-  border-color: var(--color-border);
 }
 
-html,
-body {
-  margin: 0;
-  min-height: 100%;
-  width: 100%;
-  overflow-x: hidden;
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background-color: white;
-  color: var(--color-foreground);
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "ss02";
 }
 
-.dark body {
-  background-color: var(--color-background);
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-feature-settings: "ss01", "ss02";
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+button {
+  font-family: var(--font-sans);
+  font-weight: 700;
 }
 
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+.btn-pill {
+  border-radius: 100px;
 }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes floatDelayed {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-25px);
-  }
-}
-
-@keyframes expandWidth {
-  from {
-    width: 0;
-  }
-  to {
-    width: 2rem;
-  }
-}
-
-@keyframes highlightSweep {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-
-@keyframes gradientShift {
-  0%, 100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(10px, 10px) scale(1.05);
-  }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out;
-}
-
-.animate-slideInRight {
-  animation: slideInRight 0.3s ease-out;
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.8s ease-out forwards;
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-float-delayed {
-  animation: floatDelayed 8s ease-in-out infinite;
-  animation-delay: 1s;
-}
-
-.animate-expand-width {
-  animation: expandWidth 0.6s ease-out forwards;
-}
-
-.animate-highlight-sweep {
-  animation: highlightSweep 0.8s ease-out forwards;
-}
-
-.animate-gradient-shift {
-  animation: gradientShift 10s ease-in-out infinite;
-}
-
-/* Shimmer effect for loading skeletons */
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-/* Pulse glow effect */
-@keyframes pulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(37, 99, 235, 0.6);
-  }
-}
-
-.animate-pulse-glow {
-  animation: pulseGlow 2s ease-in-out infinite;
-}
-
-/* Hover scale utility */
-.hover\:scale-102:hover {
-  transform: scale(1.02);
-}
-
-.animation-delay-200 {
-  animation-delay: 200ms;
-}
-
-.animate-gradient-x {
-  animation: gradient-x 3s ease infinite;
-  background-size: 200% 200%;
-}
-
-@keyframes gradient-x {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-/* Print Styles */
-@media print {
-  .no-print,
-  header,
-  footer,
-  nav {
-    display: none !important;
-  }
-  
-  .ticket-card {
-    border: 2px solid #000 !important;
-    page-break-inside: avoid;
-    box-shadow: none !important;
-    margin: 0 !important;
-  }
-  
-  body {
-    background: white !important;
-  }
-  
-  main {
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-}
-
-.travel-font-display {
-  font-family: "Bricolage Grotesque", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
-}
-
-.travel-font-body {
-  font-family: "Plus Jakarta Sans", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+.card-meta {
+  border-radius: 32px;
 }

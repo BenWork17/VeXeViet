@@ -1,9 +1,10 @@
 'use client'
 
 import * as React from 'react'
-import { Check, ChevronDown, MapPin, Search } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Check, ChevronDown, MapPin } from 'lucide-react'
 import { cn } from '@vexeviet/ui'
-import { VIETNAM_PROVINCES, searchProvinces, type Province } from '@/lib/data/provinces'
+import { VIETNAM_PROVINCES, searchProvinces } from '@/lib/data/provinces'
 
 interface ProvinceSelectProps {
   value?: string
@@ -13,6 +14,8 @@ interface ProvinceSelectProps {
   className?: string
   error?: string
 }
+
+const DROPDOWN_MAX_HEIGHT = 232
 
 export function ProvinceSelect({
   value,
@@ -24,35 +27,101 @@ export function ProvinceSelect({
 }: ProvinceSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
+  const [inputValue, setInputValue] = React.useState(value || '')
+  const [dropdownStyle, setDropdownStyle] = React.useState<React.CSSProperties>({})
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const dropdownRef = React.useRef<HTMLDivElement>(null)
 
   const selectedProvince = VIETNAM_PROVINCES.find(p => p.name === value)
+  const selectedName = selectedProvince?.name ?? ''
   const filteredProvinces = React.useMemo(() => searchProvinces(searchQuery), [searchQuery])
 
+  const updateDropdownPosition = React.useCallback(() => {
+    const input = inputRef.current
+    if (!input) return
+
+    const rect = input.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom - 8
+    const spaceAbove = rect.top - 8
+    const openAbove = spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow
+    const availableSpace = Math.max(openAbove ? spaceAbove : spaceBelow, 0)
+
+    setDropdownStyle({
+      position: 'fixed',
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      top: openAbove ? undefined : `${rect.bottom + 4}px`,
+      bottom: openAbove ? `${window.innerHeight - rect.top + 4}px` : undefined,
+      maxHeight: `${Math.min(DROPDOWN_MAX_HEIGHT, availableSpace)}px`,
+      zIndex: 99999,
+    })
+  }, [])
+
+  React.useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setInputValue(value || '')
+      setSearchQuery('')
+    }
+  }, [value])
+
+  React.useEffect(() => {
+    if (!open) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (inputRef.current?.contains(target)) return
+      if (dropdownRef.current?.contains(target)) return
+      setOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    const handleReposition = () => updateDropdownPosition()
+
+    document.addEventListener('mousedown', handlePointerDown, true)
+    document.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('scroll', handleReposition, true)
+    window.addEventListener('resize', handleReposition)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown, true)
+      document.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('scroll', handleReposition, true)
+      window.removeEventListener('resize', handleReposition)
+    }
+  }, [open, updateDropdownPosition])
+
   const handleSelect = (provinceName: string) => {
-    onValueChange(provinceName)
+    setInputValue(provinceName)
     setSearchQuery('')
+    onValueChange(provinceName)
     setOpen(false)
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const query = event.target.value
+    setInputValue(query)
     setSearchQuery(query)
     setOpen(true)
+    updateDropdownPosition()
+
+    if (selectedName && query !== selectedName) {
+      onValueChange('')
+    }
   }
 
   const handleInputFocus = () => {
+    updateDropdownPosition()
     setOpen(true)
   }
 
-  const handleInputBlur = () => {
-    setTimeout(() => setOpen(false), 200)
-  }
-
-  // Group by region
-  const northProvinces = filteredProvinces.filter(p => p.region === 'north')
-  const centralProvinces = filteredProvinces.filter(p => p.region === 'central')
-  const southProvinces = filteredProvinces.filter(p => p.region === 'south')
+  const regions = [
+    { label: 'Miền Bắc', provinces: filteredProvinces.filter(p => p.region === 'north') },
+    { label: 'Miền Trung', provinces: filteredProvinces.filter(p => p.region === 'central') },
+    { label: 'Miền Nam', provinces: filteredProvinces.filter(p => p.region === 'south') },
+  ]
 
   return (
     <div className="relative space-y-1.5">
@@ -60,12 +129,15 @@ export function ProvinceSelect({
         <input
           ref={inputRef}
           type="text"
-          value={searchQuery || selectedProvince?.name || ''}
+          value={inputValue}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
           placeholder={placeholder}
           disabled={disabled}
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
           className={cn(
             'w-full h-12 pl-9 pr-10 rounded-xl border-2 border-gray-200 bg-white text-sm',
             'focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20',
@@ -82,14 +154,18 @@ export function ProvinceSelect({
         )} />
       </div>
 
-      {open && filteredProvinces.length > 0 && (
-        <div className="absolute z-[99999] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-[280px] overflow-y-auto">
-          {northProvinces.length > 0 && (
-            <div>
+      {open && filteredProvinces.length > 0 && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={dropdownStyle}
+          className="overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white shadow-xl"
+        >
+          {regions.map((region) => region.provinces.length > 0 && (
+            <div key={region.label}>
               <div className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 sticky top-0 z-10">
-                Miền Bắc
+                {region.label}
               </div>
-              {northProvinces.map((province) => (
+              {region.provinces.map((province) => (
                 <button
                   key={province.id}
                   type="button"
@@ -109,62 +185,9 @@ export function ProvinceSelect({
                 </button>
               ))}
             </div>
-          )}
-
-          {centralProvinces.length > 0 && (
-            <div>
-              <div className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 sticky top-0 z-10">
-                Miền Trung
-              </div>
-              {centralProvinces.map((province) => (
-                <button
-                  key={province.id}
-                  type="button"
-                  onClick={() => handleSelect(province.name)}
-                  className={cn(
-                    'w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors',
-                    value === province.name && 'bg-primary/5 text-primary font-medium'
-                  )}
-                >
-                  <Check
-                    className={cn(
-                      'h-4 w-4 shrink-0',
-                      value === province.name ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  {province.displayName || province.name}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {southProvinces.length > 0 && (
-            <div>
-              <div className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 sticky top-0 z-10">
-                Miền Nam
-              </div>
-              {southProvinces.map((province) => (
-                <button
-                  key={province.id}
-                  type="button"
-                  onClick={() => handleSelect(province.name)}
-                  className={cn(
-                    'w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors',
-                    value === province.name && 'bg-primary/5 text-primary font-medium'
-                  )}
-                >
-                  <Check
-                    className={cn(
-                      'h-4 w-4 shrink-0',
-                      value === province.name ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  {province.displayName || province.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+          ))}
+        </div>,
+        document.body
       )}
 
       {error && <p className="text-[10px] font-medium text-red-500 ml-2">{error}</p>}
