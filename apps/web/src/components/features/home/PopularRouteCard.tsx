@@ -2,7 +2,6 @@
 
 import { memo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, BusFront, Clock3, MapPin } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import type { Route } from '@vexeviet/types'
 
@@ -33,7 +32,6 @@ export const PopularRouteCard = memo(({ route }: PopularRouteCardProps) => {
     >
       <div>
         <div className="route-card-top">
-          <span className="route-card-icon" aria-hidden="true"><BusFront size={18} /></span>
           <span className="route-card-type">{BUS_TYPE_LABELS[route.busType] || 'Xe khách'}</span>
         </div>
 
@@ -58,14 +56,14 @@ export const PopularRouteCard = memo(({ route }: PopularRouteCardProps) => {
       <div className="route-card-bottom">
         <div>
           <div className="route-meta">
-            {route.duration ? <span><Clock3 size={13} aria-hidden="true" /> {Math.floor(route.duration / 60)}h{route.duration % 60 ? `${route.duration % 60}m` : ''}</span> : null}
-            {route.distance ? <span><MapPin size={13} aria-hidden="true" /> {route.distance}km</span> : null}
+            {route.duration ? <span>{Math.floor(route.duration / 60)}h{route.duration % 60 ? `${route.duration % 60}m` : ''}</span> : null}
+            {route.distance ? <span>{route.distance} km</span> : null}
           </div>
           <p className="route-price-label">Giá từ</p>
           <div className="route-price">{formattedPrice}</div>
         </div>
         <span className="route-card-arrow" aria-hidden="true">
-          {isNavigating ? '...' : <ArrowRight size={20} />}
+          {isNavigating ? '…' : '→'}
         </span>
       </div>
     </Link>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
 import { usePWAInstall } from '@/lib/hooks/usePWA';
-import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'pwa-install-dismissed';
 const VISIT_COUNT_KEY = 'pwa-visit-count';
@@ -44,63 +43,34 @@ export function InstallPrompt() {
   if (!isInstallable || isInstalled || !shouldShow) return null;
 
   return (
-    <div
-      role="complementary"
-      aria-label="Install app prompt"
-      className={cn(
-        'fixed bottom-4 left-4 right-4 mx-auto max-w-md z-50',
-        'bg-white rounded-xl shadow-xl border border-gray-200',
-        'p-4',
-        'animate-in slide-in-from-bottom-4 duration-300'
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 p-2 bg-primary/10 rounded-lg">
-          <Download className="h-6 w-6 text-primary" aria-hidden="true" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900">Install VeXeViet</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Install our app for faster access and offline support.
+    <aside className="pwa-prompt" role="complementary" aria-label="Gợi ý cài đặt ứng dụng VeXeViet">
+      <div className="pwa-prompt-head">
+        <span className="pwa-prompt-icon" aria-hidden="true">
+          <Download size={18} />
+        </span>
+        <div className="pwa-prompt-copy">
+          <h3 className="pwa-prompt-title">Cài VeXeViet</h3>
+          <p className="pwa-prompt-text">
+            Mở nhanh hơn và dùng thuận tiện hơn mỗi lần truy cập.
           </p>
-          <div className="flex items-center gap-2 mt-3">
-            <button
-              onClick={handleInstall}
-              className={cn(
-                'px-4 py-2 text-sm font-medium rounded-lg',
-                'bg-primary text-white',
-                'hover:bg-primary/90 transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2'
-              )}
-            >
-              Install App
-            </button>
-            <button
-              onClick={handleDismiss}
-              className={cn(
-                'px-4 py-2 text-sm font-medium rounded-lg',
-                'text-gray-600',
-                'hover:bg-gray-100 transition-colors',
-                'focus:outline-none focus:ring-2 focus:ring-gray-300'
-              )}
-            >
-              Maybe Later
-            </button>
-          </div>
         </div>
         <button
+          type="button"
           onClick={handleDismiss}
-          aria-label="Close install prompt"
-          className={cn(
-            'flex-shrink-0 p-1 rounded-md',
-            'text-gray-400 hover:text-gray-600',
-            'hover:bg-gray-100 transition-colors',
-            'focus:outline-none focus:ring-2 focus:ring-gray-300'
-          )}
+          aria-label="Đóng gợi ý cài đặt"
+          className="pwa-prompt-close"
         >
-          <X className="h-5 w-5" aria-hidden="true" />
+          <X size={18} aria-hidden="true" />
         </button>
       </div>
-    </div>
+      <div className="pwa-prompt-actions">
+        <button type="button" onClick={handleInstall} className="pwa-prompt-install">
+          Cài ứng dụng
+        </button>
+        <button type="button" onClick={handleDismiss} className="pwa-prompt-dismiss">
+          Để sau
+        </button>
+      </div>
+    </aside>
   );
 }
