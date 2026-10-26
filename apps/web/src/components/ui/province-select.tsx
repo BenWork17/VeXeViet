@@ -139,30 +139,24 @@ export function ProvinceSelect({
           aria-expanded={open}
           aria-autocomplete="list"
           className={cn(
-            'w-full h-12 pl-9 pr-10 rounded-xl border-2 border-gray-200 bg-white text-sm',
-            'focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20',
-            'disabled:bg-gray-50 disabled:cursor-not-allowed',
-            'placeholder:text-gray-400',
-            error && 'border-red-500',
+            'province-input',
+            error && 'border-destructive',
             className
           )}
         />
-        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <ChevronDown className={cn(
-          "absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 transition-transform",
-          open && "rotate-180"
-        )} />
+        <MapPin className="province-icon" aria-hidden="true" />
+        <ChevronDown className={cn('province-chevron', open && 'is-open')} aria-hidden="true" />
       </div>
 
       {open && filteredProvinces.length > 0 && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropdownRef}
           style={dropdownStyle}
-          className="overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white shadow-xl"
+          className="province-popover overflow-y-auto overscroll-contain"
         >
           {regions.map((region) => region.provinces.length > 0 && (
             <div key={region.label}>
-              <div className="px-3 py-2 text-xs font-bold text-gray-600 bg-gray-50 sticky top-0 z-10">
+              <div className="province-region">
                 {region.label}
               </div>
               {region.provinces.map((province) => (
@@ -171,8 +165,8 @@ export function ProvinceSelect({
                   type="button"
                   onClick={() => handleSelect(province.name)}
                   className={cn(
-                    'w-full px-3 py-2.5 text-left text-sm hover:bg-gray-50 flex items-center gap-2 transition-colors',
-                    value === province.name && 'bg-primary/5 text-primary font-medium'
+                    'province-option',
+                    value === province.name && 'is-selected'
                   )}
                 >
                   <Check
