@@ -3580,7 +3580,10 @@ button {
 }
 
 .booking-pay-copy {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -3591,7 +3594,6 @@ button {
 }
 
 .booking-pay-desc {
-  margin-top: 2px;
   color: var(--slate);
   font-size: 0.84rem;
 }
