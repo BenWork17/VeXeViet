@@ -7,14 +7,13 @@ import { BusSeatLayout } from '@/components/features/booking/SeatMap/layouts';
 import { CountdownTimer } from '@/components/features/booking/CountdownTimer';
 import { SeatConflictModal } from '@/components/features/booking/SeatConflictModal';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
-import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
 import { setSeats, setTotalPrice, setStep, clearHoldInfo } from '@/store/slices/bookingSlice';
 import { getSeatAvailability } from '@/lib/api/bookings';
-import type { SeatAvailability, SeatDetail, BusTemplate } from '@vexeviet/types';
-import { ArrowRight, Bus, Star, AlertCircle } from 'lucide-react';
+import type { SeatAvailability, SeatDetail } from '@vexeviet/types';
+import { AlertCircle } from 'lucide-react';
 
 export default function BookingPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -69,6 +68,13 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   
   const currentBusType = seatAvailability?.busTemplate?.busType || currentRoute?.busType || 'STANDARD';
   const busTypeDisplay = currentBusType.toString().toUpperCase();
+  const busTypeLabel =
+    {
+      STANDARD: 'Ghế ngồi',
+      SLEEPER: 'Giường nằm',
+      LIMOUSINE: 'Limousine',
+      VIP: 'Ghế VIP',
+    }[busTypeDisplay] || 'Xe khách';
   const basePrice = currentRoute?.price || 250000;
   const vipSurcharge = 50000;
 
@@ -332,72 +338,52 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   };
 
   if (isAuthLoading || !isAuthenticated || !user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium">Đang kiểm tra đăng nhập...</p>
-      </div>
-    );
+    return <BookingLoading label="Đang kiểm tra đăng nhập..." />;
   }
 
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-slate-500 font-medium">Đang tải sơ đồ ghế...</p>
-      </div>
-    );
+    return <BookingLoading label="Đang tải sơ đồ ghế..." />;
   }
 
   if (!currentRoute) {
     return null;
   }
 
+  const selectedSeatLabels = getSelectedSeatLabels();
+
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl text-slate-900">
+    <div className="booking-container">
+      <h1 className="sr-only">
+        Chọn ghế cho tuyến {currentRoute.from} đến {currentRoute.to}
+      </h1>
+
       {error && (
-        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 rounded-r-lg flex items-start gap-3">
-          <div className="shrink-0 text-amber-500 mt-0.5">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          </div>
+        <div className="booking-inline-alert" role="alert">
+          <AlertCircle size={18} aria-hidden="true" />
           <div>
-            <p className="text-sm font-bold text-amber-800">Thông báo</p>
-            <p className="text-sm text-amber-700">{error}</p>
+            <strong>Thông báo</strong>
+            <p>{error}</p>
           </div>
         </div>
       )}
-      
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-        <div className="lg:col-span-8">
-          <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+
+      <div className="booking-layout">
+        <div>
+          <div className="booking-bus-panel">
             {seatAvailability?.busTemplate ? (
-              <BusSeatLayout 
+              <BusSeatLayout
                 busTemplate={seatAvailability.busTemplate}
                 seats={seatAvailability.seats}
                 selectedSeats={selectedSeats}
                 onSeatSelect={handleSeatSelect}
               />
             ) : (
-              <div className="flex flex-col items-center">
-                <div className="w-full max-w-md bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-8 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                      <Bus className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Loại xe</p>
-                      <p className="font-bold text-slate-900">{busTypeDisplay}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Giá từ</p>
-                    <p className="font-bold text-blue-600">{basePrice.toLocaleString()}đ</p>
-                  </div>
+              <div className="booking-bus">
+                <div className="booking-bus-head">
+                  <h2 className="booking-bus-name">{busTypeLabel}</h2>
+                  <p className="booking-bus-meta">Giá từ {basePrice.toLocaleString('vi-VN')}đ</p>
                 </div>
-
-                <SeatMap 
+                <SeatMap
                   busType={busTypeDisplay === 'LIMOUSINE' ? 'Limousine' : 'Standard'}
                   seats={seats}
                   selectedSeats={selectedSeats}
@@ -405,147 +391,131 @@ export default function BookingPage({ params }: { params: { id: string } }) {
                 />
               </div>
             )}
+
+            <ul className="booking-legend" aria-label="Chú thích trạng thái ghế">
+              <li>
+                <span className="booking-legend-swatch" aria-hidden="true" />
+                Còn trống
+              </li>
+              <li>
+                <span className="booking-legend-swatch is-booked" aria-hidden="true" />
+                Đã đặt
+              </li>
+              <li>
+                <span className="booking-legend-swatch is-held" aria-hidden="true" />
+                Đang giữ
+              </li>
+              <li>
+                <span className="booking-legend-swatch is-selected" aria-hidden="true" />
+                Đang chọn
+              </li>
+              {!isSleeper ? (
+                <li>
+                  <span className="booking-legend-swatch is-vip" aria-hidden="true" />
+                  Ghế VIP
+                </li>
+              ) : null}
+            </ul>
+
+            {!isSleeper ? (
+              <p className="booking-vip-note">
+                <strong>Ghế VIP</strong>
+                <span>Phụ phí {vipSurcharge.toLocaleString('vi-VN')}đ mỗi ghế so với giá cơ bản.</span>
+              </p>
+            ) : null}
           </div>
         </div>
 
-        <div className="lg:col-span-4 space-y-6">
-          {/* Legend */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <div className="w-1 h-4 bg-blue-600 rounded-full" />
-              Chú thích
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <LegendItem color="bg-white border-slate-200" label="Còn trống" />
-              <LegendItem color="bg-slate-100 border-slate-200" label="Đã đặt" />
-              <LegendItem color="bg-blue-600 border-blue-700 shadow-blue-200 shadow-sm" label="Đang chọn" />
-              {isSleeper && (
-                <LegendItem color="bg-orange-100 border-orange-200" label="Đang giữ" />
-              )}
-            </div>
-            {!isSleeper && (
-              <div className="mt-6 pt-6 border-t border-slate-100">
-                <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
-                  <div className="w-8 h-8 bg-white border-2 border-amber-400 rounded-lg flex items-center justify-center shrink-0">
-                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black text-amber-800 uppercase tracking-widest">Hạng thương gia</p>
-                    <p className="text-xs text-amber-700">Ghế VIP (+{vipSurcharge.toLocaleString()}đ)</p>
-                  </div>
-                </div>
-              </div>
-            )}
+        <section className="booking-summary" aria-labelledby="booking-summary-title">
+          <div className="booking-panel-head">
+            <h2 id="booking-summary-title" className="booking-summary-title">
+              Chi tiết vé
+            </h2>
+            <p className="booking-panel-note">{selectedSeats.length}/5 ghế</p>
           </div>
 
-          {/* Booking Summary Card */}
-          <div className="bg-slate-900 p-8 rounded-3xl shadow-2xl sticky top-4">
-            <h3 className="text-white font-bold text-xl mb-6">Chi tiết vé</h3>
-            
-            <div className="space-y-6">
-              {/* Countdown Timer (if holding) */}
-              {expiresAt && !isExpired && (
-                <div className="mb-4">
-                  <CountdownTimer 
-                    expiresAt={expiresAt} 
-                    onExpire={() => {
-                      setShowExpiredModal(true);
-                    }}
-                    className="!bg-orange-900/50 !text-orange-300"
-                  />
-                </div>
-              )}
+          {expiresAt && !isExpired ? (
+            <div className="booking-summary-block">
+              <CountdownTimer
+                expiresAt={expiresAt}
+                onExpire={() => {
+                  setShowExpiredModal(true);
+                }}
+              />
+            </div>
+          ) : null}
 
-              {/* Error Message */}
-              {error && (
-                <div className="p-3 bg-red-900/30 border border-red-500/30 rounded-xl flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-300">{error}</p>
-                </div>
-              )}
-              
-              <div className="flex justify-between items-start">
-                <span className="text-slate-400 text-sm">Ghế đã chọn</span>
-                <div className="text-right">
-                  <p className="text-white font-black text-lg">
-                    {selectedSeats.length > 0 ? getSelectedSeatLabels().join(', ') : 'Chưa chọn'}
-                  </p>
-                  <p className="text-slate-500 text-[10px] uppercase tracking-tighter">
-                    {selectedSeats.length} / 5 ghế tối đa
-                  </p>
-                </div>
-              </div>
-
-              {isSleeper && seatAvailability?.summary && (
-                <div className="flex justify-between items-center py-4 border-y border-slate-800">
-                  <span className="text-slate-400 text-sm">Trạng thái xe</span>
-                  <span className="text-blue-400 font-bold text-sm">
-                    Trống {seatAvailability.summary.availableSeats} giường
+          <div className="booking-summary-block">
+            <div className="booking-summary-row">
+              <span>Ghế đã chọn</span>
+              {selectedSeats.length === 0 ? <strong>Chưa chọn</strong> : null}
+            </div>
+            {selectedSeats.length > 0 ? (
+              <div className="booking-summary-seats">
+                {selectedSeatLabels.map((label) => (
+                  <span key={label} className="booking-seat-chip">
+                    {label}
                   </span>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-slate-400 text-sm">
-                  <span>Giá vé cơ bản</span>
-                  <span>{basePrice.toLocaleString()}đ</span>
-                </div>
-                {selectedSeats.length > 0 && (
-                  <div className="flex justify-between items-center text-blue-400 text-sm">
-                    <span>Phụ phí / Giảm giá</span>
-                    <span>{((totalPrice - (basePrice * selectedSeats.length)) / selectedSeats.length).toLocaleString()}đ</span>
-                  </div>
-                )}
+                ))}
               </div>
+            ) : null}
+            <p className="booking-summary-note">Tối đa 5 ghế cho mỗi lượt đặt.</p>
 
-              <div className="pt-6 border-t border-slate-800">
-                <div className="flex justify-between items-end mb-8">
-                  <span className="text-white text-sm font-bold">TỔNG CỘNG</span>
-                  <div className="text-right">
-                    <p className="text-3xl font-black text-orange-500 leading-none">
-                      {totalPrice.toLocaleString()}đ
-                    </p>
-                    <p className="text-slate-500 text-[10px] mt-1 italic">Đã bao gồm thuế & phí</p>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleContinue}
-                  disabled={selectedSeats.length === 0 || isHolding}
-                  className={cn(
-                    "w-full py-5 rounded-2xl font-black text-lg transition-all transform active:scale-95",
-                    selectedSeats.length > 0 && !isHolding
-                      ? "bg-linear-to-r from-orange-500 to-orange-600 text-white shadow-xl shadow-orange-900/20 hover:brightness-110" 
-                      : "bg-slate-800 text-slate-600 cursor-not-allowed"
-                  )}
-                >
-                  {isHolding ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Đang giữ chỗ...
-                    </span>
-                  ) : (
-                    'TIẾP TỤC ĐẶT VÉ'
-                  )}
-                </button>
-                
-                <p className="text-xs text-slate-500 text-center mt-3">
-                  Ghế sẽ được giữ trong 15 phút sau khi nhấn "Tiếp tục"
-                </p>
+            {isSleeper && seatAvailability?.summary ? (
+              <div className="booking-summary-row">
+                <span>Còn trống</span>
+                <span>{seatAvailability.summary.availableSeats} giường</span>
               </div>
+            ) : null}
+          </div>
+
+          <div className="booking-summary-block">
+            <div className="booking-summary-row">
+              <span>Giá vé cơ bản</span>
+              <span>{basePrice.toLocaleString('vi-VN')}đ</span>
+            </div>
+            {selectedSeats.length > 0 ? (
+              <div className="booking-summary-row">
+                <span>Phụ phí / giảm giá</span>
+                <span>
+                  {((totalPrice - basePrice * selectedSeats.length) / selectedSeats.length).toLocaleString('vi-VN')}đ
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="booking-summary-total">
+            <div>
+              <p className="booking-summary-total-label">Tổng cộng</p>
+              <p className="booking-summary-amount">{totalPrice.toLocaleString('vi-VN')}đ</p>
+              <p className="booking-summary-note">Đã bao gồm thuế và phí.</p>
             </div>
           </div>
-        </div>
+
+          <div className="booking-summary-block">
+            <button
+              type="button"
+              onClick={handleContinue}
+              disabled={selectedSeats.length === 0 || isHolding}
+              aria-busy={isHolding}
+              className="booking-action"
+            >
+              {isHolding ? 'Đang giữ chỗ…' : 'Tiếp tục đặt vé'}
+            </button>
+            <p className="booking-action-note">
+              Ghế được giữ trong 15 phút sau khi bạn tiếp tục.
+            </p>
+          </div>
+        </section>
       </div>
-      
-      {/* Modals */}
+
       <SeatConflictModal
         isOpen={showConflictModal}
         conflictedSeats={conflictedSeats}
         onRefreshSeats={handleRefreshSeats}
         onClose={() => setShowConflictModal(false)}
       />
-      
+
       <SeatHoldExpiredModal
         isOpen={showExpiredModal}
         onReturnToSeatSelection={handleExpiredReturn}
@@ -554,11 +524,15 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   );
 }
 
-function LegendItem({ color, label }: { color: string, label: string }) {
+function BookingLoading({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <div className={cn("w-5 h-5 rounded border-2", color)} />
-      <span className="text-sm text-slate-700">{label}</span>
+    <div className="booking-loading" role="status" aria-live="polite">
+      <div className="booking-skeleton-grid" aria-hidden="true">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <span key={index} className="booking-skeleton-seat" />
+        ))}
+      </div>
+      <span>{label}</span>
     </div>
   );
 }

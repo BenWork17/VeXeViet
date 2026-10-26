@@ -9,25 +9,24 @@ import { selectBooking, setStep, clearHoldInfo } from '@/store/slices/bookingSli
 import { PassengerInfoForm, type PassengerInfo } from '@/components/features/booking/PassengerInfoForm';
 import { CountdownTimer } from '@/components/features/booking/CountdownTimer';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
-import { cn } from '@/lib/utils';
-import { ArrowLeft, MapPin, Clock, Users, AlertCircle, Bus } from 'lucide-react';
+import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
 export default function PassengerInfoPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const booking = useAppSelector(selectBooking);
   const { user } = useAuth();
-  
+
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Seat hold hook
-  const { 
-    holdId, 
-    expiresAt, 
+  const {
+    holdId,
+    expiresAt,
     isExpired,
     release,
-    clearHold 
+    clearHold
   } = useSeatHold({
     onExpire: () => {
       setShowExpiredModal(true);
@@ -59,7 +58,7 @@ export default function PassengerInfoPage() {
     } catch {
       // Ignore errors
     }
-    
+
     clearHold();
     dispatch(clearHoldInfo());
     router.push('/search');
@@ -72,7 +71,7 @@ export default function PassengerInfoPage() {
     try {
       // Store passenger info in session storage for payment page
       sessionStorage.setItem('vexeviet_passenger_info', JSON.stringify(data));
-      
+
       // Navigate to payment page
       dispatch(setStep('payment'));
       router.push('/booking/payment');
@@ -94,159 +93,120 @@ export default function PassengerInfoPage() {
     return null;
   }
 
+  const seatLabels = booking.heldSeats.length > 0 ? booking.heldSeats : booking.selectedSeats;
+
   return (
     <>
-      <div className="min-h-screen bg-slate-50">
-        {/* Main Content */}
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Form Section */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">Thông tin liên hệ</h2>
-                  <p className="text-slate-600">
-                    Vui lòng nhập thông tin chính xác để nhận vé điện tử
-                  </p>
-                </div>
+      <div className="booking-container">
+        <button type="button" onClick={handleBack} className="booking-back-link">
+          <ArrowLeft size={16} aria-hidden="true" />
+          Quay lại chọn ghế
+        </button>
 
-                {/* Info Banner */}
-                {user && (
-                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-4 h-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-blue-900">Thông tin tự động điền</p>
-                      <p className="text-xs text-blue-700 mt-1">
-                        Chúng tôi đã điền sẵn thông tin từ tài khoản của bạn. Vui lòng kiểm tra và cập nhật nếu cần.
-                      </p>
-                    </div>
-                  </div>
-                )}
+        <div className="booking-panel-head">
+          <div>
+            <h1 className="booking-title">Thông tin hành khách</h1>
+            <p className="booking-subtitle">
+              Nhập thông tin chính xác để nhận vé điện tử và làm thủ tục lên xe.
+            </p>
+          </div>
+        </div>
 
-                {/* Passenger Form */}
-                <PassengerInfoForm
-                  initialData={{
-                    fullName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
-                    phone: user?.phone || '',
-                    email: user?.email || '',
-                    acceptTerms: false,
-                  }}
-                  onSubmit={handleSubmit}
-                  isSubmitting={isSubmitting}
+        <div className="booking-layout">
+          <div className="booking-panel booking-panel--paper">
+            {user ? (
+              <div className="booking-info-note">
+                <strong>Thông tin tự động điền</strong>
+                <span>
+                  Chúng tôi đã điền sẵn thông tin từ tài khoản của bạn. Vui lòng kiểm tra và cập nhật nếu cần.
+                </span>
+              </div>
+            ) : null}
+
+            <PassengerInfoForm
+              initialData={{
+                fullName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
+                phone: user?.phone || '',
+                email: user?.email || '',
+                acceptTerms: false,
+              }}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
+          </div>
+
+          <aside className="booking-summary" aria-labelledby="trip-summary-title">
+            <div className="booking-panel-head">
+              <h2 id="trip-summary-title" className="booking-summary-title">
+                Chuyến đi
+              </h2>
+              <p className="booking-panel-note">{booking.selectedSeats.length} ghế</p>
+            </div>
+
+            {expiresAt && !isExpired ? (
+              <div className="booking-summary-block">
+                <CountdownTimer
+                  expiresAt={expiresAt}
+                  onExpire={() => setShowExpiredModal(true)}
                 />
               </div>
-            </div>
+            ) : null}
 
-            {/* Summary Section */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 sticky top-24">
-                <h3 className="text-lg font-bold text-slate-900 mb-6">Tóm tắt chuyến đi</h3>
-
-                {/* Countdown Timer */}
-                {expiresAt && !isExpired && (
-                  <div className="mb-6">
-                    <CountdownTimer 
-                      expiresAt={expiresAt} 
-                      onExpire={() => setShowExpiredModal(true)}
-                    />
-                  </div>
-                )}
-
-                {/* Trip Info */}
-                <div className="space-y-4 mb-6 pb-6 border-b border-slate-200">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-500 mb-1">Tuyến đường</p>
-                      <p className="font-semibold text-slate-900">
-                        {booking.currentRoute.from} → {booking.currentRoute.to}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-500 mb-1">Giờ khởi hành</p>
-                      <p className="font-semibold text-slate-900">
-                        {new Date(booking.currentRoute.departureTime).toLocaleString('vi-VN', {
-                          weekday: 'short',
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Bus className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-xs text-slate-500 mb-1">Loại xe</p>
-                      <p className="font-semibold text-slate-900">{booking.currentRoute.busType}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Selected Seats */}
-                <div className="mb-6 pb-6 border-b border-slate-200">
-                  <p className="text-sm font-bold text-slate-900 mb-3">
-                    Ghế đã chọn ({booking.selectedSeats.length})
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {booking.heldSeats.length > 0 ? (
-                      // Show seat labels from held seats
-                      booking.heldSeats.map((seatLabel) => (
-                        <span
-                          key={seatLabel}
-                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-semibold text-sm"
-                        >
-                          {seatLabel}
-                        </span>
-                      ))
-                    ) : (
-                      // Fallback to selected seat IDs
-                      booking.selectedSeats.map((seatId) => (
-                        <span
-                          key={seatId}
-                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg font-semibold text-sm"
-                        >
-                          {seatId}
-                        </span>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Price Summary */}
-                <div className="space-y-3">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Giá vé x {booking.selectedSeats.length}</span>
-                    <span>{formatCurrency(booking.totalPrice)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-xl font-bold text-slate-900 pt-3 border-t border-slate-200">
-                    <span>Tổng cộng</span>
-                    <span className="text-blue-600">{formatCurrency(booking.totalPrice)}</span>
-                  </div>
-                </div>
-
-                {/* Security Notice */}
-                <div className="mt-6 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <div className="flex items-start gap-2">
-                    <span className="text-lg">🔒</span>
-                    <p className="text-xs text-green-800 leading-relaxed">
-                      <strong>Thanh toán an toàn:</strong> Thông tin của bạn được mã hóa và bảo mật
-                    </p>
-                  </div>
-                </div>
+            <div className="booking-summary-block">
+              <div className="booking-ledger-row">
+                <span>Tuyến</span>
+                <strong>
+                  {booking.currentRoute.from} → {booking.currentRoute.to}
+                </strong>
+              </div>
+              <div className="booking-ledger-row">
+                <span>Khởi hành</span>
+                <strong>
+                  {new Date(booking.currentRoute.departureTime).toLocaleString('vi-VN', {
+                    weekday: 'short',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </strong>
+              </div>
+              <div className="booking-ledger-row">
+                <span>Loại xe</span>
+                <strong>{booking.currentRoute.busType}</strong>
               </div>
             </div>
-          </div>
+
+            <div className="booking-summary-block">
+              <p className="booking-panel-note">Ghế đã chọn</p>
+              <div className="booking-summary-seats">
+                {seatLabels.map((seatLabel) => (
+                  <span key={seatLabel} className="booking-seat-chip">
+                    {seatLabel}
+                  </span>
+                ))}
+              </div>
+              <p className="booking-summary-note">
+                {booking.selectedSeats.length} × {formatCurrency(booking.totalPrice / booking.selectedSeats.length)}
+              </p>
+            </div>
+
+            <div className="booking-summary-total">
+              <div>
+                <p className="booking-summary-total-label">Tổng cộng</p>
+                <p className="booking-summary-amount">{formatCurrency(booking.totalPrice)}</p>
+                <p className="booking-summary-note">Đã bao gồm thuế và phí.</p>
+              </div>
+            </div>
+
+            <div className="booking-secure-note">
+              <ShieldCheck size={18} aria-hidden="true" />
+              <span>
+                <strong>Thanh toán an toàn.</strong> Thông tin của bạn được mã hóa và bảo mật.
+              </span>
+            </div>
+          </aside>
         </div>
       </div>
 

@@ -2,88 +2,74 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { Check, User, CreditCard, Ticket, Armchair } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Check } from 'lucide-react';
 
 const steps = [
-  {
-    id: 'seats',
-    label: 'Chọn chỗ',
-    icon: Armchair,
-    pattern: /^\/booking\/[^\/]+(\/|$)/,
-  },
-  {
-    id: 'info',
-    label: 'Thông tin',
-    icon: User,
-    pattern: /^\/booking\/passenger-info$/,
-  },
-  {
-    id: 'payment',
-    label: 'Thanh toán',
-    icon: CreditCard,
-    pattern: /^\/booking\/payment$/,
-  },
-  {
-    id: 'done',
-    label: 'Hoàn tất',
-    icon: Ticket,
-    pattern: /^\/booking\/(success|ticket)/,
-  },
+  { id: 'seats', label: 'Chọn chỗ' },
+  { id: 'info', label: 'Thông tin' },
+  { id: 'payment', label: 'Thanh toán' },
+  { id: 'done', label: 'Hoàn tất' },
 ];
+
+function resolveStep(pathname: string): number {
+  if (pathname.startsWith('/booking/success') || pathname.startsWith('/booking/ticket')) {
+    return 3;
+  }
+  if (pathname.startsWith('/booking/payment/result')) {
+    return 3;
+  }
+  if (pathname.startsWith('/booking/payment')) {
+    return 2;
+  }
+  if (pathname.startsWith('/booking/passenger-info')) {
+    return 1;
+  }
+  if (/^\/booking\/[^/]+/.test(pathname)) {
+    return 0;
+  }
+  return -1;
+}
 
 export function BookingSteps() {
   const pathname = usePathname();
-
-  // Find current step from most specific to least specific
-  const currentStepIndex = steps.findIndex((step) => step.pattern.test(pathname));
+  const currentStepIndex = resolveStep(pathname);
+  const currentLabel = currentStepIndex >= 0 ? steps[currentStepIndex]?.label : null;
 
   return (
-    <div className="w-full bg-white border-b sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <nav className="booking-flow" aria-label="Các bước đặt vé">
+      <div className="booking-flow-inner">
+        <ol className="booking-flow-list">
           {steps.map((step, index) => {
             const isCompleted = index < currentStepIndex;
             const isActive = index === currentStepIndex;
-            const Icon = step.icon;
+            const state = isCompleted ? 'completed' : isActive ? 'current' : 'upcoming';
 
             return (
-              <React.Fragment key={step.id}>
-                <div className="flex items-center gap-2 group">
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors border-2",
-                      isCompleted ? "bg-blue-600 border-blue-600 text-white" : 
-                      isActive ? "border-blue-600 text-blue-600" : 
-                      "border-gray-200 text-gray-400"
-                    )}
-                  >
-                    {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-4 h-4" />}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-sm font-medium hidden sm:block",
-                      isActive ? "text-blue-600" : isCompleted ? "text-gray-900" : "text-gray-400"
-                    )}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div className="flex-1 h-[2px] mx-4 bg-gray-100 hidden sm:block">
-                    <div 
-                      className={cn(
-                        "h-full bg-blue-600 transition-all duration-500 ease-in-out",
-                        isCompleted ? "w-full" : "w-0"
-                      )} 
-                    />
-                  </div>
-                )}
-              </React.Fragment>
+              <li
+                key={step.id}
+                className="booking-flow-step"
+                data-state={state}
+                aria-current={isActive ? 'step' : undefined}
+              >
+                <span className="booking-step-marker" aria-hidden="true">
+                  {isCompleted ? <Check size={15} strokeWidth={2.6} /> : index + 1}
+                </span>
+                <span className="booking-step-label">{step.label}</span>
+                {isCompleted ? <span className="sr-only">đã hoàn tất</span> : null}
+                {isActive ? <span className="sr-only">bước hiện tại</span> : null}
+                {index < steps.length - 1 ? (
+                  <span className="booking-step-rail" aria-hidden="true" />
+                ) : null}
+              </li>
             );
           })}
-        </div>
+        </ol>
+        {currentLabel ? (
+          <p className="booking-flow-current">
+            Bước {currentStepIndex + 1}/{steps.length}: {currentLabel}
+          </p>
+        ) : null}
       </div>
-    </div>
+    </nav>
   );
 }

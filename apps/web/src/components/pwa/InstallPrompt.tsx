@@ -1,19 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { usePWAInstall } from '@/lib/hooks/usePWA';
 
 const STORAGE_KEY = 'pwa-install-dismissed';
 const VISIT_COUNT_KEY = 'pwa-visit-count';
 const REQUIRED_VISITS = 2;
+const TRANSACTIONAL_ROUTES = ['/search', '/booking', '/payment'];
 
 export function InstallPrompt() {
   const { isInstallable, isInstalled, installPrompt } = usePWAInstall();
   const [shouldShow, setShouldShow] = useState(false);
+  const pathname = usePathname();
+  const isTransactionalRoute = TRANSACTIONAL_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (isTransactionalRoute) return;
 
     const dismissed = localStorage.getItem(STORAGE_KEY);
     if (dismissed) {
@@ -28,7 +35,7 @@ export function InstallPrompt() {
     if (visitCount >= REQUIRED_VISITS) {
       setShouldShow(true);
     }
-  }, []);
+  }, [isTransactionalRoute]);
 
   const handleDismiss = () => {
     localStorage.setItem(STORAGE_KEY, Date.now().toString());
@@ -40,7 +47,7 @@ export function InstallPrompt() {
     setShouldShow(false);
   };
 
-  if (!isInstallable || isInstalled || !shouldShow) return null;
+  if (isTransactionalRoute || !isInstallable || isInstalled || !shouldShow) return null;
 
   return (
     <aside className="pwa-prompt" role="complementary" aria-label="Gợi ý cài đặt ứng dụng VeXeViet">

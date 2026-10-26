@@ -68,8 +68,8 @@ export function BusSeatLayout({
 }: BusSeatLayoutProps) {
   if (!busTemplate) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        Không có thông tin xe
+      <div className="booking-panel">
+        <p className="booking-state-text">Không có thông tin xe.</p>
       </div>
     );
   }

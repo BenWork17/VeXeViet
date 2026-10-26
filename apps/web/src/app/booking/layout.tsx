@@ -7,11 +7,9 @@ export const metadata = {
 export default function BookingLayout({ children }: { children: React.ReactNode }) {
   // Booking flow - no header/footer, clean layout with step indicator
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="booking-shell">
       <BookingSteps />
-      <div className="pt-4">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { CheckCircle2, Printer, XCircle } from 'lucide-react';
 import { TicketCard } from '@/components/features/booking/Ticket/TicketCard';
 import { getBookingById } from '@/lib/api/booking';
 import { BookingDetails } from '@/types/booking';
@@ -42,83 +43,81 @@ export default function BookingSuccessPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto flex min-h-[600px] items-center justify-center px-4 py-8">
-        <div className="text-center">
-          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent" />
-          <p className="mt-4 text-muted-foreground">Đang tải thông tin vé...</p>
-        </div>
+      <div className="booking-page-loading" role="status" aria-live="polite">
+        <p>Đang tải thông tin vé…</p>
       </div>
     );
   }
 
   if (error || !booking) {
     return (
-      <div className="container mx-auto flex min-h-[600px] items-center justify-center px-4 py-8">
-        <div className="text-center">
-          <div className="mb-4 text-6xl">❌</div>
-          <h1 className="mb-2 text-2xl font-bold text-red-600 dark:text-red-400">Lỗi</h1>
-          <p className="mb-6 text-muted-foreground">{error || 'Không tìm thấy thông tin vé'}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="rounded-lg bg-primary px-6 py-2 font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            Về trang chủ
-          </button>
+      <div className="booking-state-page">
+        <div className="booking-state-card">
+          <span className="booking-state-icon is-failure" aria-hidden="true">
+            <XCircle size={26} />
+          </span>
+          <h1 className="booking-state-title">Không tải được vé</h1>
+          <p className="booking-state-text">{error || 'Không tìm thấy thông tin vé'}</p>
+          <div className="booking-state-actions">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              className="booking-action booking-action--inline"
+            >
+              Về trang chủ
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Success Message */}
-      <div className="no-print mb-8 rounded-lg border border-green-200 bg-green-50 p-6 text-center dark:border-green-800 dark:bg-green-950">
-        <div className="mb-3 text-5xl" aria-hidden="true">
-          ✅
+    <div className="booking-ticket-page">
+      <div className="booking-success-head no-print">
+        <span className="booking-state-icon" aria-hidden="true">
+          <CheckCircle2 size={26} />
+        </span>
+        <div>
+          <h1 className="booking-state-title">Thanh toán thành công</h1>
+          <p className="booking-state-text">
+            Chúc bạn có một chuyến đi an toàn và vui vẻ.
+          </p>
         </div>
-        <h1 className="mb-2 text-3xl font-bold text-green-800 dark:text-green-200">
-          Thanh toán thành công!
-        </h1>
-        <p className="text-green-700 dark:text-green-300">
-          Chúc bạn có một chuyến đi an toàn và vui vẻ! 🚌
-        </p>
       </div>
 
-      {/* Ticket Card */}
-      <TicketCard booking={booking} />
-
-      {/* Action Buttons */}
-      <div className="no-print mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+      <div className="booking-state-actions no-print">
         <button
+          type="button"
           onClick={handlePrint}
-          className="rounded-lg bg-primary px-8 py-3 font-semibold text-primary-foreground hover:bg-primary/90"
+          className="booking-action booking-action--inline"
           aria-label="In hoặc tải vé"
         >
-          🖨️ In / Tải vé
+          <Printer size={18} aria-hidden="true" />
+          In / Tải vé
         </button>
         <button
+          type="button"
           onClick={() => router.push('/profile/bookings')}
-          className="rounded-lg border border-gray-300 px-8 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="booking-secondary-action"
         >
           Xem vé của tôi
         </button>
         <button
+          type="button"
           onClick={() => router.push('/')}
-          className="rounded-lg border border-gray-300 px-8 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+          className="booking-secondary-action"
         >
           Về trang chủ
         </button>
       </div>
 
-      {/* Support Info */}
-      <div className="no-print mt-8 rounded-lg border bg-card p-4 text-center text-sm text-muted-foreground">
-        <p>
-          Cần hỗ trợ? Liên hệ <strong>1900-xxxx</strong> hoặc{' '}
-          <a href="mailto:support@vexeviet.com" className="text-primary hover:underline">
-            support@vexeviet.com
-          </a>
-        </p>
-      </div>
+      <TicketCard booking={booking} />
+
+      <p className="booking-support no-print">
+        Cần hỗ trợ? Liên hệ <strong>1900-xxxx</strong> hoặc{' '}
+        <a href="mailto:support@vexeviet.com">support@vexeviet.com</a>
+      </p>
     </div>
   );
 }

@@ -3,8 +3,15 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { setPaymentStatus } from '@/store/slices/bookingSlice';
 import type { PaymentResultParams, PaymentStatus } from '@/types/payment';
+
+function statusLabel(status: PaymentStatus): string {
+  if (status === 'COMPLETED') return 'Hoàn thành';
+  if (status === 'CANCELLED') return 'Đã hủy';
+  return 'Thất bại';
+}
 
 function PaymentResultContent() {
   const router = useRouter();
@@ -73,167 +80,137 @@ function PaymentResultContent() {
 
   if (!result) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+      <div className="booking-page-loading" role="status" aria-live="polite">
+        <p>Đang đọc kết quả thanh toán…</p>
       </div>
     );
   }
 
   const isSuccess = result.success;
+  const badgeModifier =
+    result.status === 'COMPLETED'
+      ? ''
+      : result.status === 'CANCELLED'
+        ? ' is-cancelled'
+        : ' is-failure';
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mx-auto max-w-2xl">
-        <div
-          className={`rounded-lg border p-8 text-center ${
-            isSuccess
-              ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950'
-              : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950'
-          }`}
+    <div className="booking-state-page">
+      <div className="booking-state-card">
+        <span
+          className={`booking-state-icon${isSuccess ? '' : ' is-failure'}`}
+          aria-hidden="true"
         >
-          {/* Icon */}
-          <div className="mb-4 text-6xl" aria-hidden="true">
-            {isSuccess ? '✅' : '❌'}
+          {isSuccess ? <CheckCircle2 size={26} /> : <XCircle size={26} />}
+        </span>
+
+        <h1 className="booking-state-title">
+          {isSuccess ? 'Thanh toán thành công' : 'Thanh toán thất bại'}
+        </h1>
+
+        <span className={`booking-state-badge${badgeModifier}`}>
+          {statusLabel(result.status)}
+        </span>
+
+        <p className="booking-state-text">
+          {isSuccess
+            ? 'Vé của bạn đã được đặt thành công. Chúng tôi đã gửi thông tin vé qua email.'
+            : result.message || 'Giao dịch không thành công. Vui lòng thử lại.'}
+        </p>
+
+        {(result.transactionId || result.bookingId || result.paymentId) ? (
+          <div className="booking-state-details">
+            {result.paymentId ? (
+              <div className="booking-state-row">
+                <span>Mã thanh toán</span>
+                <strong>{result.paymentId}</strong>
+              </div>
+            ) : null}
+            {result.bookingId ? (
+              <div className="booking-state-row">
+                <span>Mã đặt vé</span>
+                <strong>{result.bookingId}</strong>
+              </div>
+            ) : null}
+            {result.transactionId ? (
+              <div className="booking-state-row">
+                <span>Mã giao dịch</span>
+                <strong>{result.transactionId}</strong>
+              </div>
+            ) : null}
+            {result.bankCode ? (
+              <div className="booking-state-row">
+                <span>Ngân hàng</span>
+                <strong>{result.bankCode}</strong>
+              </div>
+            ) : null}
+            {result.responseCode ? (
+              <div className="booking-state-row">
+                <span>Mã phản hồi</span>
+                <strong>
+                  {result.responseCode}
+                  {result.responseCode === '00' ? ' (Thành công)' : ''}
+                </strong>
+              </div>
+            ) : null}
           </div>
+        ) : null}
 
-          {/* Title */}
-          <h1
-            className={`mb-2 text-3xl font-bold ${
-              isSuccess ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-            }`}
-          >
-            {isSuccess ? 'Thanh toán thành công!' : 'Thanh toán thất bại'}
-          </h1>
-
-          {/* Status Badge */}
-          <div className="mb-4">
-            <span className={`inline-block rounded-full px-4 py-1 text-sm font-semibold ${
-              result.status === 'COMPLETED'
-                ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200'
-                : result.status === 'CANCELLED'
-                ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200'
-                : 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'
-            }`}>
-              {result.status === 'COMPLETED' ? 'Hoàn thành' : result.status === 'CANCELLED' ? 'Đã hủy' : 'Thất bại'}
-            </span>
-          </div>
-
-          {/* Message */}
-          <p
-            className={`mb-6 ${
-              isSuccess
-                ? 'text-green-700 dark:text-green-300'
-                : 'text-red-700 dark:text-red-300'
-            }`}
-          >
-            {isSuccess
-              ? 'Vé của bạn đã được đặt thành công. Chúng tôi đã gửi thông tin vé qua email.'
-              : result.message || 'Giao dịch không thành công. Vui lòng thử lại.'}
-          </p>
-
-          {/* Transaction Details */}
-          {(result.transactionId || result.bookingId || result.paymentId) && (
-            <div className="mb-6 space-y-2 rounded-lg border bg-white p-4 text-left dark:bg-gray-900">
-              {result.paymentId && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Mã thanh toán:</span>
-                  <span className="font-mono font-semibold">{result.paymentId}</span>
-                </div>
-              )}
-              {result.bookingId && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Mã đặt vé:</span>
-                  <span className="font-mono font-semibold">{result.bookingId}</span>
-                </div>
-              )}
-              {result.transactionId && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Mã giao dịch:</span>
-                  <span className="font-mono text-sm">{result.transactionId}</span>
-                </div>
-              )}
-              {result.bankCode && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ngân hàng:</span>
-                  <span className="font-semibold">
-                    <span className="inline-block rounded bg-blue-100 px-2 py-0.5 text-sm text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                      {result.bankCode}
-                    </span>
-                  </span>
-                </div>
-              )}
-              {result.responseCode && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Mã phản hồi:</span>
-                  <span className={`font-mono text-sm font-semibold ${
-                    result.responseCode === '00' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                  }`}>
-                    {result.responseCode}
-                    {result.responseCode === '00' && ' (Thành công)'}
-                  </span>
-                </div>
-              )}
-            </div>
+        <div className="booking-state-actions">
+          {isSuccess ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (result.bookingId) {
+                    router.push(`/booking/success/${result.bookingId}`);
+                  } else {
+                    router.push('/profile');
+                  }
+                }}
+                className="booking-action booking-action--inline"
+              >
+                Xem vé
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/')}
+                className="booking-secondary-action"
+              >
+                Về trang chủ
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  if (result.bookingId) {
+                    router.push(`/booking/payment?id=${result.bookingId}`);
+                  } else {
+                    router.back();
+                  }
+                }}
+                className="booking-action booking-action--inline"
+              >
+                Thử lại
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/')}
+                className="booking-secondary-action"
+              >
+                Về trang chủ
+              </button>
+            </>
           )}
-
-          {/* Action Buttons */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-            {isSuccess ? (
-              <>
-                <button
-                  onClick={() => {
-                    if (result.bookingId) {
-                      router.push(`/booking/success/${result.bookingId}`);
-                    } else {
-                      router.push('/profile');
-                    }
-                  }}
-                  className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"
-                >
-                  Xem vé
-                </button>
-                <button
-                  onClick={() => router.push('/')}
-                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all active:scale-95"
-                >
-                  Về trang chủ
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => {
-                    if (result.bookingId) {
-                      router.push(`/booking/payment?id=${result.bookingId}`);
-                    } else {
-                      router.back();
-                    }
-                  }}
-                  className="rounded-lg bg-primary px-6 py-3 font-semibold text-primary-foreground hover:bg-primary/90 transition-all active:scale-95"
-                >
-                  Thử lại
-                </button>
-                <button
-                  onClick={() => router.push('/')}
-                  className="rounded-lg border border-gray-300 px-6 py-3 font-semibold hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800 transition-all active:scale-95"
-                >
-                  Về trang chủ
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Support Info */}
-        <div className="mt-6 rounded-lg border bg-card p-4 text-center text-sm text-muted-foreground">
-          <p>
-            Cần hỗ trợ? Liên hệ <strong>1900-xxxx</strong> hoặc{' '}
-            <a href="mailto:support@vexeviet.com" className="text-primary hover:underline">
-              support@vexeviet.com
-            </a>
-          </p>
         </div>
       </div>
+
+      <p className="booking-support">
+        Cần hỗ trợ? Liên hệ <strong>1900-xxxx</strong> hoặc{' '}
+        <a href="mailto:support@vexeviet.com">support@vexeviet.com</a>
+      </p>
     </div>
   );
 }
@@ -242,8 +219,8 @@ export default function PaymentResultPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent" />
+        <div className="booking-page-loading" role="status" aria-live="polite">
+          <p>Đang đọc kết quả thanh toán…</p>
         </div>
       }
     >

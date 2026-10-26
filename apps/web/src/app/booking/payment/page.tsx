@@ -11,6 +11,7 @@ import { useAppSelector, useAppDispatch } from '@/lib/hooks/redux';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
 import { selectBooking, setBookingId, clearHoldInfo, resetBooking } from '@/store/slices/bookingSlice';
 import type { PassengerInfo } from '@/components/features/booking/PassengerInfoForm';
+import { AlertCircle, Ticket } from 'lucide-react';
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -70,16 +71,22 @@ export default function PaymentPage() {
   // Validate booking state
   if (!booking.currentRoute || booking.selectedSeats.length === 0) {
     return (
-      <div className="container mx-auto flex min-h-[400px] items-center justify-center px-4 py-8">
-        <div className="text-center">
-          <h1 className="mb-4 text-2xl font-bold">Không có thông tin đặt vé</h1>
-          <p className="mb-6 text-muted-foreground">Vui lòng chọn chỗ trước khi thanh toán.</p>
-          <button
-            onClick={() => router.push('/search')}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 transition-colors"
-          >
-            Quay lại tìm kiếm
-          </button>
+      <div className="booking-state-page">
+        <div className="booking-state-card">
+          <span className="booking-state-icon" aria-hidden="true">
+            <Ticket size={24} />
+          </span>
+          <h1 className="booking-state-title">Chưa có thông tin đặt vé</h1>
+          <p className="booking-state-text">Vui lòng chọn ghế trước khi thanh toán.</p>
+          <div className="booking-state-actions">
+            <button
+              type="button"
+              onClick={() => router.push('/search')}
+              className="booking-action booking-action--inline"
+            >
+              Quay lại tìm kiếm
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -168,13 +175,27 @@ export default function PaymentPage() {
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-            ⚠️ {error}
+      <div className="booking-container">
+        <div className="booking-panel-head">
+          <div>
+            <h1 className="booking-title">Thanh toán</h1>
+            <p className="booking-subtitle">
+              Kiểm tra thông tin chuyến đi và chọn phương thức thanh toán.
+            </p>
           </div>
-        )}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        </div>
+
+        {error ? (
+          <div className="booking-inline-alert" role="alert">
+            <AlertCircle size={18} aria-hidden="true" />
+            <div>
+              <strong>Không thể xử lý thanh toán</strong>
+              <p>{error}</p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="booking-panel booking-panel--paper">
           <PaymentForm
             bookingId={booking.bookingId || holdId || ''}
             expiresAt={expiresAt || undefined}

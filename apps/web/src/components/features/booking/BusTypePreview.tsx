@@ -7,22 +7,6 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { 
-  Bed, 
-  Armchair, 
-  Sparkles, 
-  Crown, 
-  Star, 
-  Wifi, 
-  Tv, 
-  Usb, 
-  Coffee,
-  Plug,
-  Lamp,
-  Snowflake,
-  RotateCcw,
-  Users
-} from 'lucide-react';
 
 export type BusType = 'STANDARD' | 'VIP' | 'LIMOUSINE' | 'SLEEPER';
 
@@ -32,110 +16,102 @@ interface BusTypePreviewProps {
   className?: string;
 }
 
+type SeatPreviewKind = 'sleeper' | 'cabin' | 'limousine' | 'vip' | 'standard';
+
 type BusTypeConfig = {
   name: string;
   description: string;
-  icon: React.ElementType;
-  color: string;
-  bgGradient: string;
-  borderColor: string;
-  amenities: { icon: React.ElementType; label: string }[];
-  seatPreview: 'sleeper' | 'cabin' | 'limousine' | 'vip' | 'standard';
+  amenities: string[];
+  seatPreview: SeatPreviewKind;
 };
 
-// Configuration for each bus type
 const BUS_TYPE_CONFIG: Record<string, BusTypeConfig> = {
-  'SLEEPER': {
-    name: 'Xe Giường Nằm',
-    description: '2 tầng, giường nằm thoải mái',
-    icon: Bed,
-    color: 'text-blue-600',
-    bgGradient: 'from-blue-50 to-indigo-50',
-    borderColor: 'border-blue-200',
-    amenities: [
-      { icon: Bed, label: 'Giường nằm' },
-      { icon: Snowflake, label: 'Điều hòa' },
-      { icon: Wifi, label: 'Wifi' },
-    ],
+  SLEEPER: {
+    name: 'Xe giường nằm',
+    description: 'Hai tầng, giường nằm thoải mái',
+    amenities: ['Giường nằm', 'Điều hòa', 'Wifi'],
     seatPreview: 'sleeper',
   },
-  'LIMOUSINE': {
+  LIMOUSINE: {
     name: 'Limousine',
     description: 'Ghế massage cao cấp, không gian riêng tư',
-    icon: Crown,
-    color: 'text-purple-600',
-    bgGradient: 'from-purple-50 to-indigo-50',
-    borderColor: 'border-purple-200',
-    amenities: [
-      { icon: Tv, label: 'Màn hình' },
-      { icon: Wifi, label: 'Wifi' },
-      { icon: Coffee, label: 'Nước uống' },
-      { icon: Usb, label: 'USB sạc' },
-    ],
+    amenities: ['Màn hình', 'Wifi', 'Nước uống', 'USB sạc'],
     seatPreview: 'limousine',
   },
-  'VIP': {
-    name: 'Ghế Ngồi VIP',
+  VIP: {
+    name: 'Ghế ngồi VIP',
     description: 'Ghế rộng, có thể ngả',
-    icon: Star,
-    color: 'text-amber-600',
-    bgGradient: 'from-amber-50 to-yellow-50',
-    borderColor: 'border-amber-200',
-    amenities: [
-      { icon: Snowflake, label: 'Điều hòa' },
-      { icon: Wifi, label: 'Wifi' },
-      { icon: RotateCcw, label: 'Ngả ghế' },
-    ],
+    amenities: ['Điều hòa', 'Wifi', 'Ngả ghế'],
     seatPreview: 'vip',
   },
-  'STANDARD': {
-    name: 'Xe Ghế Ngồi',
+  STANDARD: {
+    name: 'Xe ghế ngồi',
     description: 'Tiêu chuẩn, giá phải chăng',
-    icon: Armchair,
-    color: 'text-green-600',
-    bgGradient: 'from-green-50 to-emerald-50',
-    borderColor: 'border-green-200',
-    amenities: [
-      { icon: Snowflake, label: 'Điều hòa' },
-      { icon: Wifi, label: 'Wifi' },
-    ],
+    amenities: ['Điều hòa', 'Wifi'],
     seatPreview: 'standard',
   },
 };
 
-// Mini seat preview components
+const DEFAULT_BUS_TYPE_CONFIG: BusTypeConfig = {
+  name: 'Xe ghế ngồi',
+  description: 'Tiêu chuẩn, giá phải chăng',
+  amenities: ['Điều hòa', 'Wifi'],
+  seatPreview: 'standard',
+};
+
+function MiniSeat({
+  variant,
+  status = 'available',
+}: {
+  variant: SeatPreviewKind;
+  status?: 'available' | 'booked';
+}) {
+  return (
+    <span
+      className={cn(
+        'booking-preview-seat',
+        `booking-preview-seat--${variant}`,
+        status === 'booked' && 'is-booked'
+      )}
+    />
+  );
+}
+
+function PreviewRow({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <div className="booking-preview-row">{children}</div>;
+}
+
 function SleeperPreview() {
   return (
-    <div className="flex flex-col gap-1">
-      <div className="text-[10px] text-slate-400 mb-1">Tầng trên</div>
-      <div className="flex gap-1">
+    <div className="booking-preview-floor">
+      <p className="booking-preview-floor-label">Tầng trên</p>
+      <PreviewRow>
         <MiniSeat variant="sleeper" />
-        <div className="w-2" />
         <MiniSeat variant="sleeper" />
-        <div className="w-2" />
         <MiniSeat variant="sleeper" />
-      </div>
-      <div className="text-[10px] text-slate-400 mt-2 mb-1">Tầng dưới</div>
-      <div className="flex gap-1">
+      </PreviewRow>
+      <p className="booking-preview-floor-label">Tầng dưới</p>
+      <PreviewRow>
         <MiniSeat variant="sleeper" />
-        <div className="w-2" />
         <MiniSeat variant="sleeper" status="booked" />
-        <div className="w-2" />
         <MiniSeat variant="sleeper" />
-      </div>
+      </PreviewRow>
     </div>
   );
 }
 
 function LimousinePreview() {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="booking-preview-floor">
       {[1, 2, 3].map((row) => (
-        <div key={row} className="flex gap-1 justify-center">
+        <PreviewRow key={row}>
           <MiniSeat variant="limousine" status={row === 2 ? 'booked' : 'available'} />
-          <div className="w-4" />
           <MiniSeat variant="limousine" />
-        </div>
+        </PreviewRow>
       ))}
     </div>
   );
@@ -143,15 +119,14 @@ function LimousinePreview() {
 
 function VIPPreview() {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="booking-preview-floor">
       {[1, 2].map((row) => (
-        <div key={row} className="flex gap-1 justify-center">
+        <PreviewRow key={row}>
           <MiniSeat variant="vip" />
           <MiniSeat variant="vip" status={row === 1 ? 'booked' : 'available'} />
-          <div className="w-3" />
           <MiniSeat variant="vip" />
           <MiniSeat variant="vip" />
-        </div>
+        </PreviewRow>
       ))}
     </div>
   );
@@ -159,15 +134,14 @@ function VIPPreview() {
 
 function StandardPreview() {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="booking-preview-floor">
       {[1, 2, 3].map((row) => (
-        <div key={row} className="flex gap-1 justify-center">
+        <PreviewRow key={row}>
           <MiniSeat variant="standard" />
           <MiniSeat variant="standard" status={row === 2 ? 'booked' : 'available'} />
-          <div className="w-2" />
           <MiniSeat variant="standard" />
           <MiniSeat variant="standard" />
-        </div>
+        </PreviewRow>
       ))}
     </div>
   );
@@ -175,54 +149,18 @@ function StandardPreview() {
 
 function CabinPreview() {
   return (
-    <div className="flex flex-col gap-1">
+    <div className="booking-preview-floor">
       {[1, 2].map((row) => (
-        <div key={row} className="flex gap-1 justify-center">
+        <PreviewRow key={row}>
           <MiniSeat variant="cabin" />
-          <div className="w-3" />
           <MiniSeat variant="cabin" status={row === 1 ? 'booked' : 'available'} />
-        </div>
+        </PreviewRow>
       ))}
     </div>
   );
 }
 
-function MiniSeat({ 
-  variant, 
-  status = 'available' 
-}: { 
-  variant: 'sleeper' | 'cabin' | 'limousine' | 'vip' | 'standard';
-  status?: 'available' | 'booked';
-}) {
-  const sizeClasses = {
-    sleeper: 'w-6 h-8',
-    cabin: 'w-7 h-9',
-    limousine: 'w-6 h-7',
-    vip: 'w-5 h-6',
-    standard: 'w-4 h-5',
-  };
-
-  const colorClasses = {
-    sleeper: status === 'booked' ? 'bg-slate-300' : 'bg-blue-100 border-blue-300',
-    cabin: status === 'booked' ? 'bg-slate-300' : 'bg-purple-100 border-purple-300',
-    limousine: status === 'booked' ? 'bg-slate-300' : 'bg-emerald-100 border-emerald-300',
-    vip: status === 'booked' ? 'bg-slate-300' : 'bg-amber-100 border-amber-300',
-    standard: status === 'booked' ? 'bg-slate-300' : 'bg-green-100 border-green-300',
-  };
-
-  return (
-    <div 
-      className={cn(
-        'rounded border',
-        sizeClasses[variant],
-        colorClasses[variant],
-        status === 'booked' && 'opacity-50'
-      )} 
-    />
-  );
-}
-
-const PREVIEW_COMPONENTS: Record<BusTypeConfig['seatPreview'], React.ComponentType> = {
+const PREVIEW_COMPONENTS: Record<SeatPreviewKind, React.ComponentType> = {
   sleeper: SleeperPreview,
   cabin: CabinPreview,
   limousine: LimousinePreview,
@@ -230,146 +168,60 @@ const PREVIEW_COMPONENTS: Record<BusTypeConfig['seatPreview'], React.ComponentTy
   standard: StandardPreview,
 };
 
-const DEFAULT_BUS_TYPE_CONFIG: BusTypeConfig = {
-  name: 'Xe Ghế Ngồi',
-  description: 'Tiêu chuẩn, giá phải chăng',
-  icon: Armchair,
-  color: 'text-green-600',
-  bgGradient: 'from-green-50 to-emerald-50',
-  borderColor: 'border-green-200',
-  amenities: [
-    { icon: Snowflake, label: 'Điều hòa' },
-    { icon: Wifi, label: 'Wifi' },
-  ],
-  seatPreview: 'standard',
-};
-
 export function BusTypePreview({ busType, totalSeats, className }: BusTypePreviewProps) {
   const type = busType.toUpperCase();
   const config = BUS_TYPE_CONFIG[type] ?? DEFAULT_BUS_TYPE_CONFIG;
-  const Icon = config.icon;
   const PreviewComponent = PREVIEW_COMPONENTS[config.seatPreview];
 
   return (
-    <div className={cn(
-      'bg-white rounded-2xl shadow-md border-2 overflow-hidden',
-      config.borderColor,
-      className
-    )}>
-      {/* Header */}
-      <div className={cn(
-        'px-6 py-4 bg-gradient-to-r',
-        config.bgGradient
-      )}>
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            'w-12 h-12 rounded-xl flex items-center justify-center shadow-md',
-            config.color,
-            'bg-white'
-          )}>
-            <Icon className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-800">{config.name}</h3>
-            <p className="text-sm text-slate-600">{config.description}</p>
-          </div>
+    <section className={cn('booking-bus-preview', className)}>
+      <div className="booking-bus-preview-head">
+        <div>
+          <h3 className="booking-bus-name">{config.name}</h3>
+          <p className="booking-bus-meta">{config.description}</p>
         </div>
+        {totalSeats ? (
+          <p className="booking-bus-seat-count">
+            {totalSeats} chỗ
+          </p>
+        ) : null}
       </div>
 
-      {/* Content */}
-      <div className="p-6">
-        <div className="flex gap-6">
-          {/* Seat preview */}
-          <div className="flex-1">
-            <div className="text-xs text-slate-500 font-medium mb-3 uppercase tracking-wide">
-              Sơ đồ xe
-            </div>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <PreviewComponent />
-            </div>
+      <div className="booking-bus-preview-body">
+        <div>
+          <p className="booking-preview-label">Sơ đồ xe</p>
+          <div className="booking-bus-frame" aria-hidden="true">
+            <PreviewComponent />
           </div>
-
-          {/* Info */}
-          <div className="flex-1">
-            {totalSeats && (
-              <div className="mb-4">
-                <div className="text-xs text-slate-500 font-medium mb-1 uppercase tracking-wide">
-                  Số chỗ
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-slate-400" />
-                  <span className="text-2xl font-bold text-slate-800">{totalSeats}</span>
-                  <span className="text-slate-500">chỗ</span>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="text-xs text-slate-500 font-medium mb-2 uppercase tracking-wide">
-                Tiện nghi
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {config.amenities.map((amenity, idx) => {
-                  const AmenityIcon = amenity.icon;
-                  return (
-                    <div 
-                      key={idx}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium',
-                        'bg-gradient-to-r',
-                        config.bgGradient,
-                        config.color
-                      )}
-                    >
-                      <AmenityIcon className="w-3.5 h-3.5" />
-                      {amenity.label}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <p className="booking-preview-caption">Sơ đồ minh họa cho cách bố trí ghế.</p>
         </div>
 
-        {/* Legend */}
-        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-4 text-xs text-slate-500">
-          <div className="flex items-center gap-1.5">
-            <div className={cn('w-4 h-4 rounded border', 
-              type === 'SLEEPER' ? 'bg-blue-100 border-blue-300' :
-              type === 'LIMOUSINE' ? 'bg-emerald-100 border-emerald-300' :
-              type === 'VIP' ? 'bg-amber-100 border-amber-300' :
-              'bg-green-100 border-green-300'
-            )} />
-            <span>Còn trống</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-4 rounded border bg-slate-300 opacity-50" />
-            <span>Đã đặt</span>
-          </div>
+        <div>
+          <p className="booking-preview-label">Tiện nghi</p>
+          <ul className="booking-bus-amenities">
+            {config.amenities.map((amenity) => (
+              <li key={amenity}>{amenity}</li>
+            ))}
+          </ul>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-// Compact version for cards/lists
-export function BusTypeBadge({ busType, className }: { busType: BusType | string; className?: string }) {
+export function BusTypeBadge({
+  busType,
+  className,
+}: {
+  busType: BusType | string;
+  className?: string;
+}) {
   const type = busType.toUpperCase();
   const config = BUS_TYPE_CONFIG[type] ?? DEFAULT_BUS_TYPE_CONFIG;
-  const Icon = config.icon;
 
   return (
-    <div className={cn(
-      'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold',
-      'bg-gradient-to-r',
-      config.bgGradient,
-      config.color,
-      'border',
-      config.borderColor,
-      className
-    )}>
-      <Icon className="w-4 h-4" />
+    <span className={cn('booking-bus-badge', className)}>
       {config.name}
-    </div>
+    </span>
   );
 }

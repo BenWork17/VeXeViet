@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Bed, Armchair, Sofa } from 'lucide-react';
 import type { SeatDetail } from '@vexeviet/types';
 
 interface SeatButtonProps {
@@ -15,15 +14,16 @@ interface SeatButtonProps {
 }
 
 const sizeClasses = {
-  sm: 'w-12 h-14',
-  md: 'w-16 h-20',
-  lg: 'w-20 h-24',
+  sm: 'booking-seat--sm',
+  md: 'booking-seat--md',
+  lg: 'booking-seat--lg',
 };
 
-const iconSizes = {
-  sm: 'w-4 h-4',
-  md: 'w-5 h-5',
-  lg: 'w-6 h-6',
+const stateLabels = {
+  available: 'còn trống',
+  booked: 'đã đặt',
+  held: 'đang giữ',
+  selected: 'đang chọn',
 };
 
 export function SeatButton({
@@ -36,56 +36,41 @@ export function SeatButton({
 }: SeatButtonProps) {
   // Empty slot
   if (!seat) {
-    return <div className={cn(sizeClasses[size])} />;
+    return <div className={cn(sizeClasses[size])} aria-hidden="true" />;
   }
 
   const isBooked = seat.status !== 'AVAILABLE' && seat.status !== 'HELD';
   const isHeld = seat.status === 'HELD';
   const isAvailable = seat.status === 'AVAILABLE' && seat.isSelectable;
 
-  const statusClasses = {
-    available: 'bg-white border-slate-200 text-slate-700 hover:border-blue-400 hover:bg-blue-50 cursor-pointer',
-    booked: 'bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed opacity-60 grayscale',
-    held: 'bg-amber-100 border-amber-200 text-amber-600 cursor-not-allowed opacity-80',
-    selected: 'bg-blue-600 border-blue-700 text-white shadow-lg shadow-blue-200 scale-105 z-10',
-  };
+  let state: keyof typeof stateLabels = 'available';
+  if (isSelected) state = 'selected';
+  else if (isBooked) state = 'booked';
+  else if (isHeld) state = 'held';
 
-  const variantClasses = {
-    sleeper: 'rounded-lg',
-    cabin: 'rounded-xl bg-gradient-to-b from-amber-50 to-amber-100',
-    seat: 'rounded-lg',
-    vip: 'rounded-xl border-amber-400 bg-gradient-to-b from-amber-50 to-white',
-  };
-
-  let status: keyof typeof statusClasses = 'available';
-  if (isSelected) status = 'selected';
-  else if (isBooked) status = 'booked';
-  else if (isHeld) status = 'held';
-
-  const Icon = variant === 'sleeper' || variant === 'cabin' ? Bed : variant === 'vip' ? Sofa : Armchair;
+  const isPremium = variant === 'vip' || variant === 'cabin';
 
   return (
     <button
+      type="button"
       onClick={() => isAvailable && onSelect(seat.id)}
       disabled={!isAvailable && !isSelected}
+      aria-pressed={isSelected}
+      aria-label={`${seat.seatLabel}, ${stateLabels[state]}, ${seat.finalPrice.toLocaleString('vi-VN')} đồng`}
       className={cn(
-        'relative border-2 transition-all duration-200 flex flex-col items-center justify-center gap-0.5',
+        'booking-seat',
         sizeClasses[size],
-        statusClasses[status],
-        variantClasses[variant],
-        isSelected && 'ring-2 ring-blue-300 ring-offset-1'
+        isPremium && 'booking-seat--vip',
+        state === 'selected' && 'is-selected',
+        state === 'booked' && 'is-booked',
+        state === 'held' && 'is-held'
       )}
-      aria-label={`${seat.seatLabel}, ${seat.status}, ${seat.finalPrice.toLocaleString('vi-VN')}đ`}
     >
-      <Icon className={cn(iconSizes[size], isBooked && 'opacity-40')} />
-      <span className={cn('text-[10px] leading-none font-black', isSelected ? 'text-white' : 'text-slate-700')}>
-        {seat.seatLabel}
-      </span>
-      {showPrice && (
-        <span className={cn('text-[8px] leading-none', isSelected ? 'text-white/90' : 'text-slate-500')}>
-          {(seat.finalPrice / 1000).toFixed(0)}k
-        </span>
-      )}
+      <span className="booking-seat-label">{seat.seatLabel}</span>
+      {showPrice ? (
+        <span className="booking-seat-price">{(seat.finalPrice / 1000).toFixed(0)}k</span>
+      ) : null}
+      {state === 'held' ? <span className="booking-seat-note">Đang giữ</span> : null}
     </button>
   );
 }
@@ -93,9 +78,7 @@ export function SeatButton({
 // Aisle component for visual separation
 export function Aisle({ height = 'h-16' }: { height?: string }) {
   return (
-    <div className={cn('w-8 flex items-center justify-center', height)}>
-      <div className="h-full w-1.5 bg-slate-200/50 rounded-full" />
-    </div>
+    <div className={cn('booking-bus-aisle', height)} aria-hidden="true" />
   );
 }
 
@@ -110,18 +93,16 @@ export function FloorLabel({
   avgPrice?: number;
 }) {
   return (
-    <div className="flex items-center justify-between mb-3">
-      <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-        <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center">
+    <div className="booking-floor-head">
+      <span>
+        <span className="booking-floor-index" aria-hidden="true">
           {floorNumber}
         </span>
         {label}
-      </h3>
-      {avgPrice && (
-        <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-          ~{avgPrice.toLocaleString('vi-VN')}đ
-        </span>
-      )}
+      </span>
+      {avgPrice ? (
+        <span className="booking-floor-price">~{avgPrice.toLocaleString('vi-VN')}đ</span>
+      ) : null}
     </div>
   );
 }
@@ -137,26 +118,20 @@ export function BusFrame({
   showEntrance?: boolean;
 }) {
   return (
-    <div className="bg-slate-100 rounded-2xl p-4 border-2 border-slate-300">
-      {/* Driver area */}
-      {showDriver && (
-        <div className="flex justify-between items-center mb-4 px-2">
-          <div className="w-10 h-10 rounded-full border-4 border-slate-400 flex items-center justify-center relative">
-            <div className="w-6 h-0.5 bg-slate-400 rotate-45 absolute" />
-            <div className="w-6 h-0.5 bg-slate-400 -rotate-45 absolute" />
-          </div>
-          {showEntrance && (
-            <div className="px-3 py-1 bg-slate-300 rounded-full text-[10px] font-bold text-slate-600 uppercase tracking-tight">
-              Lối vào
-            </div>
-          )}
+    <div className="booking-bus-frame">
+      {showDriver ? (
+        <div className="booking-bus-cab">
+          <span className="booking-bus-driver">
+            <span className="booking-bus-wheel" aria-hidden="true" />
+            Đầu xe
+          </span>
+          {showEntrance ? <span className="booking-bus-entrance">Lối vào</span> : null}
         </div>
-      )}
+      ) : null}
 
       {children}
 
-      {/* Bottom of bus */}
-      <div className="mt-4 h-1.5 bg-slate-300 rounded-full opacity-50" />
+      <div className="booking-bus-footer" aria-hidden="true" />
     </div>
   );
 }

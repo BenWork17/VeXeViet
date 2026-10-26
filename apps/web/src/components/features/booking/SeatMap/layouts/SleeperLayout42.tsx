@@ -8,7 +8,6 @@
  */
 
 import React from 'react';
-import { cn } from '@/lib/utils';
 import type { LayoutProps } from './types';
 import { SeatButton, Aisle, FloorLabel, BusFrame } from './SeatButton';
 
@@ -42,7 +41,7 @@ export function SleeperLayout42({
       : 0;
 
     return (
-      <div key={floorNumber} className="mb-6">
+      <div key={floorNumber} className="booking-bus-floor">
         <FloorLabel
           floorNumber={floorNumber}
           label={floorLabel}
@@ -50,10 +49,9 @@ export function SleeperLayout42({
         />
 
         <BusFrame showDriver={floorNumber === 1} showEntrance={floorNumber === 1}>
-          {/* Rows */}
-          <div className="space-y-3">
+          <div className="booking-bus-rows">
             {Array.from({ length: rowsPerFloor }, (_, i) => i + 1).map((row) => (
-              <div key={row} className="flex items-center justify-between gap-1">
+              <div key={row} className="booking-bus-row">
                 {columns.map((col, colIndex) => {
                   if (col === '_') {
                     return <Aisle key={`aisle-${colIndex}`} height="h-20" />;
@@ -83,48 +81,22 @@ export function SleeperLayout42({
   };
 
   return (
-    <div className="max-w-md mx-auto">
-      {/* Header */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-        <h2 className="text-lg font-bold text-slate-800 mb-1">
-          {busTemplate.name}
-        </h2>
-        <p className="text-sm text-slate-600">
-          {busTemplate.totalSeats} giường · {floors} tầng · {rowsPerFloor} hàng/tầng
+    <div className="booking-bus">
+      <div className="booking-bus-head">
+        <h2 className="booking-bus-name">{busTemplate.name}</h2>
+        <p className="booking-bus-meta">
+          {busTemplate.totalSeats} giường · {floors} tầng · {rowsPerFloor} hàng mỗi tầng
         </p>
+        <ul className="booking-bus-amenities">
+          <li>Giường nằm</li>
+          <li>Điều hòa</li>
+          <li>Wifi</li>
+        </ul>
       </div>
 
-      {/* Floors */}
       {Array.from({ length: floors }, (_, i) => i + 1).map((floor) =>
         renderFloor(floor)
       )}
-
-      {/* Legend */}
-      <SeatLegend variant="sleeper" />
-    </div>
-  );
-}
-
-// Shared legend component
-function SeatLegend({ variant }: { variant: 'sleeper' | 'seat' | 'cabin' }) {
-  return (
-    <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs">
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-8 bg-white border-2 border-slate-200 rounded" />
-        <span className="text-slate-600">Còn trống</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-8 bg-slate-200 border-2 border-slate-300 rounded opacity-60" />
-        <span className="text-slate-600">Đã đặt</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-8 bg-amber-100 border-2 border-amber-200 rounded" />
-        <span className="text-slate-600">Đang giữ</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="w-6 h-8 bg-blue-600 border-2 border-blue-700 rounded" />
-        <span className="text-slate-600">Đang chọn</span>
-      </div>
     </div>
   );
 }

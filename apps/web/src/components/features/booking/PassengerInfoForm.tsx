@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAppSelector } from '@/lib/hooks/redux';
 import { cn } from '@/lib/utils';
 import { Input } from '@vexeviet/ui';
-import { User, Phone, Mail, AlertCircle, CheckCircle2, Armchair, IdCard, Calendar } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 export interface PassengerData {
   firstName: string;
@@ -31,11 +31,11 @@ interface PassengerInfoFormProps {
 
 type ContactField = 'fullName' | 'phone' | 'email' | 'acceptTerms';
 
-export function PassengerInfoForm({ 
-  initialData, 
-  onSubmit, 
+export function PassengerInfoForm({
+  initialData,
+  onSubmit,
   isSubmitting = false,
-  className 
+  className,
 }: PassengerInfoFormProps) {
   const booking = useAppSelector((state) => state.booking);
   const seatLabels = booking.heldSeats.length > 0 ? booking.heldSeats : booking.selectedSeats;
@@ -173,247 +173,252 @@ export function PassengerInfoForm({
     });
   };
 
+  const fullNameError = errors.fullName && touched.fullName ? errors.fullName : '';
+  const phoneError = errors.phone && touched.phone ? errors.phone : '';
+  const emailError = errors.email && touched.email ? errors.email : '';
+  const termsError = errors.acceptTerms && touched.acceptTerms ? errors.acceptTerms : '';
+
   return (
-    <form onSubmit={handleSubmit} className={cn('space-y-6', className)}>
-      {/* Contact Info Section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <Mail className="w-5 h-5 text-blue-500" />
-          Thông tin liên hệ
-        </h3>
-
-        {/* Full Name */}
+    <form onSubmit={handleSubmit} className={cn('booking-form', className)} noValidate>
+      <section className="booking-form-section" aria-labelledby="contact-info-title">
         <div>
-          <label htmlFor="fullName" className="block text-sm font-bold text-slate-900 mb-2">
-            Họ và tên <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <User className="w-5 h-5" />
-            </div>
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="Nguyễn Văn A"
-              value={contactData.fullName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('fullName', e.target.value)}
-              onBlur={() => handleContactBlur('fullName')}
-              disabled={isSubmitting}
-              className={cn('pl-12 h-14 text-base', errors.fullName && touched.fullName && 'border-red-500')}
-            />
-          </div>
-          {errors.fullName && touched.fullName && (
-            <p className="mt-2 text-sm text-red-600 flex items-center gap-2"><AlertCircle className="w-4 h-4" />{errors.fullName}</p>
-          )}
+          <h3 id="contact-info-title" className="booking-section-title">
+            Thông tin liên hệ
+          </h3>
         </div>
 
-        {/* Phone */}
-        <div>
-          <label htmlFor="phone" className="block text-sm font-bold text-slate-900 mb-2">
-            Số điện thoại <span className="text-red-500">*</span>
+        <div className="booking-field">
+          <label htmlFor="contact-full-name" className="booking-field-label">
+            Họ và tên <span aria-hidden="true">*</span>
           </label>
-          <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <Phone className="w-5 h-5" />
-            </div>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="0912345678"
-              value={contactData.phone}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('phone', e.target.value)}
-              onBlur={() => handleContactBlur('phone')}
-              disabled={isSubmitting}
-              className={cn('pl-12 h-14 text-base', errors.phone && touched.phone && 'border-red-500')}
-            />
-          </div>
-          {errors.phone && touched.phone && (
-            <p className="mt-2 text-sm text-red-600 flex items-center gap-2"><AlertCircle className="w-4 h-4" />{errors.phone}</p>
-          )}
+          <Input
+            id="contact-full-name"
+            type="text"
+            placeholder="Nguyễn Văn A"
+            value={contactData.fullName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('fullName', e.target.value)}
+            onBlur={() => handleContactBlur('fullName')}
+            disabled={isSubmitting}
+            aria-invalid={Boolean(fullNameError)}
+            aria-describedby={fullNameError ? 'contact-full-name-error' : undefined}
+            className={cn('booking-input', fullNameError && 'booking-input--invalid')}
+          />
+          {fullNameError ? (
+            <p id="contact-full-name-error" className="booking-field-error">
+              <AlertCircle size={14} aria-hidden="true" />
+              {fullNameError}
+            </p>
+          ) : null}
         </div>
 
-        {/* Email */}
-        <div>
-          <label htmlFor="email" className="block text-sm font-bold text-slate-900 mb-2">
-            Email <span className="text-red-500">*</span>
+        <div className="booking-field">
+          <label htmlFor="contact-phone" className="booking-field-label">
+            Số điện thoại <span aria-hidden="true">*</span>
           </label>
-          <div className="relative">
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-              <Mail className="w-5 h-5" />
-            </div>
-            <Input
-              id="email"
-              type="email"
-              placeholder="example@email.com"
-              value={contactData.email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('email', e.target.value)}
-              onBlur={() => handleContactBlur('email')}
-              disabled={isSubmitting}
-              className={cn('pl-12 h-14 text-base', errors.email && touched.email && 'border-red-500')}
-            />
-          </div>
-          {errors.email && touched.email && (
-            <p className="mt-2 text-sm text-red-600 flex items-center gap-2"><AlertCircle className="w-4 h-4" />{errors.email}</p>
-          )}
-          <p className="mt-2 text-xs text-slate-500">Vé điện tử sẽ được gửi đến email này</p>
+          <Input
+            id="contact-phone"
+            type="tel"
+            placeholder="0912345678"
+            value={contactData.phone}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('phone', e.target.value)}
+            onBlur={() => handleContactBlur('phone')}
+            disabled={isSubmitting}
+            aria-invalid={Boolean(phoneError)}
+            aria-describedby={phoneError ? 'contact-phone-error' : undefined}
+            className={cn('booking-input', phoneError && 'booking-input--invalid')}
+          />
+          {phoneError ? (
+            <p id="contact-phone-error" className="booking-field-error">
+              <AlertCircle size={14} aria-hidden="true" />
+              {phoneError}
+            </p>
+          ) : null}
         </div>
-      </div>
 
-      {/* Passenger Info Section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <User className="w-5 h-5 text-blue-500" />
-          Thông tin hành khách ({passengers.length} người)
-        </h3>
-        <p className="text-sm text-slate-500">
-          Vui lòng nhập thông tin cho mỗi hành khách. Họ tên phải khớp với giấy tờ tùy thân.
-        </p>
+        <div className="booking-field">
+          <label htmlFor="contact-email" className="booking-field-label">
+            Email <span aria-hidden="true">*</span>
+          </label>
+          <Input
+            id="contact-email"
+            type="email"
+            placeholder="example@email.com"
+            value={contactData.email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('email', e.target.value)}
+            onBlur={() => handleContactBlur('email')}
+            disabled={isSubmitting}
+            aria-invalid={Boolean(emailError)}
+            aria-describedby={
+              emailError ? 'contact-email-error contact-email-hint' : 'contact-email-hint'
+            }
+            className={cn('booking-input', emailError && 'booking-input--invalid')}
+          />
+          {emailError ? (
+            <p id="contact-email-error" className="booking-field-error">
+              <AlertCircle size={14} aria-hidden="true" />
+              {emailError}
+            </p>
+          ) : null}
+          <p id="contact-email-hint" className="booking-field-hint">
+            Vé điện tử sẽ được gửi đến email này.
+          </p>
+        </div>
+      </section>
 
-        {passengers.map((passenger, index) => (
-          <div key={passenger.seatNumber} className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Armchair className="w-4 h-4 text-blue-500" />
-              <span className="text-sm font-bold text-slate-900">
-                Hành khách {index + 1} — Ghế {passenger.seatNumber}
-              </span>
-            </div>
+      <section className="booking-form-section" aria-labelledby="passenger-info-title">
+        <div>
+          <h3 id="passenger-info-title" className="booking-section-title">
+            Thông tin hành khách ({passengers.length} người)
+          </h3>
+          <p className="booking-section-hint">
+            Vui lòng nhập thông tin cho mỗi hành khách. Họ tên phải khớp với giấy tờ tùy thân.
+          </p>
+        </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Last Name (Họ) */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Họ <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Nguyễn"
-                  value={passenger.lastName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'lastName', e.target.value)}
-                  onBlur={() => handlePassengerBlur(index, 'lastName')}
-                  disabled={isSubmitting}
-                  className={cn('h-12', errors[`passenger_${index}_lastName`] && touched[`passenger_${index}_lastName`] && 'border-red-500')}
-                />
-                {errors[`passenger_${index}_lastName`] && touched[`passenger_${index}_lastName`] && (
-                  <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors[`passenger_${index}_lastName`]}</p>
-                )}
-              </div>
+        {passengers.map((passenger, index) => {
+          const lastNameId = `passenger-${index}-last-name`;
+          const firstNameId = `passenger-${index}-first-name`;
+          const idNumberId = `passenger-${index}-id-number`;
+          const dateOfBirthId = `passenger-${index}-date-of-birth`;
+          const lastNameError =
+            errors[`passenger_${index}_lastName`] && touched[`passenger_${index}_lastName`]
+              ? errors[`passenger_${index}_lastName`]
+              : '';
+          const firstNameError =
+            errors[`passenger_${index}_firstName`] && touched[`passenger_${index}_firstName`]
+              ? errors[`passenger_${index}_firstName`]
+              : '';
 
-              {/* First Name (Tên) */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Tên <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Văn A"
-                  value={passenger.firstName}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'firstName', e.target.value)}
-                  onBlur={() => handlePassengerBlur(index, 'firstName')}
-                  disabled={isSubmitting}
-                  className={cn('h-12', errors[`passenger_${index}_firstName`] && touched[`passenger_${index}_firstName`] && 'border-red-500')}
-                />
-                {errors[`passenger_${index}_firstName`] && touched[`passenger_${index}_firstName`] && (
-                  <p className="mt-1 text-xs text-red-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors[`passenger_${index}_firstName`]}</p>
-                )}
-              </div>
-            </div>
+          return (
+            <div key={passenger.seatNumber} className="booking-passenger-card">
+              <h4 className="booking-passenger-head">
+                Hành khách {index + 1}
+                <span className="booking-passenger-seat">Ghế {passenger.seatNumber}</span>
+              </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* ID Number */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  CMND/CCCD
-                  <span className="text-slate-400 font-normal ml-1">(tùy chọn)</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <IdCard className="w-4 h-4" />
-                  </div>
+              <div className="booking-form-section">
+                <div className="booking-field">
+                  <label htmlFor={lastNameId} className="booking-field-label">
+                    Họ <span aria-hidden="true">*</span>
+                  </label>
                   <Input
+                    id={lastNameId}
+                    type="text"
+                    placeholder="Nguyễn"
+                    value={passenger.lastName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'lastName', e.target.value)}
+                    onBlur={() => handlePassengerBlur(index, 'lastName')}
+                    disabled={isSubmitting}
+                    aria-invalid={Boolean(lastNameError)}
+                    aria-describedby={lastNameError ? `${lastNameId}-error` : undefined}
+                    className={cn('booking-input', lastNameError && 'booking-input--invalid')}
+                  />
+                  {lastNameError ? (
+                    <p id={`${lastNameId}-error`} className="booking-field-error">
+                      <AlertCircle size={14} aria-hidden="true" />
+                      {lastNameError}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="booking-field">
+                  <label htmlFor={firstNameId} className="booking-field-label">
+                    Tên <span aria-hidden="true">*</span>
+                  </label>
+                  <Input
+                    id={firstNameId}
+                    type="text"
+                    placeholder="Văn A"
+                    value={passenger.firstName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'firstName', e.target.value)}
+                    onBlur={() => handlePassengerBlur(index, 'firstName')}
+                    disabled={isSubmitting}
+                    aria-invalid={Boolean(firstNameError)}
+                    aria-describedby={firstNameError ? `${firstNameId}-error` : undefined}
+                    className={cn('booking-input', firstNameError && 'booking-input--invalid')}
+                  />
+                  {firstNameError ? (
+                    <p id={`${firstNameId}-error`} className="booking-field-error">
+                      <AlertCircle size={14} aria-hidden="true" />
+                      {firstNameError}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="booking-form-section">
+                <div className="booking-field">
+                  <label htmlFor={idNumberId} className="booking-field-label">
+                    CMND/CCCD <span>(tùy chọn)</span>
+                  </label>
+                  <Input
+                    id={idNumberId}
                     type="text"
                     placeholder="079123456789"
                     value={passenger.idNumber || ''}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'idNumber', e.target.value)}
                     disabled={isSubmitting}
-                    className="pl-10 h-12"
+                    className="booking-input"
                   />
                 </div>
-              </div>
 
-              {/* Date of Birth */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1">
-                  Ngày sinh
-                  <span className="text-slate-400 font-normal ml-1">(tùy chọn)</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                    <Calendar className="w-4 h-4" />
-                  </div>
+                <div className="booking-field">
+                  <label htmlFor={dateOfBirthId} className="booking-field-label">
+                    Ngày sinh <span>(tùy chọn)</span>
+                  </label>
                   <Input
+                    id={dateOfBirthId}
                     type="date"
                     value={passenger.dateOfBirth || ''}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'dateOfBirth', e.target.value)}
                     disabled={isSubmitting}
-                    className="pl-10 h-12"
+                    className="booking-input"
                   />
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          );
+        })}
+      </section>
 
-      {/* Terms & Conditions */}
-      <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
-        <label className="flex items-start gap-3 cursor-pointer">
+      <div className="booking-checkbox-row">
+        <label>
           <input
+            id="accept-terms"
             type="checkbox"
             checked={contactData.acceptTerms}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('acceptTerms', e.target.checked)}
             onBlur={() => handleContactBlur('acceptTerms')}
             disabled={isSubmitting}
-            className={cn(
-              'mt-1 w-5 h-5 rounded border-2 text-blue-600 focus:ring-blue-500',
-              errors.acceptTerms && touched.acceptTerms && 'border-red-500'
-            )}
+            aria-invalid={Boolean(termsError)}
+            aria-describedby={termsError ? 'accept-terms-error' : undefined}
           />
-          <div className="flex-1">
-            <p className="text-sm text-slate-700 leading-relaxed">
-              Tôi đã đọc và đồng ý với{' '}
-              <a href="/terms" target="_blank" className="text-blue-600 font-semibold hover:underline">điều khoản sử dụng</a>
-              {' '}và{' '}
-              <a href="/privacy" target="_blank" className="text-blue-600 font-semibold hover:underline">chính sách bảo mật</a>
-              {' '}của VeXeViet
-            </p>
-          </div>
+          <p>
+            Tôi đã đọc và đồng ý với{' '}
+            <a href="/terms" target="_blank" rel="noreferrer">điều khoản sử dụng</a>
+            {' '}và{' '}
+            <a href="/privacy" target="_blank" rel="noreferrer">chính sách bảo mật</a>
+            {' '}của VeXeViet
+          </p>
         </label>
-        {errors.acceptTerms && touched.acceptTerms && (
-          <p className="mt-2 text-sm text-red-600 flex items-center gap-2"><AlertCircle className="w-4 h-4" />{errors.acceptTerms}</p>
-        )}
+        {termsError ? (
+          <p id="accept-terms-error" className="booking-field-error">
+            <AlertCircle size={14} aria-hidden="true" />
+            {termsError}
+          </p>
+        ) : null}
       </div>
 
-      {/* Submit Button */}
       <button
         type="submit"
         disabled={isSubmitting}
-        className={cn(
-          'w-full h-14 rounded-xl font-bold text-lg transition-all',
-          isSubmitting
-            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-            : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/25 active:scale-[0.98]'
-        )}
+        aria-busy={isSubmitting}
+        className="booking-action"
       >
         {isSubmitting ? (
-          <span className="flex items-center justify-center gap-2">
-            <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Đang xử lý...
-          </span>
+          <span className="booking-form-progress">Đang lưu thông tin…</span>
         ) : (
-          <span className="flex items-center justify-center gap-2">
-            Tiếp tục thanh toán
-            <CheckCircle2 className="w-5 h-5" />
-          </span>
+          <span className="booking-form-submit">Tiếp tục thanh toán</span>
         )}
       </button>
     </form>

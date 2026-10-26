@@ -11,6 +11,7 @@ interface CountdownTimerProps {
 
 export function CountdownTimer({ expiresAt, onExpire, className }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [hasExpired, setHasExpired] = useState(false);
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -20,11 +21,11 @@ export function CountdownTimer({ expiresAt, onExpire, className }: CountdownTime
       return Math.max(0, Math.floor(difference / 1000));
     };
 
-    // Initial calculation
     const initialTime = calculateTimeLeft();
     setTimeLeft(initialTime);
 
     if (initialTime <= 0) {
+      setHasExpired(true);
       onExpire?.();
       return;
     }
@@ -35,6 +36,7 @@ export function CountdownTimer({ expiresAt, onExpire, className }: CountdownTime
 
       if (remaining <= 0) {
         clearInterval(timer);
+        setHasExpired(true);
         onExpire?.();
       }
     }, 1000);
@@ -46,17 +48,16 @@ export function CountdownTimer({ expiresAt, onExpire, className }: CountdownTime
   const seconds = timeLeft % 60;
 
   return (
-    <div 
-      className={cn(
-        "flex items-center gap-2 px-4 py-2 rounded-full font-mono font-bold text-lg",
-        timeLeft < 60 ? "bg-red-50 text-red-600 animate-pulse" : "bg-orange-50 text-orange-600",
-        className
-      )}
-    >
-      <span className="text-sm uppercase font-sans tracking-wider opacity-70">Thời gian giữ vé:</span>
-      <span>
-        {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+    <>
+      <div className={cn('booking-countdown', timeLeft < 60 && 'is-urgent', className)}>
+        <span className="booking-countdown-label">Giữ chỗ còn</span>
+        <span className="booking-countdown-time" role="timer" aria-label={`${minutes} phút ${seconds} giây`}>
+          {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+        </span>
+      </div>
+      <span className="sr-only" aria-live="polite">
+        {hasExpired ? 'Thời gian giữ chỗ đã hết.' : ''}
       </span>
-    </div>
+    </>
   );
 }

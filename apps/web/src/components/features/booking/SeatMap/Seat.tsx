@@ -1,6 +1,5 @@
 'use client';
 
-import { Armchair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type SeatStatus = 'available' | 'occupied' | 'selected';
@@ -13,41 +12,37 @@ interface SeatProps {
   onClick?: (id: string) => void;
 }
 
+const stateLabels: Record<SeatStatus, string> = {
+  available: 'còn trống',
+  occupied: 'đã đặt',
+  selected: 'đang chọn',
+};
+
 export function Seat({ id, status, type, onClick }: SeatProps) {
   const isOccupied = status === 'occupied';
   const isSelected = status === 'selected';
   const isAvailable = status === 'available';
 
-  const statusClasses = {
-    available: 'text-green-600 bg-white border-slate-200 hover:bg-green-50 cursor-pointer',
-    occupied: 'text-slate-300 bg-slate-50 border-slate-100 cursor-not-allowed',
-    selected: 'text-white bg-blue-700 border-blue-800 cursor-pointer shadow-lg transform scale-105 z-10',
-  };
-
-  const typeClasses = {
-    standard: 'border',
-    vip: 'border-2 border-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.2)]',
+  const handleActivate = () => {
+    if (isAvailable || isSelected) onClick?.(id);
   };
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        'flex flex-col items-center justify-center p-2 transition-all duration-200 rounded-xl w-12 h-14',
-        statusClasses[status],
-        status !== 'selected' && type === 'vip' ? 'bg-amber-50' : '',
-        typeClasses[type]
+        'booking-seat',
+        type === 'vip' && 'booking-seat--vip',
+        isSelected && 'is-selected',
+        isOccupied && 'is-booked'
       )}
-      onClick={() => isAvailable || isSelected ? onClick?.(id) : null}
-      role="button"
-      aria-label={`Seat ${id}, ${status}${type === 'vip' ? ', VIP' : ''}`}
-      aria-disabled={isOccupied}
-      tabIndex={isOccupied ? -1 : 0}
+      onClick={handleActivate}
+      disabled={isOccupied}
+      aria-pressed={isSelected}
+      aria-label={`Ghế ${id}, ${stateLabels[status]}${type === 'vip' ? ', VIP' : ''}`}
     >
-      <Armchair className={cn("w-7 h-7 mb-1", isOccupied ? "opacity-40" : "opacity-100")} />
-      <span className={cn(
-        "text-[10px] font-bold",
-        isSelected ? "text-white" : isOccupied ? "text-slate-400" : "text-slate-700"
-      )}>{id}</span>
-    </div>
+      <span className="booking-seat-label">{id}</span>
+      {type === 'vip' ? <span className="booking-seat-note">VIP</span> : null}
+    </button>
   );
 }
