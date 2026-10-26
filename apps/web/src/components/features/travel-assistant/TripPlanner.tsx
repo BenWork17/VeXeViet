@@ -1,62 +1,41 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PointerEvent, ReactNode, SyntheticEvent, WheelEvent } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import type { CSSProperties, ReactNode, SyntheticEvent } from 'react';
 import {
-  Bot,
-  Building2,
-  Bus,
-  Car,
   Check,
   ChevronDown,
-  Clock3,
-  Loader2,
   LocateFixed,
   MapPin,
   Minus,
-  Move,
   Navigation,
   Pause,
   Play,
   Plus,
   RotateCcw,
   SkipForward,
-  Sparkles,
-  Star,
-  Utensils,
-  Waves,
-  WalletCards,
+  X,
 } from 'lucide-react';
-import { Button, cn } from '@vexeviet/ui';
+import { cn } from '@vexeviet/ui';
+import {
+  Map as MapView,
+  MapControls,
+  MapMarker,
+  MapPopup,
+  MapRoute,
+  MarkerContent,
+  MarkerLabel,
+  RouteMarker,
+  RouteProgress,
+  useMap,
+} from '@/components/ui/map';
 import type { Route } from '@vexeviet/types';
 
-const DEFAULT_ZOOM_OFFSET = 4;
 const MAX_TRIP_DAYS = 5;
 const DAY_TIME_LIMIT_HOURS = 12;
 const DEFAULT_CITY_SPEED_KMH = 24;
-const DAY_ROUTE_COLORS = ['#0F766E', '#FBBF24', '#22C55E', '#38BDF8', '#EF4444'];
-const DEFAULT_DAY_ROUTE_COLOR = '#0F766E';
-const MAP_TILE_SUBDOMAINS = ['a', 'b', 'c'];
-const MAP_TILE_BUFFER = 8;
-
-function withAlpha(hexColor: string, alphaHex: string) {
-  return `${hexColor}${alphaHex}`;
-}
-
-function getTileSource(providerIndex: number, zoom: number, tileX: number, tileY: number) {
-  const subdomain = MAP_TILE_SUBDOMAINS[Math.abs(tileX + tileY + zoom) % MAP_TILE_SUBDOMAINS.length] ?? 'a';
-
-  if (providerIndex === 1) {
-    return `https://${subdomain}.basemaps.cartocdn.com/rastertiles/voyager/${zoom}/${tileX}/${tileY}.png`;
-  }
-
-  if (providerIndex === 2) {
-    return `https://${subdomain}.basemaps.cartocdn.com/light_all/${zoom}/${tileX}/${tileY}.png`;
-  }
-
-  return `https://${subdomain}.tile.openstreetmap.org/${zoom}/${tileX}/${tileY}.png`;
-}
+const DAY_ROUTE_COLORS = ['#0f172a', '#475569', '#0369a1', '#0c4a6e', '#64748b'];
+const DEFAULT_DAY_ROUTE_COLOR = '#0f172a';
 
 const WIKI_TITLE_ALIASES: Record<string, string> = {
   'Dragon_Bridge,_Da_Nang,_Vietnam': 'Dragon_Bridge_(Da_Nang)',
@@ -162,56 +141,27 @@ const LandmarkImage = ({ wikiSlug, name, imageUrl }: { wikiSlug?: string; name: 
     };
   }, [imageUrl, wikiSlug, name]);
 
-  const placeholder = (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 26,
-      }}
-    >
-      🏙️
-    </div>
-  );
-
   if (loading)
     return (
-      <div
-        style={{
-          width: '100%',
-          height: '100%',
-          background: '#f1f5f9',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div
-          style={{
-            width: 18,
-            height: 18,
-            border: '2px solid #0F766E',
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 0.8s linear infinite',
-          }}
-        />
+      <div className="travel-image-state" role="status" aria-live="polite">
+        <span>Đang tải ảnh…</span>
       </div>
     );
 
-  if (!src) return placeholder;
+  if (!src)
+    return (
+      <div className="travel-image-state" aria-hidden="true">
+        <MapPin size={22} />
+      </div>
+    );
 
   return (
     <img
       src={src}
       alt={name}
       loading="lazy"
-      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      onError={(e) => {
+      className="travel-image"
+      onError={() => {
         setSrc('');
       }}
     />
@@ -285,19 +235,12 @@ type DeparturePoint = StartPoint & {
   label: string;
 };
 
-type MapPoint = {
-  x: number;
-  y: number;
-};
-
 type DayRoutePreview = {
   day: number;
   startTime: string;
   color: string;
   places: TravelPlace[];
   route: Array<StartPoint | TravelPlace>;
-  linePoints: MapPoint[];
-  polyline: string;
   visitHours: number;
   travelHours: number;
   totalHours: number;
@@ -345,7 +288,6 @@ type TransportOption = {
 type LocalTransportOption = {
   id: string;
   label: string;
-  icon: string;
   price: number;
   note: string;
 };
@@ -489,25 +431,12 @@ const CATEGORY_LABELS: Record<PlaceCategory, string> = {
   nature: 'Thiên nhiên',
 };
 
-const CATEGORY_ICONS = {
-  landmark: Building2,
-  beach: Waves,
-  food: Utensils,
-  culture: Building2,
-  nature: MapPin,
-};
-
-const MAP_MARKER_OFFSETS: Record<string, { x: number; y: number }> = {
-  'son-tra': { x: -150, y: 34 },
-  'linh-ung-pagoda': { x: -96, y: 38 },
-};
-
 const CITY_TRANSPORT_OPTIONS: LocalTransportOption[] = [
-  { id: 'walk', label: 'Đi bộ', icon: '🚶', price: 0, note: 'Phù hợp các điểm gần nhau, tiết kiệm chi phí.' },
-  { id: 'motorbike', label: 'Xe máy', icon: '🛵', price: 0, note: 'Linh hoạt nhất cho lịch trình nội đô.' },
-  { id: 'car4', label: 'Ô tô 4 chỗ', icon: '🚗', price: 0, note: 'Thoải mái cho nhóm nhỏ hoặc gia đình.' },
-  { id: 'car7', label: 'Ô tô 7 chỗ', icon: '🚐', price: 0, note: 'Thoải mái cho nhóm lớn hơn hoặc gia đình.' },
-  { id: 'bus', label: 'Xe buýt', icon: '🚌', price: 0, note: 'Tiết kiệm, phù hợp tuyến phổ biến trong thành phố.' },
+  { id: 'walk', label: 'Đi bộ', price: 0, note: 'Phù hợp các điểm gần nhau, tiết kiệm chi phí.' },
+  { id: 'motorbike', label: 'Xe máy', price: 0, note: 'Linh hoạt nhất cho lịch trình nội đô.' },
+  { id: 'car4', label: 'Ô tô 4 chỗ', price: 0, note: 'Thoải mái cho nhóm nhỏ hoặc gia đình.' },
+  { id: 'car7', label: 'Ô tô 7 chỗ', price: 0, note: 'Thoải mái cho nhóm lớn hơn hoặc gia đình.' },
+  { id: 'bus', label: 'Xe buýt', price: 0, note: 'Tiết kiệm, phù hợp tuyến phổ biến trong thành phố.' },
 ];
 
 const TRANSPORT_RATES = {
@@ -681,15 +610,6 @@ function formatRouteTime(value?: string): string {
   return value;
 }
 
-function lngToTileX(lng: number, zoom: number): number {
-  return ((lng + 180) / 360) * Math.pow(2, zoom);
-}
-
-function latToTileY(lat: number, zoom: number): number {
-  const rad = (lat * Math.PI) / 180;
-  return ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * Math.pow(2, zoom);
-}
-
 function getMapCenter(places: Array<{ lat: number; lng: number }>): { lat: number; lng: number } {
   if (!places.length) return { lat: 16.0544, lng: 108.2022 };
   return {
@@ -716,71 +636,38 @@ function getDistanceKm(from: { lat: number; lng: number }, to: { lat: number; ln
   return Math.sqrt(latDelta * latDelta + lngDelta * lngDelta);
 }
 
-function getScreenPoint(
-  point: { lat: number; lng: number },
-  center: { lat: number; lng: number },
-  zoom: number,
-  pan: { x: number; y: number }
-): MapPoint {
-  return {
-    x: (lngToTileX(point.lng, zoom) - lngToTileX(center.lng, zoom)) * 256 + pan.x,
-    y: (latToTileY(point.lat, zoom) - latToTileY(center.lat, zoom)) * 256 + pan.y,
-  };
+function toLngLat(points: Array<[number, number]>): Array<[number, number]> {
+  return points.map(([lat, lng]) => [lng, lat]);
 }
 
-function getPathDistance(points: MapPoint[]): number {
-  return points.slice(1).reduce((total, point, index) => {
-    const previous = points[index]!;
-    return total + Math.hypot(point.x - previous.x, point.y - previous.y);
-  }, 0);
-}
+function getRouteStopProgresses(
+  roadRoute: Array<[number, number]>,
+  stops: Array<{ lat: number; lng: number }>
+): number[] {
+  if (roadRoute.length < 2) return stops.map(() => 0);
 
-function getRouteSimulationFrame(points: MapPoint[], progress: number): { points: MapPoint[]; head: MapPoint | null } {
-  if (points.length === 0) return { points: [], head: null };
-  if (points.length === 1) return { points, head: points[0]! };
-
-  const clampedProgress = Math.max(0, Math.min(1, progress));
-  const totalDistance = getPathDistance(points);
-  if (totalDistance <= 0) return { points: [points[0]!], head: points[0]! };
-
-  const targetDistance = totalDistance * clampedProgress;
-  const animatedPoints: MapPoint[] = [points[0]!];
-  let traveled = 0;
-
-  for (let index = 1; index < points.length; index += 1) {
-    const previous = points[index - 1]!;
-    const current = points[index]!;
-    const segmentDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
-
-    if (traveled + segmentDistance >= targetDistance) {
-      const segmentProgress = segmentDistance === 0 ? 0 : (targetDistance - traveled) / segmentDistance;
-      const head = {
-        x: previous.x + (current.x - previous.x) * segmentProgress,
-        y: previous.y + (current.y - previous.y) * segmentProgress,
-      };
-      animatedPoints.push(head);
-      return { points: animatedPoints, head };
-    }
-
-    animatedPoints.push(current);
-    traveled += segmentDistance;
+  const cumulative = [0];
+  let total = 0;
+  for (let index = 1; index < roadRoute.length; index += 1) {
+    const [previousLat, previousLng] = roadRoute[index - 1]!;
+    const [lat, lng] = roadRoute[index]!;
+    total += getDistanceKm({ lat: previousLat, lng: previousLng }, { lat, lng });
+    cumulative.push(total);
   }
 
-  return { points, head: points[points.length - 1]! };
-}
+  return stops.map((stop) => {
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
 
-function getStopProgresses(points: MapPoint[]): number[] {
-  if (points.length < 2) return points.map(() => 0);
+    roadRoute.forEach(([lat, lng], index) => {
+      const distance = getDistanceKm(stop, { lat, lng });
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
 
-  const totalDistance = getPathDistance(points);
-  if (totalDistance <= 0) return points.map(() => 0);
-
-  let traveled = 0;
-  return points.map((point, index) => {
-    if (index === 0) return 0;
-    const previous = points[index - 1]!;
-    traveled += Math.hypot(point.x - previous.x, point.y - previous.y);
-    return Math.max(0, Math.min(1, traveled / totalDistance));
+    return total > 0 ? Math.max(0, Math.min(1, cumulative[nearestIndex]! / total)) : 0;
   });
 }
 
@@ -973,36 +860,36 @@ function getPlaceRating(place: TravelPlace): string {
 function getPlaceTags(place: TravelPlace, cityName: string): string[] {
   const name = place.name.toLowerCase();
   const tagMap: Array<[string, string[]]> = [
-    ['mỹ khê', ['🏄 Lướt sóng', '🏖️ Tắm biển', '🌅 Hoàng hôn']],
-    ['bà nà', ['🚡 Cáp treo', '🎢 Công viên', '☁️ Săn mây']],
-    ['cầu rồng', ['📸 Check-in', '🎆 Phun lửa T7-CN', '🌉 Đi bộ']],
-    ['ngũ hành', ['🧗 Leo núi', '🕌 Chùa chiền', '🗿 Điêu khắc']],
-    ['bảo tàng chăm', ['🏛️ Lịch sử', '📚 Văn hóa', '📸 Triển lãm']],
-    ['linh ứng', ['🙏 Tâm linh', '🌊 View biển', '📸 Check-in']],
-    ['sơn trà', ['🦌 Động vật', '🌿 Thiên nhiên', '🏍️ Phượt']],
-    ['đại nội', ['🏛️ Cung đình', '📚 Lịch sử', '📸 Check-in']],
-    ['thiên mụ', ['🙏 Tâm linh', '🚤 Sông Hương', '🌅 Hoàng hôn']],
-    ['sông hương', ['🚤 Du thuyền', '🌉 Cầu Trường Tiền', '🎶 Ca Huế']],
-    ['bún bò', ['🍜 Ẩm thực', '🔥 Đặc sản', '☕ Buổi sáng']],
-    ['nhật lệ', ['🏖️ Tắm biển', '🦑 Hải sản', '🌅 Hoàng hôn']],
-    ['phong nha', ['🛶 Sông Son', '🕳️ Hang động', '🌿 Di sản']],
-    ['thiên đường', ['🕳️ Hang động', '📸 Thạch nhũ', '🚶 Trek nhẹ']],
-    ['quang phú', ['🏜️ Trượt cát', '📸 Check-in', '🌅 Hoàng hôn']],
-    ['hà nội', ['🏛️ Phố cổ', '🍜 Ẩm thực', '🚶 Dạo phố']],
-    ['hồ chí minh', ['🏙️ Đô thị', '☕ Cà phê', '🛍️ Mua sắm']],
-    ['hội an', ['🏮 Phố cổ', '🚲 Đạp xe', '📸 Check-in']],
-    ['nha trang', ['🤿 Lặn biển', '🏖️ Tắm biển', '🛥️ Tour đảo']],
-    ['đà lạt', ['🌲 Thiên nhiên', '☕ Cà phê', '🌸 Vườn hoa']],
+    ['mỹ khê', ['Lướt sóng', 'Tắm biển', 'Hoàng hôn']],
+    ['bà nà', ['Cáp treo', 'Công viên', 'Săn mây']],
+    ['cầu rồng', ['Check-in', 'Phun lửa T7-CN', 'Đi bộ']],
+    ['ngũ hành', ['Leo núi', 'Chùa chiền', 'Điêu khắc']],
+    ['bảo tàng chăm', ['Lịch sử', 'Văn hóa', 'Triển lãm']],
+    ['linh ứng', ['Tâm linh', 'View biển', 'Check-in']],
+    ['sơn trà', ['Động vật', 'Thiên nhiên', 'Phượt']],
+    ['đại nội', ['Cung đình', 'Lịch sử', 'Check-in']],
+    ['thiên mụ', ['Tâm linh', 'Sông Hương', 'Hoàng hôn']],
+    ['sông hương', ['Du thuyền', 'Cầu Trường Tiền', 'Ca Huế']],
+    ['bún bò', ['Ẩm thực', 'Đặc sản', 'Buổi sáng']],
+    ['nhật lệ', ['Tắm biển', 'Hải sản', 'Hoàng hôn']],
+    ['phong nha', ['Sông Son', 'Hang động', 'Di sản']],
+    ['thiên đường', ['Hang động', 'Thạch nhũ', 'Trek nhẹ']],
+    ['quang phú', ['Trượt cát', 'Check-in', 'Hoàng hôn']],
+    ['hà nội', ['Phố cổ', 'Ẩm thực', 'Dạo phố']],
+    ['hồ chí minh', ['Đô thị', 'Cà phê', 'Mua sắm']],
+    ['hội an', ['Phố cổ', 'Đạp xe', 'Check-in']],
+    ['nha trang', ['Lặn biển', 'Tắm biển', 'Tour đảo']],
+    ['đà lạt', ['Thiên nhiên', 'Cà phê', 'Vườn hoa']],
   ];
 
   const matched = tagMap.find(([keyword]) => name.includes(keyword) || cityName.toLowerCase().includes(keyword));
   if (matched) return matched[1];
 
-  if (place.category === 'food') return ['🍜 Ẩm thực', '🥢 Địa phương', '🧾 Đặc sản'];
-  if (place.category === 'beach') return ['🏖️ Tắm biển', '📸 Check-in', '🌅 Hoàng hôn'];
-  if (place.category === 'culture') return ['🏛️ Lịch sử', '📚 Văn hóa', '📸 Tham quan'];
-  if (place.category === 'nature') return ['🌿 Thiên nhiên', '🚶 Dạo chơi', '📸 Check-in'];
-  return ['📸 Check-in', '🚶 Tham quan', '⭐ Nổi bật'];
+  if (place.category === 'food') return ['Ẩm thực', 'Địa phương', 'Đặc sản'];
+  if (place.category === 'beach') return ['Tắm biển', 'Check-in', 'Hoàng hôn'];
+  if (place.category === 'culture') return ['Lịch sử', 'Văn hóa', 'Tham quan'];
+  if (place.category === 'nature') return ['Thiên nhiên', 'Dạo chơi', 'Check-in'];
+  return ['Check-in', 'Tham quan', 'Nổi bật'];
 }
 
 function formatDirectionDistance(meters: number): string {
@@ -1011,12 +898,12 @@ function formatDirectionDistance(meters: number): string {
 }
 
 function getManeuverIcon(type?: string, modifier?: string): string {
-  if (type === 'arrive') return '📍';
-  if (type === 'depart') return '🚀';
-  if (modifier?.includes('left')) return modifier.includes('slight') ? '↖️' : '↩️';
-  if (modifier?.includes('right')) return modifier.includes('slight') ? '↗️' : '↪️';
+  if (type === 'arrive') return 'Đến';
+  if (type === 'depart') return 'Đi';
+  if (modifier?.includes('left')) return modifier.includes('slight') ? '↖' : '↰';
+  if (modifier?.includes('right')) return modifier.includes('slight') ? '↗' : '↱';
   if (type === 'continue' || type === 'straight' || modifier === 'straight') return '↑';
-  return '↗️';
+  return '↗';
 }
 
 function getDirectionInstruction(type?: string, modifier?: string): string {
@@ -1135,11 +1022,62 @@ export interface TripPlannerProps {
 }
 
 const ANALYSIS_STEPS = [
-  '🤖 Tối ưu hóa thứ tự địa điểm...',
-  '📍 Tính toán chi phí di chuyển...',
-  '💰 Dự đoán chi phí tham quan...',
-  '✨ Hoàn thiện lộ trình...',
+  'Tối ưu thứ tự địa điểm…',
+  'Tính toán chi phí di chuyển…',
+  'Dự đoán chi phí tham quan…',
+  'Hoàn thiện lộ trình…',
 ];
+
+function MapViewportSync({
+  center,
+  zoom,
+  focusedPlace,
+}: {
+  center: { lat: number; lng: number };
+  zoom: number;
+  focusedPlace: { lat: number; lng: number } | null;
+}) {
+  const { map, isLoaded } = useMap();
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    map.flyTo({
+      center: [center.lng, center.lat],
+      zoom,
+      duration: 700,
+      essential: true,
+    });
+  }, [center.lat, center.lng, isLoaded, map, zoom]);
+
+  useEffect(() => {
+    if (!map || !isLoaded || !focusedPlace) return;
+
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      map.easeTo({
+        center: [focusedPlace.lng, focusedPlace.lat],
+        duration: 450,
+        essential: true,
+      });
+      return;
+    }
+
+    const container = map.getContainer();
+    const point = map.project([focusedPlace.lng, focusedPlace.lat]);
+    const targetY = container.clientHeight * 0.72;
+    const center = map.unproject([
+      point.x,
+      point.y + container.clientHeight / 2 - targetY,
+    ]);
+
+    map.easeTo({
+      center,
+      duration: 450,
+      essential: true,
+    });
+  }, [focusedPlace, isLoaded, map]);
+
+  return null;
+}
 
 export function TripPlanner({ origin, destination, departureDate, routes, controls, className }: TripPlannerProps) {
   const guide = useMemo(() => resolveCityGuide(destination), [destination]);
@@ -1149,6 +1087,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [dayPlans, setDayPlans] = useState<DayPlan[]>(() => createEmptyDayPlans(1));
   const [draggedPlaceId, setDraggedPlaceId] = useState<string | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<TravelPlace | null>(null);
+  const [compactMap, setCompactMap] = useState(false);
   const [selectedActivitiesByPlace, setSelectedActivitiesByPlace] = useState<Record<string, string[]>>({});
   const [selectedLocalTransportIndex, setSelectedLocalTransportIndex] = useState<number | null>(null);
   const [analysisState, setAnalysisState] = useState<AnalysisState>('idle');
@@ -1156,10 +1095,6 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [expandedPlaceId, setExpandedPlaceId] = useState<string | null>(null);
   const [expandedStopIndexes, setExpandedStopIndexes] = useState<number[]>([]);
-  const [zoomOffset, setZoomOffset] = useState(DEFAULT_ZOOM_OFFSET);
-  const [mapPan, setMapPan] = useState({ x: 0, y: 0 });
-  const [loadedTileSources, setLoadedTileSources] = useState<Set<string>>(() => new Set());
-  const [isPanning, setIsPanning] = useState(false);
   const [departurePoint, setDeparturePoint] = useState<DeparturePoint>(() => toDeparturePoint(guide.startPoint));
   const [departureQuery, setDepartureQuery] = useState(guide.startPoint.name);
   const [departureSuggestions, setDepartureSuggestions] = useState<NominatimResult[]>([]);
@@ -1176,14 +1111,6 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [mapFocusCenter, setMapFocusCenter] = useState(() => getMapCenter([guide.startPoint, ...guide.places]));
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef({
-    invalidateSize: (_options?: { animate?: boolean }) => {
-      mapContainerRef.current?.getBoundingClientRect();
-    },
-  });
-  const departureMarkerRef = useRef<DeparturePoint | null>(toDeparturePoint(guide.startPoint));
-  const dragState = useRef<{ startX: number; startY: number; panX: number; panY: number; frame: number | null } | null>(null);
   const routeSimulationFrameRef = useRef<number | null>(null);
   const routeSimulationLastTickRef = useRef<number | null>(null);
 
@@ -1205,15 +1132,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     setAnalysisState('idle');
     setAnalysisStepIndex(0);
     setAnalysisResult(null);
-    setZoomOffset(DEFAULT_ZOOM_OFFSET);
-    setMapPan({ x: 0, y: 0 });
-    setIsPanning(false);
     setDeparturePoint(nextDeparturePoint);
     setDepartureQuery(nextDeparturePoint.label);
     setDepartureSuggestions([]);
     setDepartureError(null);
     setMapFocusCenter(getMapCenter([nextDeparturePoint, ...guide.places]));
-    departureMarkerRef.current = nextDeparturePoint;
     setRoadRoute([]);
     setRouteDirections([]);
     setRouteError(null);
@@ -1227,29 +1150,6 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   }, [guide]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      mapRef.current.invalidateSize();
-    }, 100);
-
-    return () => window.clearTimeout(timeout);
-  }, []);
-
-  useEffect(() => {
-    const invalidate = () => {
-      window.setTimeout(() => mapRef.current.invalidateSize({ animate: false }), 200);
-    };
-
-    window.addEventListener('resize', invalidate, { passive: true });
-
-    return () => window.removeEventListener('resize', invalidate);
-  }, []);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => mapRef.current.invalidateSize({ animate: false }), 200);
-    return () => window.clearTimeout(timeout);
-  }, [directionsExpanded, selectedIds.length]);
-
-  useEffect(() => {
     if (analysisState !== 'loading') return;
 
     const interval = window.setInterval(() => {
@@ -1258,6 +1158,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
     return () => window.clearInterval(interval);
   }, [analysisState]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const sync = () => setCompactMap(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     setDayPlans((current) => fitDayPlansToCount(current, dayCount, selectedIds, guide.places, departurePoint));
@@ -1320,28 +1228,17 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
   const suggestedRoute = useMemo(() => getClosedSuggestedRoute(departurePoint, activeDayPlaces), [activeDayPlaces, departurePoint]);
   const routeDistance = useMemo(() => getRouteDistance(suggestedRoute), [suggestedRoute]);
-  const mapCenter = mapFocusCenter;
-  const mapBaseZoom = useMemo(() => getMapZoom(guide.places), [guide]);
-
-  useEffect(() => {
-    setLoadedTileSources(new Set());
-  }, [destination, mapBaseZoom]);
+  const mapFocusZoom = useMemo(() => Math.max(10, getMapZoom(guide.places) - 1), [guide]);
 
   const formatVND = (n: number) => n.toLocaleString('vi-VN') + 'đ';
-  const mapZoom = Math.max(3, Math.min(19, mapBaseZoom + zoomOffset));
-  const routeLinePoints = useMemo(() => suggestedRoute.map((stop) => getScreenPoint(stop, mapCenter, mapZoom, mapPan)), [suggestedRoute, mapCenter, mapZoom, mapPan]);
-  const roadRoutePoints = useMemo(() => roadRoute.map(([lat, lng]) => getScreenPoint({ lat, lng }, mapCenter, mapZoom, mapPan)), [roadRoute, mapCenter, mapZoom, mapPan]);
+  const roadRouteLngLat = useMemo(() => toLngLat(roadRoute), [roadRoute]);
   const activeDirectionStep = useMemo(() => routeDirections.flat().find((step) => step.id === activeDirectionId) ?? null, [activeDirectionId, routeDirections]);
-  const activeDirectionPoints = useMemo(() => activeDirectionStep?.points.map(([lat, lng]) => getScreenPoint({ lat, lng }, mapCenter, mapZoom, mapPan)) ?? [], [activeDirectionStep, mapCenter, mapPan, mapZoom]);
-  const roadRoutePolyline = useMemo(() => roadRoutePoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [roadRoutePoints]);
-  const activeDirectionPolyline = useMemo(() => activeDirectionPoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '), [activeDirectionPoints]);
-  const departureScreenPoint = useMemo(() => getScreenPoint(departurePoint, mapCenter, mapZoom, mapPan), [departurePoint, mapCenter, mapPan, mapZoom]);
+  const activeDirectionLngLat = useMemo(() => toLngLat(activeDirectionStep?.points ?? []), [activeDirectionStep]);
   const dayRoutePreviews = useMemo<DayRoutePreview[]>(
     () =>
       selectedPlacesByDay.map((places, index) => {
         const plan = dayPlans[index];
         const route = getClosedSuggestedRoute(departurePoint, places);
-        const linePoints = route.map((stop) => getScreenPoint(stop, mapCenter, mapZoom, mapPan));
         const distanceKm = getRouteDistance(route);
         const visitHours = getDayVisitHours(places);
         const travelHours = estimateTravelHours(distanceKm);
@@ -1352,15 +1249,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
           color: DAY_ROUTE_COLORS[index % DAY_ROUTE_COLORS.length] ?? DEFAULT_DAY_ROUTE_COLOR,
           places,
           route,
-          linePoints,
-          polyline: linePoints.map((point) => `${768 + point.x},${768 + point.y}`).join(' '),
           visitHours,
           travelHours,
           totalHours: visitHours + travelHours,
           distanceKm,
         };
       }),
-    [dayPlans, departurePoint, mapCenter, mapPan, mapZoom, selectedPlacesByDay]
+    [dayPlans, departurePoint, selectedPlacesByDay]
   );
   const selectedPlaceDayMeta = useMemo(() => {
     const meta = new Map<string, { day: number; color: string; order: number }>();
@@ -1374,17 +1269,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     return meta;
   }, [dayRoutePreviews]);
   const activeDayPreview = dayRoutePreviews[activeDayIndex] ?? null;
-  const routeSimulationPathPoints = roadRoutePoints;
-  const canSimulateRoute = activeDayPlaces.length > 0 && routeSimulationPathPoints.length > 1 && !routeLoading;
-  const routeSimulationFrame = useMemo(
-    () => getRouteSimulationFrame(routeSimulationPathPoints, routeSimulationProgress),
-    [routeSimulationPathPoints, routeSimulationProgress]
+  const canSimulateRoute = activeDayPlaces.length > 0 && roadRoute.length > 1 && !routeLoading;
+  const routeSimulationStopProgresses = useMemo(
+    () => getRouteStopProgresses(roadRoute, suggestedRoute),
+    [roadRoute, suggestedRoute]
   );
-  const routeSimulationPolyline = useMemo(
-    () => routeSimulationFrame.points.map((point) => `${768 + point.x},${768 + point.y}`).join(' '),
-    [routeSimulationFrame.points]
-  );
-  const routeSimulationStopProgresses = useMemo(() => getStopProgresses(routeLinePoints), [routeLinePoints]);
   const activeSimulationPlaceIndex = useMemo(() => {
     if (!canSimulateRoute || routeSimulationProgress <= 0) return null;
 
@@ -1483,93 +1372,6 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
       }
     };
   }, [canSimulateRoute, routeSimulationSpeed, routeSimulationStatus]);
-
-  const mapTiles = useMemo(() => {
-    const centerX = lngToTileX(mapCenter.lng, mapZoom);
-    const centerY = latToTileY(mapCenter.lat, mapZoom);
-    const tileGridSize = MAP_TILE_BUFFER * 2 + 1;
-    const startX = Math.floor(centerX) - MAP_TILE_BUFFER;
-    const startY = Math.floor(centerY) - MAP_TILE_BUFFER;
-    const maxTile = Math.pow(2, mapZoom);
-
-    return Array.from({ length: tileGridSize * tileGridSize }, (_, index) => {
-      const rawTileX = startX + (index % tileGridSize);
-      const tileY = startY + Math.floor(index / tileGridSize);
-      const tileX = ((rawTileX % maxTile) + maxTile) % maxTile;
-      const tileKey = mapZoom + '-' + tileX + '-' + tileY;
-      const src = getTileSource(0, mapZoom, tileX, tileY);
-      return {
-        key: tileKey,
-        src,
-        fallbackSources: [getTileSource(1, mapZoom, tileX, tileY), getTileSource(2, mapZoom, tileX, tileY)],
-        loaded: loadedTileSources.has(tileKey),
-        left: (rawTileX - centerX) * 256 + 768 + mapPan.x,
-        top: (tileY - centerY) * 256 + 768 + mapPan.y,
-      };
-    });
-  }, [loadedTileSources, mapCenter, mapPan, mapZoom]);
-
-  const handleMapPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest('button') || target.closest('input')) return;
-
-    event.preventDefault();
-    dragState.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      panX: mapPan.x,
-      panY: mapPan.y,
-      frame: null,
-    };
-    setIsPanning(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  const handleMapPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!dragState.current) return;
-
-    const drag = dragState.current;
-    const nextPan = {
-      x: drag.panX + event.clientX - drag.startX,
-      y: drag.panY + event.clientY - drag.startY,
-    };
-
-    if (drag.frame !== null) cancelAnimationFrame(drag.frame);
-    drag.frame = requestAnimationFrame(() => {
-      setMapPan(nextPan);
-      if (dragState.current) dragState.current.frame = null;
-    });
-  };
-
-  const handleMapPointerUp = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = dragState.current;
-    if (drag?.frame !== null && drag?.frame !== undefined) {
-      cancelAnimationFrame(drag.frame);
-    }
-    dragState.current = null;
-    setIsPanning(false);
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  };
-
-  const handleMapWheel = (event: WheelEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (selectedPlace && target.closest('[data-place-modal="true"]')) return;
-
-    event.preventDefault();
-    if (selectedPlace) return;
-
-    setZoomOffset((current) => Math.max(3 - mapBaseZoom, Math.min(19 - mapBaseZoom, current + (event.deltaY < 0 ? 1 : -1))));
-  };
-
-  const resetMapView = () => {
-    setZoomOffset(DEFAULT_ZOOM_OFFSET);
-    setMapFocusCenter(getMapCenter([departurePoint, ...guide.places]));
-    setMapPan({ x: 0, y: 0 });
-    setIsPanning(false);
-    window.setTimeout(() => mapRef.current.invalidateSize({ animate: false }), 200);
-  };
 
   const toggleRouteSimulation = () => {
     if (!canSimulateRoute) return;
@@ -1689,15 +1491,11 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
   const updateDepartureMarker = (lat: number, lon: number, label: string) => {
     const nextDeparture = { name: label, label, lat, lng: lon };
-    departureMarkerRef.current = null;
-    departureMarkerRef.current = nextDeparture;
     setDeparturePoint(nextDeparture);
     setDepartureQuery(label);
     setDepartureSuggestions([]);
     setDepartureError(null);
     setMapFocusCenter({ lat, lng: lon });
-    setMapPan({ x: 0, y: 0 });
-    window.setTimeout(() => mapRef.current.invalidateSize({ animate: false }), 200);
     resetAnalysis();
   };
 
@@ -1856,1113 +1654,955 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     }
   };
 
-  const retryTileOnce = (event: SyntheticEvent<HTMLImageElement>) => {
-    const image = event.currentTarget;
-    const fallbackSources = image.dataset.fallbackSources?.split('|').filter(Boolean) ?? [];
-    const fallbackIndex = Number(image.dataset.fallbackIndex ?? '0');
+  const selectedPlaceDetail = selectedPlace
+    ? (() => {
+        const details = getPlaceDetails(selectedPlace);
+        const selected = selectedIds.includes(selectedPlace.id);
+        const selectedActivities = selectedActivitiesByPlace[selectedPlace.id] ?? [];
 
-    if (fallbackIndex < fallbackSources.length) {
-      image.dataset.fallbackIndex = String(fallbackIndex + 1);
-      image.src = fallbackSources[fallbackIndex]!;
-      return;
-    }
-
-    if (image.dataset.retried === 'true') return;
-
-    image.dataset.retried = 'true';
-    window.setTimeout(() => {
-      image.dataset.fallbackIndex = '0';
-      image.dataset.retried = 'false';
-      image.src = (image.dataset.primarySrc ?? image.src.split('?')[0]) + '?retry=' + Date.now();
-    }, 800);
-  };
-
-  const markTileLoaded = (event: SyntheticEvent<HTMLImageElement>) => {
-    const image = event.currentTarget;
-    image.classList.remove('leaflet-tile-loading');
-    setLoadedTileSources((current) => {
-      const tileKey = image.dataset.tileKey;
-      if (!tileKey || current.has(tileKey)) return current;
-      const next = new Set(current);
-      next.add(tileKey);
-      return next;
-    });
-  };
-
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className={cn(
-        'grid min-h-screen bg-[#063C45] text-[#0F172A] lg:h-screen lg:grid-cols-[minmax(380px,40%)_minmax(0,60%)] lg:overflow-hidden',
-        className
-      )}
-    >
-      <style jsx global>{`
-        .ai-processing-dots::after {
-          content: '.';
-          animation: dots 1.2s infinite;
-        }
-
-        .ai-progress-bar {
-          height: 3px;
-          border-radius: 2px;
-          background: linear-gradient(90deg, #0F766E, #FBBF24);
-          animation: aiProgress 3s ease-out forwards;
-        }
-
-        @keyframes dots {
-          0%, 20% { content: '.'; }
-          40% { content: '..'; }
-          60%, 100% { content: '...'; }
-        }
-
-        @keyframes aiProgress {
-          0% { width: 0%; }
-          30% { width: 45%; }
-          60% { width: 72%; }
-          85% { width: 90%; }
-          100% { width: 90%; }
-        }
-
-        @keyframes markerPop {
-          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.65); }
-          100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .leaflet-tile {
-          background: #dbeafe;
-          image-rendering: auto;
-          opacity: 1;
-          transition: opacity 0.18s ease-out;
-        }
-
-        .leaflet-tile-loading {
-          opacity: 0.78;
-        }
-      `}</style>
-      <aside className="order-2 z-20 max-h-none overflow-visible rounded-t-2xl border-t border-white/20 bg-[#063C45] px-4 py-5 shadow-[0_-8px_30px_rgba(3,50,59,0.28)] lg:order-1 lg:h-screen lg:overflow-y-auto lg:rounded-none lg:border-r lg:border-t-0 lg:px-6 lg:py-6 lg:shadow-[18px_0_55px_rgba(3,50,59,0.22)]">
-        <div className="mx-auto max-w-[620px] space-y-5 pb-4">
-          {controls}
-
-          <div className="rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_18px_45px_rgba(3,50,59,0.20)] backdrop-blur">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Bản đồ điểm đến</p>
-                <h2 className="travel-font-display mt-1 text-2xl font-black text-[#0F172A]">{guide.center}</h2>
-                <p className="mt-1 text-sm leading-6 text-[#64748B]">Chọn sticker trên bản đồ hoặc danh sách để dựng route preview.</p>
-              </div>
-              <div className="rounded-xl bg-teal-50 px-3 py-2 text-right">
-                <p className="text-[11px] font-bold uppercase text-[#0F766E]">Đã chọn</p>
-                <p className="text-lg font-black text-[#0F172A]">{selectedPlaces.length}/{guide.places.length}</p>
-              </div>
+        return (
+          <div
+            data-place-modal="true"
+            role="dialog"
+            aria-labelledby="travel-place-dialog-title"
+            className="travel-place-modal"
+          >
+            <div className="travel-place-modal-media">
+              <LandmarkImage
+                name={selectedPlace.name}
+                wikiSlug={selectedPlace.wikiSlug}
+                imageUrl={selectedPlace.imageUrl}
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedPlace(null)}
+                className="travel-icon-button travel-place-modal-close"
+                aria-label="Đóng thông tin địa điểm"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-slate-50 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase text-[#64748B]">Chi phí điểm</p>
-                <p className="mt-1 text-sm font-black text-[#0F172A]">{formatMoney(placeCost)}</p>
+            <div className="travel-place-modal-body">
+              <p className="travel-place-category">{CATEGORY_LABELS[selectedPlace.category]}</p>
+              <h2 id="travel-place-dialog-title" className="travel-place-modal-title">{selectedPlace.name}</h2>
+              <div className="travel-detail-metrics">
+                <div className="travel-detail-metric">
+                  <p>Đánh giá</p>
+                  <strong>{getPlaceRating(selectedPlace)}/5</strong>
+                </div>
+                <div className="travel-detail-metric">
+                  <p>Giờ đẹp</p>
+                  <strong>{selectedPlace.bestTime}</strong>
+                </div>
+                <div className="travel-detail-metric">
+                  <p>Chi phí</p>
+                  <strong>{formatMoney(selectedPlace.cost)}</strong>
+                </div>
               </div>
-              <div className="rounded-xl bg-amber-50 px-3 py-3">
-                <p className="text-[11px] font-bold uppercase text-amber-700">Lộ trình</p>
-                <p className="mt-1 text-sm font-black text-[#0F172A]">{routeDistance.toFixed(1)} km</p>
+              <p className="travel-place-modal-desc">{details.desc}</p>
+
+              <div className="travel-panel--inset">
+                <div className="travel-activity-head">
+                  <h3>Nên làm tại đây</h3>
+                  <span>{selectedActivities.length}/{details.activities.length}</span>
+                </div>
+                <div className="travel-activity-list">
+                  {details.activities.map((activity) => {
+                    const activitySelected = selectedActivities.includes(activity);
+                    return (
+                      <button
+                        key={activity}
+                        type="button"
+                        onClick={() => togglePlaceActivity(selectedPlace.id, activity)}
+                        aria-pressed={activitySelected}
+                        className={cn('travel-activity', activitySelected && 'is-selected')}
+                      >
+                        <span className="travel-activity-check" aria-hidden="true">
+                          <Check size={14} />
+                        </span>
+                        {activity}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedActivities.length > 0 && (
+                  <p className="travel-selected-note">Đã chọn: {selectedActivities.join(', ')}</p>
+                )}
               </div>
+
+              <p className="travel-note travel-note--warm">{details.tip}</p>
+
+              <button
+                type="button"
+                onClick={() => addPlaceToTrip(selectedPlace.id)}
+                className="travel-button travel-button--primary"
+              >
+                {selected ? 'Đã thêm vào chuyến đi' : 'Thêm vào chuyến đi'}
+              </button>
             </div>
           </div>
+        );
+      })()
+    : null;
 
-          <div className="rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_18px_45px_rgba(3,50,59,0.18)] backdrop-blur">
-            <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-              <Navigation className="h-4 w-4 text-[#0F766E]" />
-              Điểm xuất phát
-            </div>
-            <div className="relative">
-              <input
-                type="text"
-                value={departureQuery}
-                onChange={(event) => {
-                  setDepartureQuery(event.target.value);
-                  setDepartureError(null);
-                }}
-                placeholder="Nhập điểm xuất phát của bạn..."
-                className="h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#0F766E] focus:ring-2 focus:ring-teal-100"
-              />
-              {departureLoading && <Loader2 className="absolute right-3 top-3.5 h-4 w-4 animate-spin text-[#0F766E]" />}
-              {departureSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.16)]">
-                  {departureSuggestions.map((suggestion) => (
+  return (
+    <section className={cn('travel-shell', className)}>
+      <div className="travel-shell-inner">
+        {controls ? <header className="travel-hero">{controls}</header> : null}
+
+        <div className="travel-workspace">
+          <aside className="travel-rail" aria-label="Bảng lập lịch trình">
+            <div className="travel-rail-inner">
+              <section className="travel-panel travel-panel--ledger" aria-labelledby="travel-destination-title">
+                <div className="travel-panel-head">
+                  <div>
+                    <h2 id="travel-destination-title" className="travel-panel-title">{guide.center}</h2>
+                    <p className="travel-panel-note">Chọn địa điểm trên bản đồ hoặc trong danh sách để thêm vào lịch trình.</p>
+                  </div>
+                  <p className="travel-count">
+                    <strong>{selectedPlaces.length}</strong>
+                    <span>/{guide.places.length} điểm</span>
+                  </p>
+                </div>
+
+                <dl className="travel-ledger">
+                  <div className="travel-ledger-row">
+                    <dt>Chi phí điểm đến</dt>
+                    <dd>{formatMoney(placeCost)}</dd>
+                  </div>
+                  <div className="travel-ledger-row">
+                    <dt>Quãng đường ngày {activeDayIndex + 1}</dt>
+                    <dd>{routeDistance.toFixed(1)} km</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="travel-panel" aria-labelledby="travel-departure-title">
+                <div className="travel-panel-head">
+                  <div>
+                    <h2 id="travel-departure-title" className="travel-panel-title">Điểm xuất phát</h2>
+                    <p className="travel-panel-note">Tìm địa chỉ của bạn hoặc dùng vị trí hiện tại.</p>
+                  </div>
+                </div>
+
+                <label className="travel-field">
+                  <span className="travel-field-label">Địa chỉ xuất phát</span>
+                  <input
+                    type="text"
+                    value={departureQuery}
+                    onChange={(event) => {
+                      setDepartureQuery(event.target.value);
+                      setDepartureError(null);
+                    }}
+                    placeholder="Nhập điểm xuất phát của bạn…"
+                    className="travel-input"
+                  />
+                </label>
+                {departureLoading && (
+                  <p className="travel-inline-status" role="status" aria-live="polite">Đang tìm địa chỉ…</p>
+                )}
+                {departureSuggestions.length > 0 && (
+                  <div className="travel-suggestions">
+                    {departureSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.place_id}
+                        type="button"
+                        onClick={() => selectDeparture(suggestion)}
+                        className="travel-suggestion"
+                      >
+                        {suggestion.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  disabled={isLocating}
+                  className="travel-button travel-button--quiet"
+                >
+                  <LocateFixed size={17} aria-hidden="true" />
+                  {isLocating ? 'Đang lấy vị trí…' : 'Dùng vị trí hiện tại'}
+                </button>
+
+                {departureError && <p className="travel-error" role="alert">{departureError}</p>}
+                <p className="travel-current-point">Đang dùng: {departurePoint.label}</p>
+              </section>
+
+              <section className="travel-panel" aria-labelledby="travel-days-title">
+                <div className="travel-panel-head">
+                  <div>
+                    <h2 id="travel-days-title" className="travel-panel-title">Lịch trình theo ngày</h2>
+                    <p className="travel-panel-note">{dayCount} ngày vui chơi · tối đa {DAY_TIME_LIMIT_HOURS} giờ mỗi ngày</p>
+                  </div>
+                  <div className="travel-stepper" role="group" aria-label="Số ngày">
                     <button
-                      key={suggestion.place_id}
                       type="button"
-                      onClick={() => selectDeparture(suggestion)}
-                      className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold leading-5 text-[#0F172A] transition-colors last:border-b-0 hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
+                      onClick={() => updateDayCount(dayCount - 1)}
+                      disabled={dayCount <= 1}
+                      aria-label="Giảm số ngày"
                     >
-                      <span className="line-clamp-2">{suggestion.display_name}</span>
+                      <Minus size={16} aria-hidden="true" />
+                    </button>
+                    <span aria-live="polite">{dayCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateDayCount(dayCount + 1)}
+                      disabled={dayCount >= MAX_TRIP_DAYS}
+                      aria-label="Tăng số ngày"
+                    >
+                      <Plus size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="travel-day-tabs">
+                  {dayRoutePreviews.map((day) => (
+                    <button
+                      key={day.day}
+                      type="button"
+                      onClick={() => setActiveDayIndex(day.day - 1)}
+                      aria-pressed={activeDayIndex === day.day - 1}
+                      className={cn('travel-day-tab', activeDayIndex === day.day - 1 && 'is-active')}
+                    >
+                      <span className="travel-day-tab-name">
+                        <span className="travel-day-dot" style={{ backgroundColor: day.color }} aria-hidden="true" />
+                        Ngày {day.day}
+                      </span>
+                      <span className={cn('travel-day-tab-meta', day.totalHours > DAY_TIME_LIMIT_HOURS && 'is-over')}>
+                        {day.places.length} điểm · {day.totalHours.toFixed(1)}h
+                      </span>
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-            <Button
-              type="button"
-              onClick={useCurrentLocation}
-              disabled={isLocating}
-              className="mt-3 h-11 w-full rounded-xl border border-teal-200 bg-teal-50 font-black text-teal-700 shadow-none hover:bg-teal-100"
-            >
-              {isLocating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LocateFixed className="mr-2 h-4 w-4" />}
-              📍 Dùng vị trí hiện tại
-            </Button>
-            {departureError && <p className="mt-2 text-xs font-semibold text-red-600">{departureError}</p>}
-            <p className="mt-2 line-clamp-2 text-xs font-semibold text-[#64748B]">Đang dùng: {departurePoint.label}</p>
-          </div>
 
-          <div className="rounded-2xl border border-white/25 bg-white/95 p-4 shadow-[0_18px_45px_rgba(3,50,59,0.18)] backdrop-blur">
-            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Lịch trình theo ngày</p>
-                  <h3 className="mt-1 text-lg font-black text-[#0F172A]">{dayCount} ngày vui chơi</h3>
-                </div>
-                <div className="flex items-center overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="travel-day-actions">
                   <button
                     type="button"
-                    onClick={() => updateDayCount(dayCount - 1)}
-                    disabled={dayCount <= 1}
-                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-teal-50 disabled:cursor-not-allowed disabled:text-slate-300"
-                    aria-label="Giảm số ngày"
+                    onClick={autoDistributeSelectedPlaces}
+                    disabled={selectedPlaces.length === 0}
+                    className="travel-button travel-button--quiet"
                   >
-                    <Minus className="h-4 w-4" />
+                    Chia đều theo ngày
                   </button>
-                  <span className="w-10 text-center text-sm font-black text-[#0F172A]">{dayCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => updateDayCount(dayCount + 1)}
-                    disabled={dayCount >= MAX_TRIP_DAYS}
-                    className="flex h-10 w-10 items-center justify-center text-[#0F172A] transition-colors hover:bg-teal-50 disabled:cursor-not-allowed disabled:text-slate-300"
-                    aria-label="Tăng số ngày"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
+                  <p>Tối đa {DAY_TIME_LIMIT_HOURS} giờ mỗi ngày, gồm tham quan và di chuyển.</p>
                 </div>
-              </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {dayRoutePreviews.map((day) => (
-                  <button
-                    key={day.day}
-                    type="button"
-                    onClick={() => setActiveDayIndex(day.day - 1)}
-                    className={cn(
-                      'rounded-xl border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
-                      activeDayIndex === day.day - 1 ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white hover:border-teal-200'
-                    )}
-                  >
-                    <span className="flex items-center gap-2 text-xs font-black text-[#0F172A]">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: day.color }} />
-                      Ngày {day.day}
-                    </span>
-                    <span className={cn('mt-1 block text-[11px] font-bold', day.totalHours > DAY_TIME_LIMIT_HOURS ? 'text-red-600' : 'text-[#64748B]')}>
-                      {day.places.length} điểm · {day.totalHours.toFixed(1)}h
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  onClick={autoDistributeSelectedPlaces}
-                  disabled={selectedPlaces.length === 0}
-                  className="h-10 rounded-xl bg-[#0F766E] px-4 text-xs font-black text-white hover:bg-teal-500 disabled:bg-slate-300"
-                >
-                  AI chia lịch
-                </Button>
-                <div className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-[#64748B]">
-                  Tối đa {DAY_TIME_LIMIT_HOURS}h/ngày gồm tham quan và di chuyển
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-3">
-                {dayRoutePreviews.map((day) => (
-                  <div
-                    key={`day-plan-${day.day}`}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => handlePlaceDrop(day.day - 1)}
-                    className={cn(
-                      'rounded-2xl border p-3 transition-colors',
-                      activeDayIndex === day.day - 1 ? 'border-teal-300 bg-teal-50/70' : 'border-slate-200 bg-white'
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setActiveDayIndex(day.day - 1)}
-                        className="min-w-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
-                      >
-                        <span className="flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: day.color }} />
-                          Ngày {day.day}
+                <div className="travel-day-list">
+                  {dayRoutePreviews.map((day) => (
+                    <div
+                      key={`day-plan-${day.day}`}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => handlePlaceDrop(day.day - 1)}
+                      className={cn('travel-day-card', activeDayIndex === day.day - 1 && 'is-active')}
+                    >
+                      <div className="travel-day-card-head">
+                        <button
+                          type="button"
+                          onClick={() => setActiveDayIndex(day.day - 1)}
+                          className="travel-day-select"
+                        >
+                          <span className="travel-day-name">
+                            <span className="travel-day-dot" style={{ backgroundColor: day.color }} aria-hidden="true" />
+                            Ngày {day.day}
+                          </span>
+                          <span className="travel-day-meta">
+                            {day.distanceKm.toFixed(1)} km · {day.visitHours.toFixed(1)}h tham quan · {day.travelHours.toFixed(1)}h di chuyển
+                          </span>
+                        </button>
+                        <span className={cn('travel-hours', day.totalHours > DAY_TIME_LIMIT_HOURS && 'is-over')}>
+                          {day.totalHours.toFixed(1)}h
                         </span>
-                        <span className="mt-1 block text-xs font-semibold text-[#64748B]">
-                          {day.distanceKm.toFixed(1)} km · {day.visitHours.toFixed(1)}h chơi · {day.travelHours.toFixed(1)}h di chuyển
-                        </span>
-                      </button>
-                      <span className={cn('shrink-0 rounded-full px-2 py-1 text-[11px] font-black', day.totalHours > DAY_TIME_LIMIT_HOURS ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700')}>
-                        {day.totalHours.toFixed(1)}h
-                      </span>
-                    </div>
+                      </div>
 
-                    <label className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2">
-                      <span className="text-xs font-black uppercase text-[#64748B]">Giờ xuất phát</span>
-                      <input
-                        type="time"
-                        value={day.startTime}
-                        onChange={(event) => updateDayStartTime(day.day - 1, event.target.value)}
-                        className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-sm font-black text-[#0F172A] outline-none focus:border-[#0F766E] focus:ring-2 focus:ring-teal-100"
-                      />
-                    </label>
-
-                    <div className="mt-3 space-y-2">
-                      {day.places.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-300 bg-white/70 px-3 py-4 text-center text-xs font-semibold text-[#64748B]">
-                          Kéo địa điểm vào ngày này
-                        </div>
-                      ) : (
-                        day.places.map((place, index) => (
-                          <div
-                            key={`${day.day}-${place.id}`}
-                            draggable
-                            onDragStart={() => handlePlaceDragStart(place.id)}
-                            onDragEnd={() => setDraggedPlaceId(null)}
-                            onDragOver={(event) => event.preventDefault()}
-                            onDrop={(event) => {
-                              event.stopPropagation();
-                              handlePlaceDrop(day.day - 1, index);
-                            }}
-                            className={cn(
-                              'flex cursor-grab items-center gap-3 rounded-xl border bg-white px-3 py-2 text-left shadow-sm active:cursor-grabbing',
-                              draggedPlaceId === place.id ? 'border-teal-300 opacity-60' : 'border-slate-100'
-                            )}
-                          >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={{ backgroundColor: day.color }}>
-                              {index + 1}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-black text-[#0F172A]">{place.name}</p>
-                              <p className="text-xs font-semibold text-[#64748B]">{place.durationHours}h · {place.bestTime}</p>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => togglePlace(place.id)}
-                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                              aria-label={`Bỏ ${place.name} khỏi lịch`}
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[#64748B]">Tóm tắt ngày đang xem</p>
-                <p className="mt-1 text-lg font-black text-[#0F172A]">{activeDayPlaces.length > 0 ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm` : 'Chưa có địa điểm nào'}</p>
-              </div>
-              <div className="rounded-full bg-[#FBBF24] px-3 py-1 text-xs font-black text-white">{routeDistance.toFixed(1)} km</div>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                <p className="text-[10px] font-black uppercase text-[#94A3B8]">Tham quan</p>
-                <p className="mt-1 text-sm font-black text-[#0F172A]">{activeDayPreview?.visitHours.toFixed(1) ?? '0.0'}h</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                <p className="text-[10px] font-black uppercase text-[#94A3B8]">Di chuyển</p>
-                <p className="mt-1 text-sm font-black text-[#0F172A]">{activeDayPreview?.travelHours.toFixed(1) ?? '0.0'}h</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 px-3 py-2">
-                <p className="text-[10px] font-black uppercase text-[#94A3B8]">Tổng</p>
-                <p className={cn('mt-1 text-sm font-black', (activeDayPreview?.totalHours ?? 0) > DAY_TIME_LIMIT_HOURS ? 'text-red-600' : 'text-[#0F172A]')}>{activeDayPreview?.totalHours.toFixed(1) ?? '0.0'}h</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {selectedPlaces.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-sm font-semibold text-[#64748B]">
-                Chưa có địa điểm nào trong lịch trình. Chọn marker trên bản đồ rồi bấm thêm vào chuyến đi.
-              </div>
-            ) : selectedPlaces.map((place) => {
-              const Icon = CATEGORY_ICONS[place.category];
-              const dayMeta = selectedPlaceDayMeta.get(place.id);
-              const dayColor = dayMeta?.color ?? DEFAULT_DAY_ROUTE_COLOR;
-              const tags = getPlaceTags(place, guide.center);
-              const details = getPlaceDetails(place);
-              const expanded = expandedPlaceId === place.id;
-              const categoryLabel = CATEGORY_LABELS[place.category];
-              return (
-                <div
-                  key={place.id}
-                  className={cn(
-                    'relative overflow-hidden rounded-2xl border bg-white shadow-[0_4px_24px_rgba(0,0,0,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(15,23,42,0.10)]',
-                    expanded ? 'ring-2 text-[#0F172A]' : ''
-                  )}
-                  style={{
-                    borderColor: dayColor,
-                    backgroundColor: withAlpha(dayColor, expanded ? '1F' : '0F'),
-                    ['--tw-ring-color' as string]: withAlpha(dayColor, '33'),
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => togglePlaceDetails(place.id)}
-                    className="relative flex w-full gap-3 p-3.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
-                    aria-expanded={expanded}
-                  >
-                      <div className="relative h-24 w-[132px] shrink-0 overflow-hidden rounded-xl bg-gray-100">
-                        <LandmarkImage
-                          name={place.name}
-                          wikiSlug={place.wikiSlug || place.name}
-                          imageUrl={place.imageUrl}
+                      <label className="travel-time-row">
+                        <span>Giờ xuất phát</span>
+                        <input
+                          type="time"
+                          value={day.startTime}
+                          onChange={(event) => updateDayStartTime(day.day - 1, event.target.value)}
+                          className="travel-time-input"
                         />
-                        <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black text-[#0F172A] shadow-sm">
-                          <Icon className="h-3 w-3" style={{ color: dayColor }} />
-                          {categoryLabel}
-                        </div>
-                        {dayMeta && (
-                          <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-black text-white shadow-sm" style={{ backgroundColor: dayColor }}>
-                            Ngày {dayMeta.day}
-                          </div>
+                      </label>
+
+                      <div className="travel-stop-list">
+                        {day.places.length === 0 ? (
+                          <p className="travel-empty-row">Kéo địa điểm vào ngày này</p>
+                        ) : (
+                          day.places.map((place, index) => (
+                            <div
+                              key={`${day.day}-${place.id}`}
+                              draggable
+                              onDragStart={() => handlePlaceDragStart(place.id)}
+                              onDragEnd={() => setDraggedPlaceId(null)}
+                              onDragOver={(event) => event.preventDefault()}
+                              onDrop={(event) => {
+                                event.stopPropagation();
+                                handlePlaceDrop(day.day - 1, index);
+                              }}
+                              className={cn('travel-stop', draggedPlaceId === place.id && 'is-dragging')}
+                            >
+                              <span className="travel-stop-number" style={{ backgroundColor: day.color }}>
+                                {index + 1}
+                              </span>
+                              <div className="travel-stop-copy">
+                                <p>{place.name}</p>
+                                <p>{place.durationHours}h · {place.bestTime}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => togglePlace(place.id)}
+                                className="travel-icon-button"
+                                aria-label={`Bỏ ${place.name} khỏi lịch`}
+                              >
+                                <Minus size={16} aria-hidden="true" />
+                              </button>
+                            </div>
+                          ))
                         )}
                       </div>
-                    <div className="min-w-0 flex-1 pr-9">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-black text-[#0F172A]">{place.name}</p>
-                          <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-[#64748B]">
-                            {place.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px] font-bold text-[#475569]">
-                        <span className="rounded-lg bg-white/80 px-2 py-1">⭐ {getPlaceRating(place)}</span>
-                        <span className="rounded-lg bg-white/80 px-2 py-1">🕒 {place.bestTime}</span>
-                        <span className="rounded-lg bg-white/80 px-2 py-1">📍 {getPlaceDistrict(place, guide.center)}</span>
-                        <span className="rounded-lg bg-white/80 px-2 py-1">💰 {formatMoney(place.cost)}</span>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {tags.slice(0, 3).map((tag) => (
-                          <span key={tag} className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-bold text-teal-700">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="mt-2 text-xs font-black text-[#0F172A]">{place.durationHours}h trải nghiệm · Đã thêm vào ngày {dayMeta?.day ?? activeDayIndex + 1}</p>
                     </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      togglePlace(place.id);
-                    }}
-                    className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border text-xs text-white shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
-                    style={{ borderColor: dayColor, backgroundColor: dayColor }}
-                    aria-label={`Bỏ chọn ${place.name}`}
-                    aria-pressed={true}
-                  >
-                    <Check className="h-3.5 w-3.5" />
-                  </button>
-                  <div className={cn('overflow-hidden bg-[#F8FAFC] transition-[max-height] duration-300 ease-in-out', expanded ? 'max-h-[760px]' : 'max-h-0')}>
-                    <div className="space-y-4 border-t border-teal-100 px-4 py-4">
-                      <div>
-                        <p className="mb-2 text-xs font-black uppercase tracking-wide text-[#64748B]">Ảnh đại diện</p>
-                        <div className="h-36 overflow-hidden rounded-xl border border-white bg-white shadow-sm">
-                          {place.wikiSlug ? (
-                            <LandmarkImage
-                              wikiSlug={place.wikiSlug}
-                              name={`${place.name} 1`}
-                              imageUrl={place.imageUrl}
-                            />
-                          ) : (
-                            <img
-                              src={getPlaceGalleryUrls(place)[0]}
-                              alt={`${place.name} 1`}
-                              loading="lazy"
-                              crossOrigin="anonymous"
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                              onError={(e) => handlePlaceImageError(e, place)}
-                            />
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                          <p className="text-[10px] font-black uppercase text-[#94A3B8]">Khung giờ</p>
-                          <p className="mt-1 text-sm font-black text-[#0F172A]">{place.bestTime}</p>
-                        </div>
-                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                          <p className="text-[10px] font-black uppercase text-[#94A3B8]">Thời lượng</p>
-                          <p className="mt-1 text-sm font-black text-[#0F172A]">{place.durationHours}h</p>
-                        </div>
-                        <div className="rounded-xl bg-white px-3 py-2 shadow-sm">
-                          <p className="text-[10px] font-black uppercase text-[#94A3B8]">Chi phí</p>
-                          <p className="mt-1 text-sm font-black text-[#0F172A]">{formatMoney(place.cost)}</p>
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-white p-3 text-sm leading-6 text-[#64748B] shadow-sm">
-                        <p className="font-black text-[#0F172A]">Mô tả ngắn</p>
-                        <p className="mt-1">{details.desc}</p>
-                      </div>
-                      <div className="rounded-xl bg-white p-3 shadow-sm">
-                        <p className="text-sm font-black text-[#0F172A]">Hoạt động nổi bật</p>
-                        <ul className="mt-2 grid gap-2 text-sm text-[#64748B]">
-                          {details.activities.map((activity) => (
-                            <li key={activity} className="flex items-start gap-2">
-                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#22C55E]" />
-                              <span>{activity}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
-                        <p className="font-black">Giờ mở cửa: {details.hours}</p>
-                        <p className="mt-1">Tip: {details.tip}</p>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-            <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-              <Car className="h-4 w-4 text-[#FBBF24]" />
-              Phương tiện di chuyển trong thành phố
-            </div>
-            <div className="space-y-2">
-              {CITY_TRANSPORT_OPTIONS.map((item, index) => {
-                const selected = selectedLocalTransportIndex === index;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedLocalTransportIndex(index);
-                      resetAnalysis();
-                    }}
-                    className={cn(
-                      'w-full rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FBBF24]',
-                      selected ? 'border-[#FBBF24] bg-amber-50 shadow-sm' : 'border-slate-100 bg-slate-50 hover:border-slate-300'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-bold text-[#0F172A]">{item.icon} {item.label}</p>
-                    </div>
-                    <p className="mt-1 text-xs text-[#64748B]">{item.note}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-            <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-              <Bot className="h-4 w-4 text-[#0F766E]" />
-              AI lịch trình
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className={cn('flex items-center gap-2', localTransport ? 'text-amber-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> Phương tiện nội đô</div>
-              {transportError && <p className="mt-1 text-xs font-semibold text-red-600">{transportError}</p>}
-              <div className={cn('flex items-center gap-2', selectedPlaces.length >= 2 ? 'text-teal-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> {selectedPlaces.length} địa điểm đã chọn</div>
-              {landmarkError && <p className="mt-1 text-xs font-semibold text-red-600">{landmarkError}</p>}
-              <div className={cn('flex items-center gap-2', departurePoint ? 'text-green-700' : 'text-[#64748B]')}><Check className="h-4 w-4" /> Điểm xuất phát</div>
-              {departurePointError && <p className="mt-1 text-xs font-semibold text-red-600">{departurePointError}</p>}
-            </div>
-            <Button
-              type="button"
-              disabled={analysisState === 'loading'} // Only disable if loading, validation handled by messages
-              onClick={startAnalysis}
-              className={cn(
-                'mt-4 h-12 w-full rounded-xl bg-[#0F766E] font-black text-white shadow-lg shadow-teal-900/20 hover:bg-teal-500',
-                analysisState === 'loading' && 'animate-pulse cursor-not-allowed'
-              )}
-            >
-              <Sparkles className="mr-2 h-4 w-4" />
-              {analysisState === 'loading' ? 'AI đang xử lý...' : 'Phân tích lộ trình bằng AI'}
-            </Button>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {analysisState === 'idle' ? (
-              <motion.div key="waiting" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="rounded-2xl border border-dashed border-teal-200 bg-teal-50 p-4 text-sm text-sky-800">
-                AI sẽ chỉ tạo lịch trình sau khi bạn chọn đủ phương tiện và địa điểm rồi bấm phân tích.
-              </motion.div>
-            ) : analysisState === 'loading' ? (
-              <motion.div key="ai-loading" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="overflow-hidden rounded-2xl border border-teal-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                <div className="flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                  <Bot className="h-4 w-4 animate-pulse text-[#0F766E]" />
-                  <span>AI đang phân tích lộ trình</span>
-                  <span className="ai-processing-dots" />
-                </div>
-                <div className="mt-4 h-[3px] overflow-hidden rounded bg-slate-100">
-                  <div className="ai-progress-bar" />
-                </div>
-                <AnimatePresence mode="wait">
-                  <motion.p
-                    key={analysisStepIndex}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25 }}
-                    className="mt-3 text-sm font-semibold text-[#64748B]"
-                  >
-                    {ANALYSIS_STEPS[analysisStepIndex]}
-                  </motion.p>
-                </AnimatePresence>
-              </motion.div>
-            ) : (
-              <motion.div key="analysis" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-3">
-                <div className="h-[3px] overflow-hidden rounded bg-slate-100">
-                  <div className="h-full w-full rounded bg-[linear-gradient(90deg,#0F766E,#FBBF24)] shadow-[0_0_18px_rgba(249,115,22,0.55)]" />
-                </div>
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                    <Star className="h-4 w-4 text-[#FBBF24]" />
-                    Lộ trình AI đề xuất
+                <div className="travel-day-summary">
+                  <div>
+                    <h3>{activeDayPlaces.length > 0 ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm` : 'Chưa có địa điểm nào'}</h3>
+                    <p>Quãng đường ước tính {routeDistance.toFixed(1)} km</p>
                   </div>
-                  <div className="space-y-2 text-sm text-[#64748B]">
-                    <div><span className="font-bold text-[#0F172A]">Ngày đi:</span> {departureDate || 'Đang cập nhật'}</div>
-                    <div><span className="font-bold text-[#0F172A]">Nội đô:</span> {localTransport ? `${localTransport.icon} ${localTransport.label}` : 'N/A'}</div>
-                  </div>
-                </motion.div>
-
-                {selectedPlaces.map((place, index) => (
-                  <motion.div key={place.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + index * 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#0F766E] text-xs font-black text-white">{index + 1}</span>
-                        <h4 className="truncate font-black text-[#0F172A]">{place.name}</h4>
-                      </div>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-[#64748B]">{place.bestTime}</span>
+                  <dl className="travel-metrics">
+                    <div className="travel-metric">
+                      <dt>Tham quan</dt>
+                      <dd>{activeDayPreview?.visitHours.toFixed(1) ?? '0.0'}h</dd>
                     </div>
-                    <p className="mt-2 text-sm text-[#64748B]">{place.description}</p>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-[#64748B]">
-                      <div className="rounded-xl bg-slate-50 p-2"><Clock3 className="mb-1 h-3.5 w-3.5" />{place.durationHours} giờ</div>
-                      <div className="rounded-xl bg-slate-50 p-2"><WalletCards className="mb-1 h-3.5 w-3.5" />{formatMoney(place.cost)}</div>
+                    <div className="travel-metric">
+                      <dt>Di chuyển</dt>
+                      <dd>{activeDayPreview?.travelHours.toFixed(1) ?? '0.0'}h</dd>
                     </div>
-                  </motion.div>
-                ))}
-
-                {analysisResult && (
-                  <>
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + selectedPlaces.length * 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                      <div className="mb-3 flex items-center gap-2 text-sm font-black text-[#0F172A]">
-                        <Star className="h-4 w-4 text-[#FBBF24]" />
-                        Lộ trình AI đề xuất
-                      </div>
-                      <p className="text-sm text-[#64748B]">{analysisResult.routeExplanation}</p>
-                    </motion.div>
-
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + selectedPlaces.length * 0.1 + 0.1 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                      <h3 className="mb-3 border-b border-slate-200 pb-2 text-sm font-bold uppercase text-[#0F172A]">🎯 CHI PHÍ THAM QUAN & DỊCH VỤ</h3>
-                      {analysisResult.stops.map((stop, index) => (
-                        <div key={stop.place + index} className="py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0F766E] text-xs font-black text-white">{stop.order}</span>
-                            <p className="font-bold text-[#0F172A]">{stop.place}</p>
-                          </div>
-                          <div className="ml-8 mt-1 text-sm text-[#64748B]">
-                            {stop.activityCost.entranceFee.min > 0 && (
-                              <p>🎫 Vào cửa: <span className="font-semibold text-[#0F766E]">{formatVND(stop.activityCost.entranceFee.min)} - {formatVND(stop.activityCost.entranceFee.max)}</span></p>
-                            )}
-                            {stop.activityCost.servicesCost.min > 0 && (
-                              <p>🎪 Dịch vụ: <span className="font-semibold text-[#0F766E]">{formatVND(stop.activityCost.servicesCost.min)} - {formatVND(stop.activityCost.servicesCost.max)}</span></p>
-                            )}
-                            {stop.activityCost.note && <p className="mt-1 text-xs italic text-[#64748B]">📝 {stop.activityCost.note}</p>}
-                          </div>
-                        </div>
-                      ))}
-                    </motion.div>
-
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + selectedPlaces.length * 0.1 + 0.2 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                      <h3 className="mb-3 border-b border-slate-200 pb-2 text-sm font-bold uppercase text-[#0F172A]">🚗 CHI PHÍ DI CHUYỂN ({localTransport?.label || 'N/A'})</h3>
-                      {analysisResult.stops.map((stop, index) => (
-                        <div key={stop.place + '-transport-' + index} className="py-2">
-                          {stop.transportFromPrevious.totalCost.min > 0 && (
-                            <>
-                              <p className="font-bold text-[#0F172A]">{index === 0 ? departurePoint.name : analysisResult.stops[index - 1]?.place} → {stop.place}</p>
-                              <div className="ml-0 mt-1 text-sm text-[#64748B]">
-                                <p>📍 {stop.transportFromPrevious.distanceKm.toFixed(1)} km × {formatVND(stop.transportFromPrevious.costPerKm.min)} - {formatVND(stop.transportFromPrevious.costPerKm.max)}/km</p>
-                                <p>💰 <span className="font-semibold text-[#0F766E]">{formatVND(stop.transportFromPrevious.totalCost.min)} - {formatVND(stop.transportFromPrevious.totalCost.max)}</span></p>
-                                {stop.transportFromPrevious.note && <p className="mt-1 text-xs italic text-[#64748B]">📝 {stop.transportFromPrevious.note}</p>}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </motion.div>
-
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + selectedPlaces.length * 0.1 + 0.3 }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-                      <div className="mb-3 text-sm font-black text-[#0F172A]">Dự toán chi phí</div>
-                      <div className="space-y-2 text-sm text-[#64748B]">
-                        <div className="flex justify-between gap-3"><span>🎯 Tham quan & dịch vụ</span><span className="font-bold text-[#0F766E]">{formatVND(analysisResult.totalSummary.activityCostTotal.min)} - {formatVND(analysisResult.totalSummary.activityCostTotal.max)}</span></div>
-                        <div className="flex justify-between gap-3"><span>🚗 Di chuyển</span><span className="font-bold text-[#0F766E]">{formatVND(analysisResult.totalSummary.transportCostTotal.min)} - {formatVND(analysisResult.totalSummary.transportCostTotal.max)}</span></div>
-                        <div className="flex justify-between gap-3 border-t border-slate-100 pt-2 text-base font-black text-[#0F172A]"><span>💰 Tổng cộng (mỗi người)</span><span className="font-bold text-[#0F766E]">{formatVND(analysisResult.totalSummary.grandTotal.min)} - {formatVND(analysisResult.totalSummary.grandTotal.max)}</span></div>
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-
-                {routeDirections.length > 0 && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + selectedPlaces.length * 0.1 }} className="overflow-hidden rounded-2xl bg-white shadow-lg">
-                    <button
-                      type="button"
-                      onClick={() => setDirectionsExpanded((current) => !current)}
-                      className="flex w-full items-center justify-between gap-3 bg-[linear-gradient(135deg,#0F766E,#063C45)] px-4 py-4 text-left text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
-                    >
-                      <span className="text-sm font-black uppercase tracking-wide">🗺️ Lộ trình gợi ý</span>
-                      <span className="flex items-center gap-2 text-xs font-black">
-                        {activeDayPlaces.length} điểm
-                        <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform', directionsExpanded && 'rotate-180')} />
-                      </span>
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {directionsExpanded && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="border-t border-slate-100"
-                        >
-                          <div className="max-h-[520px] overflow-y-auto px-4 py-4">
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="relative pb-4">
-                              <div className="flex gap-3">
-                                <div className="flex w-8 shrink-0 flex-col items-center">
-                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#22C55E] text-sm font-black text-white">📍</div>
-                                  {activeDayPlaces.length > 0 && <div className="mt-2 h-full min-h-8 border-l-2 border-dashed border-[#CBD5E1]" />}
-                                </div>
-                                <div className="min-w-0 flex-1 pb-2">
-                                  <h4 className="text-base font-bold text-[#0F172A]">Xuất phát</h4>
-                                  <p className="mt-1 text-[13px] font-semibold text-[#64748B]">📍 {departurePoint.label}</p>
-                                </div>
-                              </div>
-                            </motion.div>
-
-                            {activeDayPlaces.map((place, stopIndex) => {
-                              const steps = routeDirections[stopIndex] ?? [];
-                              const expanded = expandedStopIndexes.includes(stopIndex);
-                              const legDistance = steps.reduce((total, step) => total + step.distance, 0);
-                              const speedKmh = localTransport?.id === 'walk' ? 5 : localTransport?.id === 'bus' ? 20 : localTransport?.id === 'car' ? 28 : 24;
-                              const minutes = Math.max(3, Math.round((legDistance / 1000 / speedKmh) * 60));
-
-                              return (
-                                <motion.div
-                                  key={place.id}
-                                  initial={{ opacity: 0, y: 14 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: (stopIndex + 1) * 0.15 }}
-                                  className="relative"
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleStopDetails(stopIndex)}
-                                    className="flex w-full gap-3 rounded-xl py-2 text-left transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
-                                    aria-expanded={expanded}
-                                  >
-                                    <div className="flex w-8 shrink-0 flex-col items-center">
-                                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#0F766E] text-sm font-black text-white">{stopIndex + 2}</div>
-                                      {stopIndex < activeDayPlaces.length - 1 && <div className="mt-2 h-full min-h-10 border-l-2 border-dashed border-[#CBD5E1]" />}
-                                    </div>
-                                    <div className="min-w-0 flex-1 pb-4">
-                                      <div className="flex min-w-0 items-center justify-between gap-2">
-                                        <h4 className="truncate text-base font-bold text-[#0F172A]">{place.name}</h4>
-                                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
-                                          ~{minutes} phút {localTransport?.icon ?? '🛵'}
-                                        </span>
-                                      </div>
-                                      <div className={cn('overflow-hidden transition-[max-height] duration-300 ease-in-out', expanded ? 'max-h-56' : 'max-h-[42px]')}>
-                                        <div className="mt-2 space-y-1 pl-0 text-[13px] font-semibold text-[#64748B]">
-                                          {steps.slice(0, expanded ? 6 : 2).map((step) => (
-                                            <div
-                                              key={step.id}
-                                              onMouseEnter={() => setActiveDirectionId(step.id)}
-                                              onMouseLeave={() => setActiveDirectionId(null)}
-                                              className="truncate rounded-lg py-1 transition-colors hover:bg-gray-50"
-                                            >
-                                              {step.instruction} {step.streetName}
-                                            </div>
-                                          ))}
-                                          {steps.length === 0 && <div>Đang cập nhật hướng dẫn đường phố</div>}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </button>
-                                </motion.div>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </aside>
-
-      <div className="order-1 min-h-[62vh] bg-[#E6F4F1] lg:order-2 lg:h-screen lg:overflow-hidden">
-        <div
-          ref={mapContainerRef}
-          className={cn(
-            'relative h-[62vh] min-h-[440px] touch-none overflow-hidden bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,.9)] select-none lg:h-screen lg:min-h-0',
-            isPanning ? 'cursor-grabbing' : 'cursor-grab'
-          )}
-          onPointerDown={handleMapPointerDown}
-          onPointerMove={handleMapPointerMove}
-          onPointerUp={handleMapPointerUp}
-          onPointerCancel={handleMapPointerUp}
-          onWheel={handleMapWheel}
-          onDragStart={(event) => event.preventDefault()}
-        >
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2">
-            {mapTiles.map((tile) => (
-              <img
-                key={tile.key}
-                src={tile.src}
-                alt=""
-                className={cn('leaflet-tile pointer-events-none absolute h-64 w-64 select-none [-webkit-user-drag:none]', !tile.loaded && 'leaflet-tile-loading')}
-                style={{ left: tile.left, top: tile.top }}
-                decoding="async"
-                draggable={false}
-                data-tile-key={tile.key}
-                data-primary-src={tile.src}
-                data-fallback-sources={tile.fallbackSources.join('|')}
-                data-fallback-index="0"
-                onLoad={markTileLoaded}
-                onError={retryTileOnce}
-                onDragStart={(event) => event.preventDefault()}
-              />
-            ))}
-          </div>
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,.02),rgba(15,118,110,.14))]" />
-          <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/50" />
-
-          {roadRoutePoints.length > 1 ? (
-            <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
-              <polyline points={roadRoutePolyline} stroke="rgba(15, 23, 42, 0.16)" strokeWidth="12" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points={roadRoutePolyline} stroke="#FBBF24" strokeWidth="5" strokeOpacity="0.85" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : null}
-
-          {canSimulateRoute && routeSimulationFrame.points.length > 1 && (
-            <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
-              <polyline points={routeSimulationPolyline} stroke="rgba(15, 118, 110, 0.20)" strokeWidth="15" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points={routeSimulationPolyline} stroke="#0F766E" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points={routeSimulationPolyline} stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-
-          {canSimulateRoute && routeSimulationFrame.head && routeSimulationProgress > 0 && (
-            <div
-              className="pointer-events-none absolute z-40 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#0F766E] text-white shadow-[0_8px_24px_rgba(15,118,110,0.38)]"
-              style={{
-                left: 'calc(50% + ' + routeSimulationFrame.head.x + 'px)',
-                top: 'calc(50% + ' + routeSimulationFrame.head.y + 'px)',
-              }}
-            >
-              <Navigation className="h-4 w-4" />
-            </div>
-          )}
-
-          {canSimulateRoute && activeSimulationPlace && routeSimulationFrame.head && routeSimulationProgress > 0 && (
-            <div
-              className="pointer-events-none absolute z-40 max-w-[220px] -translate-x-1/2 rounded-full border border-teal-200 bg-white/95 px-3 py-1.5 text-xs font-black text-[#0F172A] shadow-[0_8px_24px_rgba(15,23,42,0.14)]"
-              style={{
-                left: 'calc(50% + ' + routeSimulationFrame.head.x + 'px)',
-                top: 'calc(50% + ' + (routeSimulationFrame.head.y - 48) + 'px)',
-              }}
-            >
-              <span className="block truncate">{activeSimulationPlace.name}</span>
-            </div>
-          )}
-
-          {activeDirectionPoints.length > 1 && (
-            <svg className="pointer-events-none absolute left-1/2 top-1/2 h-[1536px] w-[1536px] -translate-x-1/2 -translate-y-1/2" viewBox="0 0 1536 1536" fill="none">
-              <polyline points={activeDirectionPolyline} stroke="#FBBF24" strokeWidth="8" strokeOpacity="0.95" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-
-          <div className="absolute left-4 top-4 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-4 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
-            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wide text-[#0F766E]"><Move className="h-3.5 w-3.5" /> Bản đồ tương tác</div>
-            <div className="mt-1 truncate text-sm font-black text-[#0F172A]">{origin || 'Nơi ở'} → {destination || 'Thành phố'}</div>
-            <div className="mt-1 text-[11px] font-semibold text-[#64748B]">Kéo để di chuyển · Cuộn để zoom · Chọn sticker</div>
-          </div>
-
-          <div className="absolute right-4 top-4 z-30 flex flex-col overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
-            <button type="button" onClick={() => setZoomOffset((current) => Math.min(19 - mapBaseZoom, current + 1))} className="flex h-11 w-11 items-center justify-center border-b border-slate-100 text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" aria-label="Phóng to bản đồ"><Plus className="h-4 w-4" /></button>
-            <button type="button" onClick={() => setZoomOffset((current) => Math.max(3 - mapBaseZoom, current - 1))} className="flex h-11 w-11 items-center justify-center border-b border-slate-100 text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" aria-label="Thu nhỏ bản đồ"><Minus className="h-4 w-4" /></button>
-            <button type="button" onClick={resetMapView} className="flex h-11 w-11 items-center justify-center text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" aria-label="Đặt lại bản đồ"><RotateCcw className="h-4 w-4" /></button>
-          </div>
-
-          <div className="absolute left-4 top-28 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 p-2 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {dayRoutePreviews.map((day) => (
-                <button
-                  key={`simulation-day-${day.day}`}
-                  type="button"
-                  onClick={() => {
-                    setActiveDayIndex(day.day - 1);
-                    resetRouteSimulation();
-                  }}
-                  className={cn(
-                    'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2 text-[11px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
-                    activeDayIndex === day.day - 1 ? 'border-teal-300 bg-teal-50 text-[#0F172A]' : 'border-slate-200 bg-white text-[#64748B] hover:border-teal-200'
-                  )}
-                >
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: day.color }} />
-                  Ngày {day.day}
-                </button>
-              ))}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleRouteSimulation}
-                disabled={!canSimulateRoute}
-                className={cn(
-                  'inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-black text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
-                  canSimulateRoute ? 'bg-[#0F766E] hover:bg-teal-500' : 'cursor-not-allowed bg-slate-300'
-                )}
-                aria-label={routeSimulationStatus === 'playing' ? 'Tạm dừng đi thử lộ trình' : 'Đi thử lộ trình'}
-              >
-                {routeSimulationStatus === 'playing' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                {routeLoading ? 'Đang tải đường' : 'Đi thử lộ trình'}
-              </button>
-              <button
-                type="button"
-                onClick={resetRouteSimulation}
-                disabled={!canSimulateRoute || routeSimulationProgress === 0}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] disabled:cursor-not-allowed disabled:text-slate-300"
-                aria-label="Chạy lại lộ trình"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={skipToNextSimulationStop}
-                disabled={!canSimulateRoute || routeSimulationProgress >= 1}
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F172A] transition-colors hover:bg-teal-50 hover:text-[#0F766E] disabled:cursor-not-allowed disabled:text-slate-300"
-                aria-label="Tới điểm tiếp theo"
-              >
-                <SkipForward className="h-4 w-4" />
-              </button>
-              <div className="flex h-10 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                {[1, 2].map((speed) => (
-                  <button
-                    key={speed}
-                    type="button"
-                    onClick={() => setRouteSimulationSpeed(speed as 1 | 2)}
-                    className={cn(
-                      'w-11 text-xs font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
-                      routeSimulationSpeed === speed ? 'bg-[#0F766E] text-white' : 'text-[#64748B] hover:bg-teal-50 hover:text-[#0F766E]'
-                    )}
-                  >
-                    {speed}x
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-[linear-gradient(90deg,#0F766E,#FBBF24)] transition-[width] duration-150" style={{ width: `${Math.round(routeSimulationProgress * 100)}%` }} />
-            </div>
-          </div>
-
-          {(routeLoading || routeError) && activeDayPlaces.length > 0 && (
-            <div className="absolute left-4 top-52 z-30 max-w-[calc(100%-96px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-xs font-bold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur">
-              {routeLoading ? (
-                <span className="inline-flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#FBBF24]" />
-                  OSRM đang dựng tuyến đường...
-                </span>
-              ) : routeError}
-            </div>
-          )}
-
-          <div className="absolute bottom-3 left-4 z-30 max-w-[calc(100%-130px)] rounded-2xl border border-white/80 bg-white/95 px-3 py-2 text-[11px] font-semibold text-[#64748B] shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
-            <span className="line-clamp-2">{activeDayPlaces.length > 0 ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm, đi thử sẽ quay về điểm xuất phát` : 'Chọn điểm để xem route preview'}</span>
-          </div>
-          <div className="absolute bottom-3 right-3 z-30 rounded-lg bg-white/95 px-2 py-1 text-[10px] font-semibold text-[#64748B] shadow-sm">© OpenStreetMap contributors</div>
-
-          <div
-            className="pointer-events-none absolute z-10 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-green-200 bg-green-50/95 px-3 py-2 text-xs font-black text-green-950 shadow-[0_4px_24px_rgba(0,0,0,0.12)]"
-            style={{
-              left: 'calc(50% + ' + departureScreenPoint.x + 'px)',
-              top: 'calc(50% + ' + departureScreenPoint.y + 'px)',
-            }}
-            title={`📍 Xuất phát: ${departurePoint.label}`}
-          >
-            <Navigation className="h-4 w-4 shrink-0 text-[#22C55E]" />
-            <span className="truncate">📍 Xuất phát: {departurePoint.label}</span>
-          </div>
-
-          {guide.places.map((place) => {
-            const Icon = CATEGORY_ICONS[place.category];
-            const selected = selectedIds.includes(place.id);
-            const dayMeta = selectedPlaceDayMeta.get(place.id);
-            const markerColor = dayMeta?.color ?? DEFAULT_DAY_ROUTE_COLOR;
-            const simulationActive = activeSimulationPlace?.id === place.id;
-            const markerOffset = MAP_MARKER_OFFSETS[place.id] ?? { x: 0, y: 0 };
-            const placeX = (lngToTileX(place.lng, mapZoom) - lngToTileX(mapCenter.lng, mapZoom)) * 256 + mapPan.x;
-            const placeY = (latToTileY(place.lat, mapZoom) - latToTileY(mapCenter.lat, mapZoom)) * 256 + mapPan.y;
-
-            return (
-              <button
-                key={place.id}
-                type="button"
-                onClick={() => setSelectedPlace(place)}
-                className={cn(
-                  'absolute z-20 flex max-w-[220px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border px-3 py-2 text-xs font-black shadow-[0_4px_24px_rgba(0,0,0,0.12)] transition-[transform,box-shadow,background-color,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2',
-                  simulationActive
-                    ? 'scale-125 border-[#FBBF24] bg-[#FBBF24] text-slate-950 ring-4 ring-amber-200/80'
-                    : selected
-                      ? 'scale-110 text-white ring-4'
-                      : 'border-white bg-white/95 text-[#0F172A] hover:scale-105 hover:border-teal-300 hover:text-[#0F766E]'
-                )}
-                style={{
-                  left: 'calc(50% + ' + (placeX + markerOffset.x) + 'px)',
-                  top: 'calc(50% + ' + (placeY + markerOffset.y) + 'px)',
-                  ...(selected && !simulationActive
-                    ? {
-                        borderColor: markerColor,
-                        backgroundColor: markerColor,
-                        ['--tw-ring-color' as string]: withAlpha(markerColor, '33'),
-                      }
-                    : {}),
-                }}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{place.name}</span>
-              </button>
-            );
-          })}
-
-          <AnimatePresence>
-            {selectedPlace && (() => {
-              const details = getPlaceDetails(selectedPlace);
-              const Icon = CATEGORY_ICONS[selectedPlace.category];
-              const selected = selectedIds.includes(selectedPlace.id);
-              const selectedActivities = selectedActivitiesByPlace[selectedPlace.id] ?? [];
-
-              return (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  data-place-modal="true"
-                  className="absolute left-1/2 top-1/2 z-[100] flex max-h-[calc(100%-32px)] w-[min(390px,calc(100%-32px))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-                  style={{ x: '-50%', y: '-50%' }}
-                >
-                  <div className="relative h-44 shrink-0 overflow-hidden">
-                    <LandmarkImage name={selectedPlace.name} wikiSlug={selectedPlace.wikiSlug} imageUrl={selectedPlace.imageUrl} />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/80 to-transparent px-4 pb-4 pt-12 text-white">
-                      <div className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-1 text-[10px] font-black backdrop-blur">
-                        <Icon className="h-3 w-3" />
-                        {CATEGORY_LABELS[selectedPlace.category]}
-                      </div>
-                      <h3 className="mt-2 text-xl font-black leading-tight">{selectedPlace.name}</h3>
+                    <div className="travel-metric">
+                      <dt>Tổng</dt>
+                      <dd className={cn((activeDayPreview?.totalHours ?? 0) > DAY_TIME_LIMIT_HOURS && 'is-over')}>
+                        {activeDayPreview?.totalHours.toFixed(1) ?? '0.0'}h
+                      </dd>
                     </div>
-                    <button type="button" onClick={() => setSelectedPlace(null)} className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-[#0F172A] shadow-sm hover:bg-white">
-                      <Minus className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="overflow-y-auto p-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="rounded-xl bg-teal-50 px-3 py-2">
-                        <p className="text-[10px] font-black uppercase text-teal-700">Rating</p>
-                        <p className="mt-1 text-sm font-black text-[#0F172A]">{getPlaceRating(selectedPlace)}</p>
-                      </div>
-                      <div className="rounded-xl bg-amber-50 px-3 py-2">
-                        <p className="text-[10px] font-black uppercase text-amber-700">Giờ đẹp</p>
-                        <p className="mt-1 text-sm font-black text-[#0F172A]">{selectedPlace.bestTime}</p>
-                      </div>
-                      <div className="rounded-xl bg-green-50 px-3 py-2">
-                        <p className="text-[10px] font-black uppercase text-green-700">Chi phí</p>
-                        <p className="mt-1 text-sm font-black text-[#0F172A]">{formatMoney(selectedPlace.cost)}</p>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{details.desc}</p>
-                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-black text-[#0F172A]">Nên làm tại đây</p>
-                        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-black text-[#0F766E] shadow-sm">
-                          {selectedActivities.length}/{details.activities.length}
-                        </span>
-                      </div>
-                      <div className="mt-2 grid gap-2">
-                        {details.activities.map((activity) => {
-                          const activitySelected = selectedActivities.includes(activity);
+                  </dl>
+                </div>
+              </section>
 
-                          return (
-                            <button
-                              key={activity}
-                              type="button"
-                              onClick={() => togglePlaceActivity(selectedPlace.id, activity)}
-                              className={cn(
-                                'flex min-h-10 w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]',
-                                activitySelected
-                                  ? 'border-teal-300 bg-white text-[#0F172A] shadow-sm'
-                                  : 'border-transparent bg-white/70 text-[#475569] hover:border-teal-200 hover:bg-white'
-                              )}
-                              aria-pressed={activitySelected}
-                            >
-                              <span
-                                className={cn(
-                                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
-                                  activitySelected ? 'border-[#0F766E] bg-[#0F766E] text-white' : 'border-slate-300 bg-white text-transparent'
-                                )}
-                              >
-                                <Check className="h-3.5 w-3.5" />
+              <section className="travel-places" aria-labelledby="travel-places-title">
+                <div className="travel-places-head">
+                  <h2 id="travel-places-title" className="travel-panel-title">Địa điểm đã chọn</h2>
+                  <p>{selectedPlaces.length} điểm trong lịch trình</p>
+                </div>
+
+                {selectedPlaces.length === 0 ? (
+                  <p className="travel-empty-state">
+                    Chưa có địa điểm nào trong lịch trình. Chọn một điểm trên bản đồ rồi thêm vào chuyến đi.
+                  </p>
+                ) : (
+                  selectedPlaces.map((place) => {
+                    const dayMeta = selectedPlaceDayMeta.get(place.id);
+                    const dayColor = dayMeta?.color ?? DEFAULT_DAY_ROUTE_COLOR;
+                    const tags = getPlaceTags(place, guide.center);
+                    const details = getPlaceDetails(place);
+                    const expanded = expandedPlaceId === place.id;
+                    const categoryLabel = CATEGORY_LABELS[place.category];
+
+                    return (
+                      <article
+                        key={place.id}
+                        className={cn('travel-place', expanded && 'is-expanded')}
+                        style={{ '--travel-day-color': dayColor } as CSSProperties}
+                      >
+                        <div className="travel-place-summary">
+                          <button
+                            type="button"
+                            onClick={() => togglePlaceDetails(place.id)}
+                            className="travel-place-toggle"
+                            aria-expanded={expanded}
+                          >
+                            <span className="travel-place-image">
+                              <LandmarkImage
+                                name={place.name}
+                                wikiSlug={place.wikiSlug || place.name}
+                                imageUrl={place.imageUrl}
+                              />
+                            </span>
+                            <span className="travel-place-copy">
+                              <span className="travel-place-category">{categoryLabel} · Ngày {dayMeta?.day ?? activeDayIndex + 1}</span>
+                              <span className="travel-place-name">{place.name}</span>
+                              <span className="travel-place-desc">{place.description}</span>
+                              <span className="travel-place-meta">
+                                <span>{getPlaceRating(place)}/5 đánh giá</span>
+                                <span>{place.bestTime}</span>
+                                <span>{getPlaceDistrict(place, guide.center)}</span>
+                                <span>{formatMoney(place.cost)}</span>
                               </span>
-                              <span className="min-w-0 flex-1">{activity}</span>
-                            </button>
-                          );
-                        })}
+                              <span className="travel-tags">
+                                {tags.slice(0, 3).map((tag) => (
+                                  <span key={tag} className="travel-tag">{tag}</span>
+                                ))}
+                              </span>
+                              <span className="travel-place-foot">
+                                {place.durationHours}h trải nghiệm · Đã thêm vào ngày {dayMeta?.day ?? activeDayIndex + 1}
+                              </span>
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              togglePlace(place.id);
+                            }}
+                            className="travel-place-remove"
+                            aria-label={`Bỏ chọn ${place.name}`}
+                          >
+                            <Check size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        <div className={cn('travel-place-details', expanded && 'is-open')}>
+                          <div className="travel-detail-image">
+                            {place.wikiSlug ? (
+                              <LandmarkImage
+                                wikiSlug={place.wikiSlug}
+                                name={`${place.name} 1`}
+                                imageUrl={place.imageUrl}
+                              />
+                            ) : (
+                              <img
+                                src={getPlaceGalleryUrls(place)[0]}
+                                alt={`${place.name} 1`}
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                                className="travel-image"
+                                onError={(event) => handlePlaceImageError(event, place)}
+                              />
+                            )}
+                          </div>
+
+                          <div className="travel-detail-metrics">
+                            <div className="travel-detail-metric">
+                              <p>Khung giờ</p>
+                              <strong>{place.bestTime}</strong>
+                            </div>
+                            <div className="travel-detail-metric">
+                              <p>Thời lượng</p>
+                              <strong>{place.durationHours}h</strong>
+                            </div>
+                            <div className="travel-detail-metric">
+                              <p>Chi phí</p>
+                              <strong>{formatMoney(place.cost)}</strong>
+                            </div>
+                          </div>
+
+                          <div className="travel-detail-block">
+                            <h4>Mô tả ngắn</h4>
+                            <p>{details.desc}</p>
+                          </div>
+
+                          <div className="travel-detail-block">
+                            <h4>Hoạt động nổi bật</h4>
+                            <ul className="travel-list">
+                              {details.activities.map((activity) => (
+                                <li key={activity}>{activity}</li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="travel-note travel-note--warm">
+                            <p><strong>Giờ mở cửa:</strong> {details.hours}</p>
+                            <p><strong>Kinh nghiệm:</strong> {details.tip}</p>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })
+                )}
+              </section>
+
+              <section className="travel-panel" aria-labelledby="travel-transport-title">
+                <div className="travel-panel-head">
+                  <div>
+                    <h2 id="travel-transport-title" className="travel-panel-title">Phương tiện trong thành phố</h2>
+                    <p className="travel-panel-note">Chọn cách di chuyển giữa các điểm trong ngày.</p>
+                  </div>
+                </div>
+                <div className="travel-transport-list">
+                  {CITY_TRANSPORT_OPTIONS.map((item, index) => {
+                    const selected = selectedLocalTransportIndex === index;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedLocalTransportIndex(index);
+                          resetAnalysis();
+                        }}
+                        aria-pressed={selected}
+                        className={cn('travel-transport', selected && 'is-selected')}
+                      >
+                        <span className="travel-transport-copy">
+                          <span className="travel-transport-name">{item.label}</span>
+                          <span className="travel-transport-note">{item.note}</span>
+                        </span>
+                        {selected && <Check className="travel-transport-check" size={18} aria-hidden="true" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
+              <section className="travel-panel" aria-labelledby="travel-analysis-title">
+                <div className="travel-panel-head">
+                  <div>
+                    <h2 id="travel-analysis-title" className="travel-panel-title">Phân tích lịch trình</h2>
+                    <p className="travel-panel-note">Kiểm tra thứ tự điểm, thời gian và chi phí dự kiến trước khi đi.</p>
+                  </div>
+                </div>
+
+                <ul className="travel-checklist">
+                  <li className={localTransport ? 'is-done' : undefined}>
+                    <Check size={16} aria-hidden="true" />
+                    Phương tiện nội đô
+                  </li>
+                  {transportError && <li className="travel-checklist-error" role="alert">{transportError}</li>}
+                  <li className={selectedPlaces.length >= 2 ? 'is-done' : undefined}>
+                    <Check size={16} aria-hidden="true" />
+                    {selectedPlaces.length} địa điểm đã chọn
+                  </li>
+                  {landmarkError && <li className="travel-checklist-error" role="alert">{landmarkError}</li>}
+                  <li className={departurePoint ? 'is-done' : undefined}>
+                    <Check size={16} aria-hidden="true" />
+                    Điểm xuất phát
+                  </li>
+                  {departurePointError && <li className="travel-checklist-error" role="alert">{departurePointError}</li>}
+                </ul>
+
+                <button
+                  type="button"
+                  disabled={analysisState === 'loading'}
+                  onClick={startAnalysis}
+                  aria-busy={analysisState === 'loading'}
+                  className="travel-button travel-button--primary"
+                >
+                  {analysisState === 'loading' ? 'Đang phân tích…' : 'Phân tích lộ trình'}
+                </button>
+              </section>
+
+              {analysisState === 'idle' ? (
+                <p className="travel-empty-state">
+                  Lịch trình gợi ý sẽ xuất hiện sau khi bạn chọn đủ phương tiện và địa điểm rồi bấm phân tích.
+                </p>
+              ) : analysisState === 'loading' ? (
+                <div className="travel-panel travel-analysis-loading" role="status" aria-live="polite">
+                  <h2 className="travel-panel-title">Đang phân tích lộ trình</h2>
+                  <p className="travel-analysis-step">{ANALYSIS_STEPS[analysisStepIndex]}</p>
+                  <div className="travel-progress" aria-hidden="true">
+                    <span style={{ width: `${((analysisStepIndex + 1) / ANALYSIS_STEPS.length) * 100}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <div className="travel-analysis">
+                  <div className="travel-panel">
+                    <h2 className="travel-panel-title">Lộ trình đề xuất</h2>
+                    <dl className="travel-ledger">
+                      <div className="travel-ledger-row">
+                        <dt>Ngày đi</dt>
+                        <dd>{departureDate || 'Đang cập nhật'}</dd>
                       </div>
-                      {selectedActivities.length > 0 && (
-                        <p className="mt-2 line-clamp-2 text-xs font-semibold text-[#64748B]">
-                          Đã chọn: {selectedActivities.join(', ')}
+                      <div className="travel-ledger-row">
+                        <dt>Phương tiện nội đô</dt>
+                        <dd>{localTransport ? localTransport.label : 'Chưa chọn'}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  {selectedPlaces.map((place, index) => (
+                    <div key={place.id} className="travel-analysis-place">
+                      <span className="travel-analysis-index">{index + 1}</span>
+                      <div>
+                        <div className="travel-analysis-place-head">
+                          <h3 className="travel-analysis-place-name">{place.name}</h3>
+                          <span className="travel-analysis-place-time">{place.bestTime}</span>
+                        </div>
+                        <p className="travel-analysis-place-desc">{place.description}</p>
+                        <p className="travel-analysis-place-metrics">
+                          <span>{place.durationHours} giờ</span>
+                          <span>{formatMoney(place.cost)}</span>
                         </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {analysisResult && (
+                    <>
+                      <div className="travel-panel">
+                        <h2 className="travel-panel-title">Lộ trình đề xuất</h2>
+                        <p className="travel-result-text">{analysisResult.routeExplanation}</p>
+                      </div>
+
+                      <div className="travel-panel">
+                        <h2 className="travel-panel-title">Chi phí tham quan và dịch vụ</h2>
+                        <div className="travel-stop-cost-list">
+                          {analysisResult.stops.map((stop, index) => (
+                            <div key={stop.place + index} className="travel-stop-cost">
+                              <div className="travel-stop-cost-head">
+                                <span className="travel-stop-cost-number">{stop.order}</span>
+                                <p className="travel-stop-cost-name">{stop.place}</p>
+                              </div>
+                              <div className="travel-stop-cost-lines">
+                                {stop.activityCost.entranceFee.min > 0 && (
+                                  <p>
+                                    Vào cửa
+                                    <span className="travel-cost-value">{formatVND(stop.activityCost.entranceFee.min)} – {formatVND(stop.activityCost.entranceFee.max)}</span>
+                                  </p>
+                                )}
+                                {stop.activityCost.servicesCost.min > 0 && (
+                                  <p>
+                                    Dịch vụ
+                                    <span className="travel-cost-value">{formatVND(stop.activityCost.servicesCost.min)} – {formatVND(stop.activityCost.servicesCost.max)}</span>
+                                  </p>
+                                )}
+                                {stop.activityCost.note && <p className="travel-cost-note">{stop.activityCost.note}</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="travel-panel">
+                        <h2 className="travel-panel-title">Chi phí di chuyển ({localTransport?.label || 'Chưa chọn'})</h2>
+                        <div className="travel-stop-cost-list">
+                          {analysisResult.stops.map((stop, index) => (
+                            <div key={stop.place + '-transport-' + index} className="travel-stop-cost">
+                              {stop.transportFromPrevious.totalCost.min > 0 && (
+                                <>
+                                  <p className="travel-stop-cost-name">
+                                    {index === 0 ? departurePoint.name : analysisResult.stops[index - 1]?.place} → {stop.place}
+                                  </p>
+                                  <div className="travel-stop-cost-lines">
+                                    <p>
+                                      Quãng đường
+                                      <span className="travel-cost-value">
+                                        {stop.transportFromPrevious.distanceKm.toFixed(1)} km × {formatVND(stop.transportFromPrevious.costPerKm.min)} – {formatVND(stop.transportFromPrevious.costPerKm.max)}/km
+                                      </span>
+                                    </p>
+                                    <p>
+                                      Tổng chặng
+                                      <span className="travel-cost-value">
+                                        {formatVND(stop.transportFromPrevious.totalCost.min)} – {formatVND(stop.transportFromPrevious.totalCost.max)}
+                                      </span>
+                                    </p>
+                                    {stop.transportFromPrevious.note && <p className="travel-cost-note">{stop.transportFromPrevious.note}</p>}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="travel-panel">
+                        <h2 className="travel-panel-title">Dự toán chi phí</h2>
+                        <dl className="travel-cost-list">
+                          <div className="travel-cost-row">
+                            <dt>Tham quan và dịch vụ</dt>
+                            <dd>{formatVND(analysisResult.totalSummary.activityCostTotal.min)} – {formatVND(analysisResult.totalSummary.activityCostTotal.max)}</dd>
+                          </div>
+                          <div className="travel-cost-row">
+                            <dt>Di chuyển</dt>
+                            <dd>{formatVND(analysisResult.totalSummary.transportCostTotal.min)} – {formatVND(analysisResult.totalSummary.transportCostTotal.max)}</dd>
+                          </div>
+                          <div className="travel-cost-row travel-cost-total">
+                            <dt>Tổng cộng mỗi người</dt>
+                            <dd>{formatVND(analysisResult.totalSummary.grandTotal.min)} – {formatVND(analysisResult.totalSummary.grandTotal.max)}</dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </>
+                  )}
+
+                  {routeDirections.length > 0 && (
+                    <div className="travel-panel travel-directions">
+                      <button
+                        type="button"
+                        onClick={() => setDirectionsExpanded((current) => !current)}
+                        className="travel-directions-toggle"
+                        aria-expanded={directionsExpanded}
+                      >
+                        <span className="travel-directions-title">Lộ trình gợi ý</span>
+                        <span className="travel-directions-meta">
+                          {activeDayPlaces.length} điểm
+                          <ChevronDown
+                            className={cn('travel-directions-chevron', directionsExpanded && 'is-open')}
+                            size={18}
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </button>
+
+                      {directionsExpanded && (
+                        <div className="travel-directions-body">
+                          <div className="travel-direction-start">
+                            <div className="travel-direction-rail">
+                              <span className="travel-direction-marker">Đi</span>
+                              {activeDayPlaces.length > 0 && <span className="travel-direction-line" aria-hidden="true" />}
+                            </div>
+                            <div className="travel-direction-copy">
+                              <h4>Xuất phát</h4>
+                              <p>{departurePoint.label}</p>
+                            </div>
+                          </div>
+
+                          {activeDayPlaces.map((place, stopIndex) => {
+                            const steps = routeDirections[stopIndex] ?? [];
+                            const expanded = expandedStopIndexes.includes(stopIndex);
+                            const legDistance = steps.reduce((total, step) => total + step.distance, 0);
+                            const speedKmh = localTransport?.id === 'walk' ? 5 : localTransport?.id === 'bus' ? 20 : localTransport?.id === 'car' ? 28 : 24;
+                            const minutes = Math.max(3, Math.round((legDistance / 1000 / speedKmh) * 60));
+
+                            return (
+                              <div key={place.id} className="travel-direction-item">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleStopDetails(stopIndex)}
+                                  className="travel-direction-item-toggle"
+                                  aria-expanded={expanded}
+                                >
+                                  <span className="travel-direction-rail">
+                                    <span className="travel-direction-number">{stopIndex + 2}</span>
+                                    {stopIndex < activeDayPlaces.length - 1 && <span className="travel-direction-line" aria-hidden="true" />}
+                                  </span>
+                                  <span className="travel-direction-main">
+                                    <span className="travel-direction-head">
+                                      <span className="travel-direction-name">{place.name}</span>
+                                      <span className="travel-direction-minutes">~{minutes} phút</span>
+                                    </span>
+                                    <span className={cn('travel-direction-steps', expanded && 'is-open')}>
+                                      {steps.slice(0, expanded ? 6 : 2).map((step) => (
+                                        <span
+                                          key={step.id}
+                                          onMouseEnter={() => setActiveDirectionId(step.id)}
+                                          onMouseLeave={() => setActiveDirectionId(null)}
+                                          className="travel-direction-step"
+                                        >
+                                          {step.instruction} {step.streetName}
+                                        </span>
+                                      ))}
+                                      {steps.length === 0 && <span className="travel-direction-step">Đang cập nhật hướng dẫn đường phố</span>}
+                                    </span>
+                                  </span>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
-                    <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
-                      {details.tip}
-                    </div>
-                    <Button
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+
+          <div className="travel-map-column">
+            <div className="travel-map">
+              <MapView
+                center={[mapFocusCenter.lng, mapFocusCenter.lat]}
+                zoom={mapFocusZoom}
+                attributionControl={{ compact: true }}
+                className="travel-map-canvas"
+              >
+                <MapViewportSync
+                  center={mapFocusCenter}
+                  zoom={mapFocusZoom}
+                  focusedPlace={selectedPlace ? { lat: selectedPlace.lat, lng: selectedPlace.lng } : null}
+                />
+
+                {activeDirectionLngLat.length > 1 && (
+                  <MapRoute
+                    id="active-direction"
+                    coordinates={activeDirectionLngLat}
+                    color="#0f172a"
+                    width={6}
+                    opacity={0.85}
+                    interactive={false}
+                  />
+                )}
+
+                {roadRouteLngLat.length > 1 && (
+                  <MapRoute
+                    id="day-road-route"
+                    coordinates={roadRouteLngLat}
+                    color="#0ea5e9"
+                    width={3}
+                    opacity={0.55}
+                    progress={routeSimulationProgress}
+                    interactive={false}
+                  >
+                    <RouteProgress color="#c2410c" width={5} />
+                    {canSimulateRoute && routeSimulationProgress > 0 && (
+                      <RouteMarker at="progress" anchor="center">
+                        <MarkerContent className="travel-route-marker">
+                          <Navigation size={13} aria-hidden="true" />
+                        </MarkerContent>
+                      </RouteMarker>
+                    )}
+                  </MapRoute>
+                )}
+
+                <MapMarker longitude={departurePoint.lng} latitude={departurePoint.lat} anchor="center">
+                  <MarkerContent className="travel-departure-marker">
+                    <Navigation size={14} aria-hidden="true" />
+                  </MarkerContent>
+                  <MarkerLabel className="travel-departure-label">Xuất phát</MarkerLabel>
+                </MapMarker>
+
+                {guide.places.map((place) => {
+                  const selected = selectedIds.includes(place.id);
+                  const dayMeta = selectedPlaceDayMeta.get(place.id);
+                  const markerColor = dayMeta?.color ?? DEFAULT_DAY_ROUTE_COLOR;
+                  const simulationActive = activeSimulationPlace?.id === place.id;
+
+                  return (
+                    <MapMarker key={place.id} longitude={place.lng} latitude={place.lat} anchor="center">
+                      <MarkerContent className="travel-marker-anchor">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlace(place)}
+                          aria-label={`${place.name}${selected ? ' — đã thêm vào lịch' : ' — chưa thêm vào lịch'}`}
+                          className={cn(
+                            'travel-marker',
+                            selected && 'is-selected',
+                            simulationActive && 'is-current'
+                          )}
+                          style={{ '--travel-marker-color': markerColor } as CSSProperties}
+                        >
+                          <span className="travel-marker-dot" aria-hidden="true">
+                            {dayMeta ? dayMeta.order : ''}
+                          </span>
+                          <span className="travel-marker-label">{place.name}</span>
+                        </button>
+                      </MarkerContent>
+                    </MapMarker>
+                  );
+                })}
+
+                <MapControls position="top-right" showZoom className="travel-map-controls" />
+
+                {selectedPlace && !compactMap && (
+                  <MapPopup
+                    longitude={selectedPlace.lng}
+                    latitude={selectedPlace.lat}
+                    offset={18}
+                    anchor="bottom"
+                    closeOnClick={false}
+                    onClose={() => setSelectedPlace(null)}
+                    className="travel-place-popup"
+                  >
+                    {selectedPlaceDetail}
+                  </MapPopup>
+                )}
+              </MapView>
+
+              <div className="travel-map-card travel-map-info">
+                <p className="travel-map-route">{origin || 'Nơi ở'} → {destination || 'Thành phố'}</p>
+                <p className="travel-map-hint">Kéo bản đồ để xem · Chọn điểm để thêm vào lịch</p>
+              </div>
+
+              <div className="travel-map-card travel-map-sim">
+                <div className="travel-sim-days">
+                  {dayRoutePreviews.map((day) => (
+                    <button
+                      key={`simulation-day-${day.day}`}
                       type="button"
-                      onClick={() => addPlaceToTrip(selectedPlace.id)}
-                      className={cn('mt-4 h-11 w-full rounded-xl font-black text-white', selected ? 'bg-[#22C55E] hover:bg-green-500' : 'bg-[#0F766E] hover:bg-teal-500')}
+                      onClick={() => {
+                        setActiveDayIndex(day.day - 1);
+                        resetRouteSimulation();
+                      }}
+                      aria-pressed={activeDayIndex === day.day - 1}
+                      className={cn('travel-sim-day', activeDayIndex === day.day - 1 && 'is-active')}
                     >
-                      {selected ? 'Đã thêm vào chuyến đi' : 'Thêm vào chuyến đi'}
-                    </Button>
+                      <span className="travel-day-dot" style={{ backgroundColor: day.color }} aria-hidden="true" />
+                      Ngày {day.day}
+                    </button>
+                  ))}
+                </div>
+                <div className="travel-sim-controls">
+                  <button
+                    type="button"
+                    onClick={toggleRouteSimulation}
+                    disabled={!canSimulateRoute}
+                    className="travel-button travel-button--primary travel-sim-play"
+                    aria-label={routeSimulationStatus === 'playing' ? 'Tạm dừng đi thử lộ trình' : 'Đi thử lộ trình'}
+                  >
+                    {routeSimulationStatus === 'playing' ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
+                    {routeLoading ? 'Đang tải đường' : 'Đi thử lộ trình'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetRouteSimulation}
+                    disabled={!canSimulateRoute || routeSimulationProgress === 0}
+                    className="travel-icon-button"
+                    aria-label="Chạy lại lộ trình"
+                  >
+                    <RotateCcw size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={skipToNextSimulationStop}
+                    disabled={!canSimulateRoute || routeSimulationProgress >= 1}
+                    className="travel-icon-button"
+                    aria-label="Tới điểm tiếp theo"
+                  >
+                    <SkipForward size={16} aria-hidden="true" />
+                  </button>
+                  <div className="travel-speed">
+                    {[1, 2].map((speed) => (
+                      <button
+                        key={speed}
+                        type="button"
+                        onClick={() => setRouteSimulationSpeed(speed as 1 | 2)}
+                        aria-pressed={routeSimulationSpeed === speed}
+                        className={cn(routeSimulationSpeed === speed && 'is-active')}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
                   </div>
-                </motion.div>
-              );
-            })()}
-          </AnimatePresence>
+                </div>
+                {activeSimulationPlace && routeSimulationProgress > 0 && (
+                  <p className="travel-sim-current" role="status">
+                    Đang tới: <strong>{activeSimulationPlace.name}</strong>
+                  </p>
+                )}
+                <div className="travel-progress" aria-hidden="true">
+                  <span style={{ width: `${Math.round(routeSimulationProgress * 100)}%` }} />
+                </div>
+              </div>
+
+              {(routeLoading || routeError) && activeDayPlaces.length > 0 && (
+                <div className="travel-map-card travel-map-status" role="status">
+                  {routeLoading ? 'OSRM đang dựng tuyến đường…' : routeError}
+                </div>
+              )}
+
+              <div className="travel-map-card travel-map-note">
+                {activeDayPlaces.length > 0
+                  ? `Ngày ${activeDayIndex + 1}: ${activeDayPlaces.length} điểm, đi thử sẽ quay về điểm xuất phát`
+                  : 'Chọn điểm để xem lộ trình xem trước'}
+              </div>
+
+              {compactMap && selectedPlaceDetail && (
+                <div className="travel-place-sheet">{selectedPlaceDetail}</div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
-    </motion.section>
+    </section>
   );
 }
