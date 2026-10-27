@@ -2,10 +2,11 @@
 
 import { notFound } from 'next/navigation';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Users, ShieldCheck, XCircle, Clock } from 'lucide-react';
+import { Users, ShieldCheck, XCircle, Clock, Info, CircleAlert } from 'lucide-react';
 import { getRouteById } from '@/lib/api/routes';
-import { RouteDetailHeader, RouteJourneyTimeline, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
+import { RouteDetailHeader, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { initBooking } from '@/store/slices/bookingSlice';
 import { cn } from '@/lib/utils';
@@ -27,17 +28,17 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
         setError(null);
         const data = await getRouteById(params.id);
         if (data) {
-          const durationStr = typeof data.duration === 'number' 
+          const durationStr = typeof data.duration === 'number'
             ? `${Math.floor(data.duration / 60)}h ${data.duration % 60}m`
             : String(data.duration || '');
-          
+
           const priceNum = typeof data.price === 'string' ? parseFloat(data.price) : (data.price || 0);
-          
+
           setRoute({
             id: data.id,
-            operator: data.operator 
-              ? { 
-                  id: data.operator.id || '', 
+            operator: data.operator
+              ? {
+                  id: data.operator.id || '',
                   name: data.operator.name || `${data.operator.firstName || ''} ${data.operator.lastName || ''}`.trim() || 'Unknown',
                   logoUrl: data.operator.logo || '',
                   rating: data.operator.rating || 0,
@@ -84,8 +85,43 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
     fetchRoute();
   }, [params.id]);
 
-  if (loading) return <div className="container mx-auto px-4 py-8">Đang tải thông tin chuyến xe...</div>;
-  if (error) return <div className="container mx-auto px-4 py-8 text-red-500">{error}</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto max-w-7xl px-4 py-8">
+          <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+            <span
+              className="h-6 w-6 rounded-full border-2 border-border border-t-primary motion-safe:animate-spin"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-muted-foreground">Đang tải thông tin chuyến xe...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto max-w-7xl px-4 py-8">
+          <div className="rounded-md border border-border bg-card p-6 shadow-hn-sm">
+            <p className="flex items-center gap-2 text-sm font-semibold text-error-ink">
+              <CircleAlert className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {error}
+            </p>
+            <Link
+              href="/search"
+              className="mt-4 inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none"
+            >
+              Quay lại tìm kiếm
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!route) notFound();
 
   const handleSelectSeats = () => {
@@ -108,62 +144,72 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
     router.push(`/booking/${route.id}`);
   };
 
+  const isSoldOut = route.availableSeats === 0;
+  const isLowSeats = route.availableSeats > 0 && route.availableSeats < 10;
+  const seatChipClass = isSoldOut
+    ? 'bg-error-soft text-error-ink'
+    : isLowSeats
+      ? 'bg-warning-soft text-warning-ink'
+      : 'bg-success-soft text-success-ink';
+  const seatChipLabel = isSoldOut ? 'Hết vé' : isLowSeats ? 'Sắp hết!' : 'Còn chỗ';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="flex-1 min-w-0">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="flex flex-col gap-8 lg:flex-row">
+          <div className="min-w-0 flex-1">
             <RouteDetailHeader route={route} />
             <RouteDetailTabs route={route} />
           </div>
 
-          {/* Booking Sidebar - Enhanced */}
-          <div className="lg:w-96 shrink-0">
+          {/* Booking Sidebar */}
+          <aside className="shrink-0 lg:w-96">
             <div className="sticky top-24 space-y-4">
               {/* Main Booking Card */}
-              <div className="bg-white rounded-2xl shadow-xl border-2 border-blue-100 overflow-hidden">
-                <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 text-white">
-                  <p className="text-blue-100 text-sm font-medium mb-2">Giá vé mỗi người</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold">
-                      {new Intl.NumberFormat('vi-VN', {
-                        style: 'currency',
-                        currency: 'VND',
-                      }).format(route.price)}
-                    </span>
-                  </div>
-                  <p className="text-blue-100 text-xs mt-2">💡 Giá đã bao gồm thuế VAT</p>
+              <div className="overflow-hidden rounded-md border border-border bg-card shadow-hn">
+                <div className="border-b border-border px-6 pb-5 pt-6">
+                  <p className="text-sm font-medium text-muted-foreground">Giá vé mỗi người</p>
+                  <p className="mt-1 font-mono text-4xl font-semibold tracking-tight text-foreground">
+                    {new Intl.NumberFormat('vi-VN', {
+                      style: 'currency',
+                      currency: 'VND',
+                    }).format(route.price)}
+                  </p>
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    Giá đã bao gồm thuế VAT
+                  </p>
                 </div>
 
-                <div className="p-6 space-y-5">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                <div className="space-y-5 p-6">
+                  <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <Users className="w-5 h-5 text-white" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                        <Users className="h-5 w-5" aria-hidden="true" />
                       </div>
                       <div>
-                        <p className="text-xs text-gray-600 font-medium">Ghế còn lại</p>
-                        <p className="text-2xl font-bold text-blue-900">{route.availableSeats}</p>
+                        <p className="text-xs font-medium text-muted-foreground">Ghế còn lại</p>
+                        <p className="font-mono text-2xl font-semibold text-foreground">{route.availableSeats}</p>
                       </div>
                     </div>
-                    {route.availableSeats < 10 && (
-                      <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full animate-pulse">
-                        Sắp hết!
-                      </span>
-                    )}
+                    <span className={cn('rounded-sm px-3.5 py-1.5 text-xs font-semibold', seatChipClass)}>
+                      {seatChipLabel}
+                    </span>
                   </div>
 
                   <button
                     onClick={handleSelectSeats}
                     disabled={isNavigating}
                     className={cn(
-                      "w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg transition-all duration-200",
-                      isNavigating ? "opacity-70 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl transform hover:scale-[1.02]"
+                      "w-full rounded-md bg-primary px-5 py-3 text-base font-semibold text-primary-foreground shadow-hn-sm transition-colors duration-150 motion-reduce:transition-none",
+                      isNavigating
+                        ? "cursor-not-allowed opacity-50"
+                        : "hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     )}
                   >
                     {isNavigating ? (
                       <span className="flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span className="h-5 w-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground motion-safe:animate-spin" />
                         Đang chuyển...
                       </span>
                     ) : (
@@ -171,17 +217,17 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
                     )}
                   </button>
 
-                  <div className="space-y-3 pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <ShieldCheck className="w-5 h-5 text-green-600" />
+                  <div className="space-y-3 border-t border-border pt-4">
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <ShieldCheck className="h-5 w-5 shrink-0 text-success-ink" aria-hidden="true" />
                       <span>Xác nhận ngay lập tức</span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <XCircle className="w-5 h-5 text-green-600" />
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <XCircle className="h-5 w-5 shrink-0 text-success-ink" aria-hidden="true" />
                       <span>Không phí đặt vé</span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <Clock className="w-5 h-5 text-green-600" />
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <Clock className="h-5 w-5 shrink-0 text-success-ink" aria-hidden="true" />
                       <span>Hỗ trợ 24/7</span>
                     </div>
                   </div>
@@ -189,28 +235,28 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
               </div>
 
               {/* Trust Badge */}
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+              <div className="rounded-md border border-border bg-accent p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                    <ShieldCheck className="w-6 h-6 text-white" />
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <ShieldCheck className="h-6 w-6" aria-hidden="true" />
                   </div>
                   <div>
-                    <p className="font-bold text-green-900">Đặt vé an toàn</p>
-                    <p className="text-xs text-green-700">100% bảo mật thanh toán</p>
+                    <p className="font-semibold text-foreground">Đặt vé an toàn</p>
+                    <p className="text-xs text-muted-foreground">100% bảo mật thanh toán</p>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
 
-      {/* Mobile Sticky Bottom Bar - Enhanced */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-blue-100 p-4 lg:hidden z-50 shadow-2xl">
-        <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
+      {/* Mobile Sticky Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card p-4 shadow-hn-md lg:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-4">
           <div className="flex-1">
-            <p className="text-xs text-gray-500 font-medium">Giá vé</p>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-xs font-medium text-muted-foreground">Giá vé</p>
+            <p className="font-mono text-2xl font-semibold text-foreground">
               {new Intl.NumberFormat('vi-VN', {
                 style: 'currency',
                 currency: 'VND',
@@ -222,13 +268,15 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
             onClick={handleSelectSeats}
             disabled={isNavigating}
             className={cn(
-              "flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 px-6 rounded-xl font-bold shadow-lg transition-all",
-              isNavigating ? "opacity-70 cursor-not-allowed" : "hover:from-blue-700 hover:to-indigo-700 transform active:scale-95"
+              "flex-1 rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-hn-sm transition-colors duration-150 motion-reduce:transition-none",
+              isNavigating
+                ? "cursor-not-allowed opacity-50"
+                : "hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             )}
           >
             {isNavigating ? (
               <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground motion-safe:animate-spin" />
                 Đang chuyển...
               </span>
             ) : (
