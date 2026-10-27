@@ -655,7 +655,7 @@ function MarkerContent({ children, className }: MarkerContentProps) {
 
 function DefaultMarkerIcon() {
   return (
-    <div className="relative h-4 w-4 rounded-full border-2 border-white bg-blue-500 shadow-lg" />
+    <div className="relative h-4 w-4 rounded-full border-2 border-card bg-primary shadow-hn-sm" />
   );
 }
 
@@ -1052,8 +1052,8 @@ function CompassButton({ onClick }: { onClick: () => void }) {
         className="size-5"
         style={{ transformStyle: "preserve-3d" }}
       >
-        <path d="M12 2L16 12H12V2Z" className="fill-red-500" />
-        <path d="M12 2L8 12H12V2Z" className="fill-red-300" />
+        <path d="M12 2L16 12H12V2Z" className="fill-error" />
+        <path d="M12 2L8 12H12V2Z" className="fill-error/40" />
         <path d="M12 22L16 12H12V22Z" className="fill-muted-foreground/60" />
         <path d="M12 22L8 12H12V22Z" className="fill-muted-foreground/30" />
       </svg>
@@ -1307,7 +1307,7 @@ type MapRouteProps = {
    * pass the geometry (for GeoJSON responses, `route.geometry.coordinates`).
    */
   coordinates: [number, number][];
-  /** Line color as CSS color value (default: "#4285F4") */
+  /** Line color as CSS color value (default: "#92400E") */
   color?: string;
   /** Line width in pixels (default: 3) */
   width?: number;
@@ -1350,7 +1350,7 @@ type MapRouteProps = {
 function MapRoute({
   id: propId,
   coordinates: coordinatesProp,
-  color = "#4285F4",
+  color = "#92400E",
   width = 3,
   opacity = 0.8,
   dashArray,
@@ -2094,7 +2094,7 @@ type MapArcProps<T extends MapArcDatum = MapArcDatum> = {
   samples?: number;
   /**
    * MapLibre paint properties for the arc layer. Merged on top of sensible
-   * defaults (`line-color: #4285F4`, `line-width: 2`, `line-opacity: 0.85`).
+   * defaults (`line-color: #92400E`, `line-width: 2`, `line-opacity: 0.85`).
    * Any value can be a MapLibre expression for per-feature styling, every
    * field on each arc datum (besides `from`/`to`) is exposed via `["get", ...]`.
    */
@@ -2127,7 +2127,7 @@ const ARC_HIT_MIN_WIDTH = 12;
 const ARC_HIT_PADDING = 6;
 
 const DEFAULT_ARC_PAINT: MapArcLinePaint = {
-  "line-color": "#4285F4",
+  "line-color": "#92400E",
   "line-width": 2,
   "line-opacity": 0.85,
 };

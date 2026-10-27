@@ -56,7 +56,13 @@ export default function HomePage() {
                 type="button"
                 variant="outline"
                 className="home-button home-secondary-button"
-                onClick={() => document.getElementById('popular-routes')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() =>
+                  document
+                    .getElementById('popular-routes')
+                    ?.scrollIntoView({
+                      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                    })
+                }
               >
                 Xem tuyến phổ biến
                 <ArrowRight size={17} aria-hidden="true" />

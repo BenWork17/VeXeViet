@@ -296,7 +296,7 @@ describe('Toast Notifications', () => {
       await user.click(screen.getByRole('button', { name: /show success/i }));
 
       const toast = screen.getByText('Success').closest('[role="alert"]');
-      expect(toast).toHaveClass('bg-green-500'); // Adjust based on your styles
+      expect(toast).toHaveClass('bg-success-soft');
     });
 
     it('should apply error styling', async () => {
@@ -306,7 +306,7 @@ describe('Toast Notifications', () => {
       await user.click(screen.getByRole('button', { name: /show error/i }));
 
       const toast = screen.getByText('Error').closest('[role="alert"]');
-      expect(toast).toHaveClass('bg-red-500'); // Adjust based on your styles
+      expect(toast).toHaveClass('bg-error-soft');
     });
 
     it('should show correct icon for each variant', async () => {
