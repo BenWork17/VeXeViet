@@ -1,7 +1,6 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from '@vexeviet/ui';
 import { AlertCircle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
@@ -32,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo,
@@ -69,28 +68,28 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+        <div className="flex min-h-screen items-center justify-center bg-background px-4 font-sans text-foreground">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-8 shadow-hn-md">
             <div className="flex flex-col items-center text-center">
-              <div className="rounded-full bg-red-100 p-3 mb-4">
-                <AlertCircle className="h-12 w-12 text-red-600" />
+              <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-error-soft">
+                <AlertCircle className="h-9 w-9 text-error-ink" aria-hidden="true" />
               </div>
-              
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
+
+              <h1 className="mb-2 font-display text-2xl leading-tight text-foreground">
                 Đã xảy ra lỗi
               </h1>
-              
-              <p className="text-gray-600 mb-6">
+
+              <p className="mb-6 text-base leading-relaxed text-muted-foreground">
                 Rất tiếc, đã có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ hỗ trợ nếu vấn đề vẫn tiếp tục.
               </p>
 
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="w-full mb-6 text-left">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
+                <details className="mb-6 w-full text-left">
+                  <summary className="mb-2 cursor-pointer text-sm font-semibold text-foreground">
                     Chi tiết lỗi (Development)
                   </summary>
-                  <div className="bg-gray-100 p-4 rounded-md overflow-auto max-h-60">
-                    <pre className="text-xs text-red-600 whitespace-pre-wrap">
+                  <div className="max-h-60 overflow-auto rounded-md bg-muted p-4">
+                    <pre className="whitespace-pre-wrap font-mono text-xs text-error-ink">
                       {this.state.error.toString()}
                       {this.state.errorInfo && (
                         <>
@@ -103,35 +102,31 @@ export class ErrorBoundary extends Component<Props, State> {
                 </details>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-3 w-full">
-                <Button
+              <div className="flex w-full flex-col gap-3 sm:flex-row">
+                <button
                   onClick={this.handleReload}
-                  className="flex-1"
-                  variant="primary"
+                  className="inline-flex h-[42px] flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125] motion-reduce:transition-none"
                 >
-                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <RefreshCw className="h-4 w-4" aria-hidden="true" />
                   Tải lại trang
-                </Button>
-                
-                <Button
+                </button>
+
+                <button
                   onClick={this.handleGoHome}
-                  className="flex-1"
-                  variant="outline"
+                  className="inline-flex h-[42px] flex-1 items-center justify-center gap-2 rounded-md border border-primary bg-transparent px-4 text-sm font-semibold text-primary transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125] motion-reduce:transition-none"
                 >
-                  <Home className="mr-2 h-4 w-4" />
+                  <Home className="h-4 w-4" aria-hidden="true" />
                   Về trang chủ
-                </Button>
+                </button>
               </div>
 
               {process.env.NODE_ENV === 'development' && (
-                <Button
+                <button
                   onClick={this.handleReset}
-                  className="mt-3 w-full"
-                  variant="ghost"
-                  size="sm"
+                  className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-md px-3 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/[0.125] motion-reduce:transition-none"
                 >
                   Reset Error Boundary (Dev)
-                </Button>
+                </button>
               )}
             </div>
           </div>
