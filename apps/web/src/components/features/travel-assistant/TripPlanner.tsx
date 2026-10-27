@@ -34,8 +34,43 @@ import type { Route } from '@vexeviet/types';
 const MAX_TRIP_DAYS = 5;
 const DAY_TIME_LIMIT_HOURS = 12;
 const DEFAULT_CITY_SPEED_KMH = 24;
-const DAY_ROUTE_COLORS = ['#0f172a', '#475569', '#0369a1', '#0c4a6e', '#64748b'];
-const DEFAULT_DAY_ROUTE_COLOR = '#0f172a';
+const DAY_ROUTE_COLORS = [
+  'var(--color-primary)',
+  'var(--color-info-ink)',
+  'var(--color-warning-ink)',
+  'var(--color-success-ink)',
+  'var(--color-primary-deep)',
+];
+const DEFAULT_DAY_ROUTE_COLOR = 'var(--color-primary)';
+
+const PLACEHOLDER_TONE = 'FEF3C7';
+const PLACEHOLDER_INK = '92400E';
+
+const MAP_COLOR_VARIABLES = {
+  ink: '--foreground',
+  route: '--primary',
+  progress: '--primary-deep',
+} as const;
+
+type MapColors = { ink: string; route: string; progress: string };
+
+function readCssColor(variable: string): string {
+  if (typeof window === 'undefined') return '';
+  return window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(variable)
+    .trim();
+}
+
+function resolveMapColors(): MapColors | null {
+  const colors = {
+    ink: readCssColor(MAP_COLOR_VARIABLES.ink),
+    route: readCssColor(MAP_COLOR_VARIABLES.route),
+    progress: readCssColor(MAP_COLOR_VARIABLES.progress),
+  };
+
+  return colors.ink && colors.route && colors.progress ? colors : null;
+}
 
 const WIKI_TITLE_ALIASES: Record<string, string> = {
   'Dragon_Bridge,_Da_Nang,_Vietnam': 'Dragon_Bridge_(Da_Nang)',
@@ -814,7 +849,7 @@ function getTransportProfile(option: TransportOption | null, localTransport: { l
 function getPlaceImageUrl(place: TravelPlace, width = 320, height = 200): string {
   // This function is no longer needed as LandmarkImage component handles image fetching
   // It's kept as a fallback for non-LandmarkImage usage, but will return a placeholder
-  return `https://placehold.co/${width}x${height}/e0f2fe/0EA5E9?text=${encodeURIComponent(place.name)}`;
+  return `https://placehold.co/${width}x${height}/${PLACEHOLDER_TONE}/${PLACEHOLDER_INK}?text=${encodeURIComponent(place.name)}`;
 }
 
 function getPlaceDetails(place: TravelPlace): PlaceDetails {
@@ -831,11 +866,11 @@ function getPlaceDetails(place: TravelPlace): PlaceDetails {
 function getPlaceGalleryUrls(place: TravelPlace): string[] {
   // This function is no longer needed as LandmarkImage component handles image fetching
   // It's kept as a fallback for non-LandmarkImage usage, but will return a placeholder
-  return [`https://placehold.co/640x400/e0f2fe/0EA5E9?text=${encodeURIComponent(place.name)}`];
+  return [`https://placehold.co/640x400/${PLACEHOLDER_TONE}/${PLACEHOLDER_INK}?text=${encodeURIComponent(place.name)}`];
 }
 
 function handlePlaceImageError(event: SyntheticEvent<HTMLImageElement>, place: TravelPlace) {
-  event.currentTarget.src = `https://placehold.co/320x200/e0f2fe/0EA5E9?text=${encodeURIComponent(place.name)}`;
+  event.currentTarget.src = `https://placehold.co/320x200/${PLACEHOLDER_TONE}/${PLACEHOLDER_INK}?text=${encodeURIComponent(place.name)}`;
   event.currentTarget.style.objectFit = 'cover';
 }
 
@@ -1111,6 +1146,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [mapFocusCenter, setMapFocusCenter] = useState(() => getMapCenter([guide.startPoint, ...guide.places]));
+  const [mapColors, setMapColors] = useState<MapColors | null>(null);
   const routeSimulationFrameRef = useRef<number | null>(null);
   const routeSimulationLastTickRef = useRef<number | null>(null);
 
@@ -1165,6 +1201,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     sync();
     media.addEventListener('change', sync);
     return () => media.removeEventListener('change', sync);
+  }, []);
+
+  useEffect(() => {
+    setMapColors(resolveMapColors());
   }, []);
 
   useEffect(() => {
@@ -2421,28 +2461,28 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   focusedPlace={selectedPlace ? { lat: selectedPlace.lat, lng: selectedPlace.lng } : null}
                 />
 
-                {activeDirectionLngLat.length > 1 && (
+                {mapColors && activeDirectionLngLat.length > 1 && (
                   <MapRoute
                     id="active-direction"
                     coordinates={activeDirectionLngLat}
-                    color="#0f172a"
+                    color={mapColors.ink}
                     width={6}
                     opacity={0.85}
                     interactive={false}
                   />
                 )}
 
-                {roadRouteLngLat.length > 1 && (
+                {mapColors && roadRouteLngLat.length > 1 && (
                   <MapRoute
                     id="day-road-route"
                     coordinates={roadRouteLngLat}
-                    color="#0ea5e9"
+                    color={mapColors.route}
                     width={3}
                     opacity={0.55}
                     progress={routeSimulationProgress}
                     interactive={false}
                   >
-                    <RouteProgress color="#c2410c" width={5} />
+                    <RouteProgress color={mapColors.progress} width={5} />
                     {canSimulateRoute && routeSimulationProgress > 0 && (
                       <RouteMarker at="progress" anchor="center">
                         <MarkerContent className="travel-route-marker">

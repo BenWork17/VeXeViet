@@ -140,7 +140,7 @@ export function ProvinceSelect({
           aria-autocomplete="list"
           className={cn(
             'province-input',
-            error && 'border-destructive',
+            error && 'border-error',
             className
           )}
         />
@@ -184,7 +184,7 @@ export function ProvinceSelect({
         document.body
       )}
 
-      {error && <p className="text-[10px] font-medium text-red-500 ml-2">{error}</p>}
+      {error && <p className="text-xs font-normal text-error-ink ml-2 mt-1">{error}</p>}
     </div>
   )
 }
