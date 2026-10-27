@@ -12,49 +12,69 @@ describe('Button', () => {
   it('renders primary variant by default', () => {
     render(<Button>Primary</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('bg-blue-600');
+    expect(button.className).toContain('bg-primary');
+    expect(button.className).toContain('hover:bg-primary-deep');
+    expect(button.className).toContain('text-primary-foreground');
   });
 
   it('renders secondary variant', () => {
     render(<Button variant="secondary">Secondary</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('bg-gray-200');
+    expect(button.className).toContain('border-primary');
+    expect(button.className).toContain('bg-accent');
+    expect(button.className).toContain('text-primary');
   });
 
   it('renders outline variant', () => {
     render(<Button variant="outline">Outline</Button>);
     const button = screen.getByRole('button');
     expect(button.className).toContain('border');
+    expect(button.className).toContain('border-primary');
   });
 
   it('renders ghost variant', () => {
     render(<Button variant="ghost">Ghost</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('hover:bg-gray-100');
+    expect(button.className).toContain('hover:bg-muted');
   });
 
   it('renders danger variant', () => {
     render(<Button variant="danger">Danger</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('bg-red-600');
+    expect(button.className).toContain('bg-destructive');
+    expect(button.className).toContain('hover:bg-error-ink');
+  });
+
+  it('uses the 8px radius and no active scale', () => {
+    render(<Button>Radius</Button>);
+    const button = screen.getByRole('button');
+    expect(button.className).toContain('rounded-md');
+    expect(button.className).not.toContain('rounded-xl');
+    expect(button.className).not.toContain('active:scale-95');
   });
 
   it('renders small size', () => {
     render(<Button size="sm">Small</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('h-9');
+    expect(button.className).toContain('h-[34px]');
+    expect(button.className).toContain('text-[14px]');
+    expect(button.className).toContain('px-[14px]');
   });
 
   it('renders medium size by default', () => {
     render(<Button>Medium</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('h-10');
+    expect(button.className).toContain('h-[42px]');
+    expect(button.className).toContain('text-[16px]');
+    expect(button.className).toContain('px-[20px]');
   });
 
   it('renders large size', () => {
     render(<Button size="lg">Large</Button>);
     const button = screen.getByRole('button');
-    expect(button.className).toContain('h-11');
+    expect(button.className).toContain('h-[50px]');
+    expect(button.className).toContain('text-[18px]');
+    expect(button.className).toContain('px-[28px]');
   });
 
   it('can be disabled', () => {

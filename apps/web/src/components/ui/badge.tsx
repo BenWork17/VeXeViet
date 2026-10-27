@@ -2,17 +2,20 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+  'inline-flex items-center rounded-sm px-3.5 py-1.5 font-sans text-[12px] font-semibold leading-[1.4] transition-colors duration-200 ease-out focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background',
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/80',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        destructive: 'border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80',
-        outline: 'text-foreground',
-        success: 'border-transparent bg-green-100 text-green-700 hover:bg-green-100/80',
-        warning: 'border-transparent bg-yellow-100 text-yellow-700 hover:bg-yellow-100/80',
-        danger: 'border-transparent bg-red-100 text-red-700 hover:bg-red-100/80',
+        default: 'bg-primary text-primary-foreground',
+        secondary: 'bg-secondary text-secondary-foreground',
+        destructive: 'bg-error-soft text-error-ink',
+        outline: 'border border-border bg-card text-foreground',
+        filter: 'border border-border bg-card text-foreground',
+        'filter-active': 'bg-primary text-primary-foreground',
+        success: 'bg-success-soft text-success-ink',
+        warning: 'bg-warning-soft text-warning-ink',
+        danger: 'bg-error-soft text-error-ink',
+        info: 'bg-info-soft text-info-ink',
       },
     },
     defaultVariants: {

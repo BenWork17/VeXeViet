@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     ],
   },
   other: {
-    'msapplication-TileColor': '#f8fafc',
+    'msapplication-TileColor': '#FEF3C7',
   },
 }
 
@@ -23,5 +23,5 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#f8fafc',
+  themeColor: '#FEF3C7',
 }

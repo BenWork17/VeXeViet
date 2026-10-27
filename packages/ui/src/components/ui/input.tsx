@@ -3,12 +3,12 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 
 const inputVariants = cva(
-  'flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+  'flex h-[42px] w-full rounded-md border bg-field px-3.5 py-2.5 font-sans text-[14px] font-semibold text-foreground transition-colors duration-200 ease-out file:border-0 file:bg-transparent file:text-[14px] file:font-medium placeholder:text-muted-foreground focus-visible:border-2 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring-focus disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: '',
-        error: 'border-red-500 focus-visible:ring-red-500',
+        default: 'border-input hover:border-primary',
+        error: 'border-2 border-destructive focus-visible:border-destructive focus-visible:ring-error-ring',
       },
     },
     defaultVariants: {

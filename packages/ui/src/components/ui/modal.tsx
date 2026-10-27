@@ -34,13 +34,13 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
       aria-modal="true"
     >
       <div
-        className="fixed inset-0 bg-black/50"
+        className="fixed inset-0 bg-foreground/40"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         className={cn(
-          'relative z-50 w-full max-w-lg rounded-lg bg-white p-6 shadow-lg',
+          'relative z-50 w-full max-w-lg rounded-lg border border-border bg-card p-6 text-card-foreground shadow-hn-lg',
           className
         )}
       >
@@ -67,7 +67,7 @@ export interface ModalTitleProps
 export function ModalTitle({ className, ...props }: ModalTitleProps) {
   return (
     <h2
-      className={cn('text-lg font-semibold leading-none tracking-tight', className)}
+      className={cn('font-display text-[20px] leading-[1.35] tracking-tight text-card-foreground', className)}
       {...props}
     />
   );
@@ -79,7 +79,7 @@ export interface ModalDescriptionProps
 export function ModalDescription({ className, ...props }: ModalDescriptionProps) {
   return (
     <p
-      className={cn('text-sm text-gray-500', className)}
+      className={cn('text-sm text-muted-foreground', className)}
       {...props}
     />
   );
