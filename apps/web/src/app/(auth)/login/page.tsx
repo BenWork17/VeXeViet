@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { FadeIn } from '@/components/motion';
 
 // Validation schemas matching BE requirements
 const loginSchema = z.object({
@@ -145,7 +146,7 @@ function AuthPageContent() {
     );
 
   return (
-    <div className="min-h-screen bg-background px-4 py-12 font-sans text-foreground">
+    <FadeIn className="min-h-screen bg-background px-4 py-12 font-sans text-foreground">
       <div className="mx-auto w-full max-w-md">
         <div className="mb-6 text-center">
           <Link href="/" className="font-display text-3xl text-foreground">
@@ -382,7 +383,7 @@ function AuthPageContent() {
           </div>
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }
 

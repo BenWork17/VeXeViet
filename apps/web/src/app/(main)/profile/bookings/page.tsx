@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
+import { FadeIn } from '@/components/motion';
 
 export default function BookingsDashboardPage() {
   const { user } = useSelector((state: RootState) => state.auth);
@@ -99,20 +100,20 @@ export default function BookingsDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-6xl px-4 py-8">
-        {/* Toast Notification */}
-        {toast && (
-          <div
-            role="status"
-            className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-md border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground shadow-hn-md"
-          >
-            {toast.type === 'success'
-              ? <CheckCircle2 className="h-5 w-5 text-success-ink" />
-              : <X className="h-5 w-5 text-error-ink" />}
-            <p>{toast.message}</p>
-          </div>
-        )}
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          role="status"
+          className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-md border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground shadow-hn-md"
+        >
+          {toast.type === 'success'
+            ? <CheckCircle2 className="h-5 w-5 text-success-ink" />
+            : <X className="h-5 w-5 text-error-ink" />}
+          <p>{toast.message}</p>
+        </div>
+      )}
 
+      <FadeIn className="container mx-auto max-w-6xl px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent-foreground">VeXeViet Account</p>
@@ -202,7 +203,7 @@ export default function BookingsDashboardPage() {
             ))}
           </div>
         )}
-      </div>
+      </FadeIn>
     </div>
   );
 }

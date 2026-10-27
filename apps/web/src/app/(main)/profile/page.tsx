@@ -5,6 +5,7 @@ import { useMyBookings } from '@/lib/hooks/useBookings';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ProfileForm, BookingHistoryList } from '@/components/features/profile/ProfileComponents';
+import { FadeIn } from '@/components/motion';
 import {
   Bell,
   Briefcase,
@@ -93,7 +94,7 @@ export default function ProfilePage() {
       : 'Các cập nhật quan trọng về vé, thanh toán và ưu đãi.';
 
   return (
-    <div className="min-h-screen bg-background">
+    <FadeIn className="min-h-screen bg-background">
       <div className="container mx-auto max-w-7xl px-4 py-8 lg:py-10">
         <section className="mb-8 overflow-hidden rounded-lg border border-border bg-primary shadow-hn-md">
           <div className="px-6 py-8 md:px-8">
@@ -223,7 +224,7 @@ export default function ProfilePage() {
           </main>
         </div>
       </div>
-    </div>
+    </FadeIn>
   );
 }
 

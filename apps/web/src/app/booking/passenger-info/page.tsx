@@ -9,6 +9,7 @@ import { selectBooking, setStep, clearHoldInfo } from '@/store/slices/bookingSli
 import { PassengerInfoForm, type PassengerInfo } from '@/components/features/booking/PassengerInfoForm';
 import { CountdownTimer } from '@/components/features/booking/CountdownTimer';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
+import { FadeIn } from '@/components/motion';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
 export default function PassengerInfoPage() {
@@ -97,7 +98,7 @@ export default function PassengerInfoPage() {
 
   return (
     <>
-      <div className="booking-container">
+      <FadeIn className="booking-container">
         <button type="button" onClick={handleBack} className="booking-back-link">
           <ArrowLeft size={16} aria-hidden="true" />
           Quay lại chọn ghế
@@ -208,7 +209,7 @@ export default function PassengerInfoPage() {
             </div>
           </aside>
         </div>
-      </div>
+      </FadeIn>
 
       {/* Expired Modal */}
       <SeatHoldExpiredModal

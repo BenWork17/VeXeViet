@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { PaymentForm } from '@/components/features/booking/PaymentForm/PaymentForm';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
+import { FadeIn } from '@/components/motion';
 import { initiatePayment } from '@/lib/api/payment';
 import { createBooking, generateIdempotencyKey } from '@/lib/api/bookings';
 import { PaymentMethod } from '@/types/payment';
@@ -175,7 +176,7 @@ export default function PaymentPage() {
 
   return (
     <>
-      <div className="booking-container">
+      <FadeIn className="booking-container">
         <div className="booking-panel-head">
           <div>
             <h1 className="booking-title">Thanh toán</h1>
@@ -212,7 +213,7 @@ export default function PaymentPage() {
             isProcessing={isProcessing}
           />
         </div>
-      </div>
+      </FadeIn>
 
       {/* Expired Modal */}
       <SeatHoldExpiredModal

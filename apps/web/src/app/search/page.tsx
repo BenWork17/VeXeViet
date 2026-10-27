@@ -8,6 +8,7 @@ import { Button, cn } from '@vexeviet/ui'
 import { SearchForm, type SearchFormValues } from '@/components/features/search/SearchForm'
 import { FilterPanel } from '@/components/features/search/FilterPanel'
 import { SearchRouteCard } from '@/components/features/search/SearchRouteCard'
+import { FadeIn } from '@/components/motion'
 import { searchRoutes } from '@/lib/api/routes'
 import { Route, SearchFilters, SearchRoutesResponse } from '@vexeviet/types'
 import {
@@ -251,6 +252,7 @@ function SearchPageContent() {
 
   return (
     <div className="search-page">
+      <FadeIn>
       <header className="search-page-header">
         <div className="site-container">
           <h1
@@ -406,6 +408,7 @@ function SearchPageContent() {
           </div>
         </main>
       </div>
+      </FadeIn>
 
       {showMobileFilters && (
         <div className="search-sheet-layer">

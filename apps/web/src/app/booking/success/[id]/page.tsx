@@ -6,6 +6,7 @@ import { CheckCircle2, Printer, XCircle } from 'lucide-react';
 import { TicketCard } from '@/components/features/booking/Ticket/TicketCard';
 import { getBookingById } from '@/lib/api/booking';
 import { BookingDetails } from '@/types/booking';
+import { FadeIn } from '@/components/motion';
 
 export default function BookingSuccessPage() {
   const params = useParams();
@@ -73,7 +74,7 @@ export default function BookingSuccessPage() {
   }
 
   return (
-    <div className="booking-ticket-page">
+    <FadeIn className="booking-ticket-page">
       <div className="booking-success-head no-print">
         <span className="booking-state-icon" aria-hidden="true">
           <CheckCircle2 size={26} />
@@ -118,6 +119,6 @@ export default function BookingSuccessPage() {
         Cần hỗ trợ? Liên hệ <strong>1900-xxxx</strong> hoặc{' '}
         <a href="mailto:support@vexeviet.com">support@vexeviet.com</a>
       </p>
-    </div>
+    </FadeIn>
   );
 }

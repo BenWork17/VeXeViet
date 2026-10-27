@@ -6,6 +6,7 @@ import { SearchForm, type SearchFormValues } from '@/components/features/search/
 import { useRouter } from 'next/navigation'
 import { PopularRoutesSection } from '@/components/features/home/PopularRoutesSection'
 import { StatsSection } from '@/components/features/home/StatsSection'
+import { FadeIn } from '@/components/motion'
 import { ArrowRight, Clock3, MapPin, Search, ShieldCheck, TicketCheck } from 'lucide-react'
 
 export default function HomePage() {
@@ -35,7 +36,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="home-page">
+    <FadeIn className="home-page">
       <section className="home-hero">
         <div className="site-container hero-grid">
           <div className="hero-copy">
@@ -134,6 +135,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-    </div>
+    </FadeIn>
   )
 }

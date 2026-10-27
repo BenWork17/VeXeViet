@@ -7,6 +7,7 @@ import { BusSeatLayout } from '@/components/features/booking/SeatMap/layouts';
 import { CountdownTimer } from '@/components/features/booking/CountdownTimer';
 import { SeatConflictModal } from '@/components/features/booking/SeatConflictModal';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
+import { FadeIn } from '@/components/motion';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
@@ -353,6 +354,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
 
   return (
     <div className="booking-container">
+      <FadeIn>
       <h1 className="sr-only">
         Chọn ghế cho tuyến {currentRoute.from} đến {currentRoute.to}
       </h1>
@@ -508,6 +510,8 @@ export default function BookingPage({ params }: { params: { id: string } }) {
           </div>
         </section>
       </div>
+
+      </FadeIn>
 
       <SeatConflictModal
         isOpen={showConflictModal}

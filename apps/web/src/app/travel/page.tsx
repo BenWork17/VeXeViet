@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { ProvinceSelect } from '@/components/ui/province-select';
 import { TripPlanner } from '@/components/features/travel-assistant';
 import { searchRoutes } from '@/lib/api/routes';
+import { FadeIn } from '@/components/motion';
 import type { Route } from '@vexeviet/types';
 
 function getTodayString() {
@@ -125,7 +126,9 @@ export default function TravelPlannerPage() {
 
   return (
     <main className="travel-page">
-      <TripPlanner origin={origin} destination={destination} departureDate={departureDate} routes={routes} controls={searchControls} />
+      <FadeIn>
+        <TripPlanner origin={origin} destination={destination} departureDate={departureDate} routes={routes} controls={searchControls} />
+      </FadeIn>
     </main>
   );
 }

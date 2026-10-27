@@ -11,6 +11,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { initBooking } from '@/store/slices/bookingSlice';
 import { cn } from '@/lib/utils';
 import type { Route } from '@/types/models';
+import { FadeIn } from '@/components/motion';
 
 export default function RouteDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -155,6 +156,7 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
 
   return (
     <div className="min-h-screen bg-background">
+      <FadeIn>
       <div className="container mx-auto max-w-7xl px-4 py-8">
         <div className="flex flex-col gap-8 lg:flex-row">
           <div className="min-w-0 flex-1">
@@ -250,6 +252,7 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
           </aside>
         </div>
       </div>
+      </FadeIn>
 
       {/* Mobile Sticky Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card p-4 shadow-hn-md lg:hidden">

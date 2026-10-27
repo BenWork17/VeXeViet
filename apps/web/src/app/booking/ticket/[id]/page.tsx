@@ -6,6 +6,7 @@ import { getBookingById } from '@/lib/api/bookings';
 import { Booking } from '@vexeviet/types';
 import { ArrowLeft, Printer } from 'lucide-react';
 import QRCode from 'react-qr-code';
+import { FadeIn } from '@/components/motion';
 
 export default function BookingTicketPage() {
   const params = useParams();
@@ -94,7 +95,7 @@ export default function BookingTicketPage() {
         : booking.status;
 
   return (
-    <div className="booking-ticket-page">
+    <FadeIn className="booking-ticket-page">
       <div className="booking-ticket-actions no-print">
         <button type="button" onClick={() => router.back()} className="booking-back-link">
           <ArrowLeft size={16} aria-hidden="true" />
@@ -253,6 +254,6 @@ export default function BookingTicketPage() {
           }
         }
       `}</style>
-    </div>
+    </FadeIn>
   );
 }

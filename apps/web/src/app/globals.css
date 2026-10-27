@@ -182,6 +182,8 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--muted);
 }
 
 body {
@@ -226,6 +228,64 @@ button {
 :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--ring) 45%, transparent);
   outline-offset: 3px;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--muted);
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: var(--border-strong);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--muted);
+}
+
+@keyframes hn-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hn-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hn-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .site-container {
@@ -792,11 +852,12 @@ button {
 
 .search-control {
   width: 100%;
-  min-height: 48px;
-  border-radius: 4px;
-  background: var(--background);
+  min-height: 42px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--field);
   color: var(--ink-deep);
-  padding: 10px 13px;
+  padding: 10px 14px;
   transition: border-color 150ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out;
 }
 
@@ -807,16 +868,22 @@ button {
 .search-control:hover,
 .search-control:focus {
   border-color: var(--primary);
-  background: var(--card);
+  background: var(--field);
 }
 
 .search-control:focus {
-  outline: 3px solid color-mix(in srgb, var(--ring) 18%, transparent);
-  outline-offset: 1px;
+  border-width: 2px;
+  box-shadow: 0 0 0 3px var(--ring-focus);
+  outline: none;
+}
+
+.search-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .search-control::placeholder {
-  color: var(--steel);
+  color: var(--muted-foreground);
 }
 
 .search-field-error {
@@ -934,6 +1001,7 @@ button {
   background: var(--card);
   color: var(--foreground);
   box-shadow: var(--shadow-hn);
+  animation: hn-fade-up 150ms ease-out both;
 }
 
 .province-region {
@@ -2038,6 +2106,7 @@ button {
   flex-direction: column;
   border-radius: 16px 16px 0 0;
   background: var(--card);
+  animation: hn-sheet-up 200ms ease-out both;
 }
 
 .search-sheet-header {
@@ -2435,6 +2504,7 @@ button {
   .site-mobile-menu {
     display: block;
     padding: 16px 0 20px;
+    animation: hn-fade-down 150ms ease-out both;
   }
 
   .site-mobile-menu nav {
@@ -4464,6 +4534,13 @@ button {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .province-popover,
+  .search-sheet,
+  .site-mobile-menu {
+    animation: none !important;
+    transform: none !important;
   }
 }
 

@@ -6,6 +6,7 @@ import { useDispatch } from 'react-redux';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { setPaymentStatus } from '@/store/slices/bookingSlice';
 import type { PaymentResultParams, PaymentStatus } from '@/types/payment';
+import { FadeIn } from '@/components/motion';
 
 function statusLabel(status: PaymentStatus): string {
   if (status === 'COMPLETED') return 'Hoàn thành';
@@ -95,7 +96,7 @@ function PaymentResultContent() {
         : ' is-failure';
 
   return (
-    <div className="booking-state-page">
+    <FadeIn className="booking-state-page">
       <div className="booking-state-card">
         <span
           className={`booking-state-icon${isSuccess ? '' : ' is-failure'}`}
@@ -211,7 +212,7 @@ function PaymentResultContent() {
         Cần hỗ trợ? Liên hệ <strong>1900-xxxx</strong> hoặc{' '}
         <a href="mailto:support@vexeviet.com">support@vexeviet.com</a>
       </p>
-    </div>
+    </FadeIn>
   );
 }
 

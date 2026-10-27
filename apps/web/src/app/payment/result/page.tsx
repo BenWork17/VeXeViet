@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { FadeIn } from '@/components/motion';
 import { useDispatch } from 'react-redux';
 import {
   AlertTriangle,
@@ -258,7 +259,7 @@ function PaymentResultContent() {
   const detailValueClass = 'font-mono text-sm font-semibold text-foreground';
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 font-sans text-foreground sm:py-12">
+    <FadeIn className="min-h-screen bg-background px-4 py-8 font-sans text-foreground sm:py-12">
       <div
         className={cn(
           'mx-auto max-w-2xl transition-all duration-200 motion-reduce:transition-none',
@@ -405,7 +406,7 @@ function PaymentResultContent() {
           </p>
         )}
       </div>
-    </div>
+    </FadeIn>
   );
 }
 
