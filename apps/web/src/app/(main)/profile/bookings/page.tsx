@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { mockBookingApi } from '@/lib/api/mock/booking';
 import { cancelBooking } from '@/lib/api/bookings';
 import { BookingDetails } from '@/types/booking';
-import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, MapPin, Users, Ticket, CreditCard, X, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BookingsDashboardPage() {
@@ -42,7 +41,7 @@ export default function BookingsDashboardPage() {
 
   const loadBookings = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     try {
       const data = await mockBookingApi.getBookingHistory(user.id);
@@ -61,7 +60,7 @@ export default function BookingsDashboardPage() {
       const result = await cancelBooking(bookingId, {
         reason: 'User requested cancellation'
       });
-      
+
       showToast('Booking cancelled successfully', 'success');
       await loadBookings(); // Refresh bookings
     } catch (error: any) {
@@ -83,11 +82,11 @@ export default function BookingsDashboardPage() {
 
   const canCancel = (booking: BookingDetails) => {
     if (booking.status !== 'CONFIRMED') return false;
-    
+
     const departureDate = new Date(booking.route.departureTime);
     const now = new Date();
     const hoursUntilDeparture = (departureDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
+
     return hoursUntilDeparture > 24;
   };
 
@@ -99,99 +98,111 @@ export default function BookingsDashboardPage() {
   if (!user) return null;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg ${
-            toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          } text-white animate-in slide-in-from-top-5`}
-        >
-          <div className="flex items-center gap-2">
-            {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <X className="w-5 h-5" />}
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto max-w-6xl px-4 py-8">
+        {/* Toast Notification */}
+        {toast && (
+          <div
+            role="status"
+            className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-md border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground shadow-hn-md"
+          >
+            {toast.type === 'success'
+              ? <CheckCircle2 className="h-5 w-5 text-success-ink" />
+              : <X className="h-5 w-5 text-error-ink" />}
             <p>{toast.message}</p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">My Bookings</h1>
-        <p className="text-gray-600">Manage your bus tickets and travel history</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-4 mb-6 border-b">
-        <button
-          onClick={() => setActiveTab('upcoming')}
-          className={`pb-3 px-4 font-medium transition-colors relative ${
-            activeTab === 'upcoming' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Upcoming Trips
-          {upcomingBookings.length > 0 && (
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-600">
-              {upcomingBookings.length}
-            </span>
-          )}
-          {activeTab === 'upcoming' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('past')}
-          className={`pb-3 px-4 font-medium transition-colors relative ${
-            activeTab === 'past' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          Past Trips
-          {pastBookings.length > 0 && (
-            <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
-              {pastBookings.length}
-            </span>
-          )}
-          {activeTab === 'past' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>}
-        </button>
-      </div>
-
-      {/* Content */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent"></div>
+        {/* Header */}
+        <div className="mb-8">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent-foreground">VeXeViet Account</p>
+          <h1 className="font-display text-3xl text-foreground">My Bookings</h1>
+          <p className="mt-2 text-muted-foreground">Manage your bus tickets and travel history</p>
         </div>
-      ) : currentBookings.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-            <Ticket className="w-12 h-12 text-gray-400" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">No {activeTab === 'upcoming' ? 'upcoming' : 'past'} trips</h3>
-          <p className="text-gray-600 mb-6">
-            {activeTab === 'upcoming'
-              ? "You don't have any upcoming trips yet."
-              : "You don't have any past trips."}
-          </p>
-          {activeTab === 'upcoming' && (
-            <Link
-              href="/"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Book a Trip Now
-            </Link>
-          )}
+
+        {/* Tabs */}
+        <div className="mb-6 inline-flex gap-1 rounded-lg border border-border bg-card p-1 shadow-hn-sm">
+          <button
+            onClick={() => setActiveTab('upcoming')}
+            className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
+              activeTab === 'upcoming'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-foreground hover:bg-muted'
+            }`}
+          >
+            Upcoming Trips
+            {upcomingBookings.length > 0 && (
+              <span className={`rounded-sm px-1.5 py-0.5 text-xs font-semibold ${
+                activeTab === 'upcoming' ? 'bg-card text-accent-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+                {upcomingBookings.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('past')}
+            className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
+              activeTab === 'past'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-foreground hover:bg-muted'
+            }`}
+          >
+            Past Trips
+            {pastBookings.length > 0 && (
+              <span className={`rounded-sm px-1.5 py-0.5 text-xs font-semibold ${
+                activeTab === 'past' ? 'bg-card text-accent-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+                {pastBookings.length}
+              </span>
+            )}
+          </button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {currentBookings.map((booking) => (
-            <BookingCard
-              key={booking.id}
-              booking={booking}
-              onCancel={handleCancelBooking}
-              canCancel={canCancel(booking)}
-              isCancelling={cancellingId === booking.id}
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div
+              role="status"
+              aria-label="Đang tải danh sách vé"
+              className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent motion-reduce:animate-none"
             />
-          ))}
-        </div>
-      )}
+          </div>
+        ) : currentBookings.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-card px-6 py-16 text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-md bg-accent text-accent-foreground">
+              <Ticket className="h-8 w-8" />
+            </div>
+            <h3 className="font-display text-xl text-foreground">
+              No {activeTab === 'upcoming' ? 'upcoming' : 'past'} trips
+            </h3>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+              {activeTab === 'upcoming'
+                ? "You don't have any upcoming trips yet."
+                : "You don't have any past trips."}
+            </p>
+            {activeTab === 'upcoming' && (
+              <Link
+                href="/"
+                className="mt-6 inline-flex h-[42px] items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep"
+              >
+                Book a Trip Now
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-hn-sm">
+            {currentBookings.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onCancel={handleCancelBooking}
+                canCancel={canCancel(booking)}
+                isCancelling={cancellingId === booking.id}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -228,151 +239,185 @@ function BookingCard({
   const getStatusBadge = (status: BookingDetails['status']) => {
     switch (status) {
       case 'CONFIRMED':
-        return <Badge variant="success">Confirmed</Badge>;
+        return <StatusChip label="Confirmed" tone="success" />;
       case 'PENDING':
-        return <Badge variant="warning">Pending</Badge>;
+        return <StatusChip label="Pending" tone="warning" />;
       case 'CANCELLED':
-        return <Badge variant="danger">Cancelled</Badge>;
+        return <StatusChip label="Cancelled" tone="error" />;
       default:
-        return <Badge>{status}</Badge>;
+        return <StatusChip label={status} tone="neutral" />;
     }
   };
 
   return (
-    <div className="bg-white border rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-bold">{booking.operator.name}</h3>
+    <article className="border-b border-border p-5 transition-colors duration-150 last:border-b-0 hover:bg-accent sm:p-6">
+      {/* Header */}
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+            <Ticket className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h3 className="truncate font-display text-lg text-foreground">{booking.operator.name}</h3>
               {getStatusBadge(booking.status)}
             </div>
-            <p className="text-sm text-gray-500">Booking Code: {booking.bookingCode}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-blue-600">{booking.totalPrice.toLocaleString('vi-VN')} ₫</p>
-            <p className="text-sm text-gray-500">{booking.passengers.length} passenger(s)</p>
+            <p className="text-sm text-muted-foreground">
+              Booking Code: <span className="font-mono text-foreground">{booking.bookingCode}</span>
+            </p>
           </div>
         </div>
+        <div className="sm:text-right">
+          <p className="font-mono text-xl font-semibold text-foreground">
+            {booking.totalPrice.toLocaleString('vi-VN')} ₫
+          </p>
+          <p className="text-sm text-muted-foreground">{booking.passengers.length} passenger(s)</p>
+        </div>
+      </div>
 
-        {/* Route Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b">
-          <div className="flex items-start gap-3">
-            <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-sm text-gray-500">From</p>
-              <p className="font-medium">{booking.route.from}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-sm text-gray-500">To</p>
-              <p className="font-medium">{booking.route.to}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-sm text-gray-500">Duration</p>
-              <p className="font-medium">{booking.route.duration}</p>
-            </div>
+      {/* Route Info */}
+      <div className="mb-4 grid grid-cols-1 gap-3 border-b border-border pb-4 md:grid-cols-3">
+        <RouteFact icon={MapPin} label="From" value={booking.route.from} />
+        <RouteFact icon={MapPin} label="To" value={booking.route.to} />
+        <RouteFact icon={Clock} label="Duration" value={booking.route.duration} />
+      </div>
+
+      {/* Departure & Arrival */}
+      <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <RouteFact
+          icon={Calendar}
+          label="Departure"
+          value={formatDate(booking.route.departureTime)}
+          detail={formatTime(booking.route.departureTime)}
+        />
+        <RouteFact
+          icon={Calendar}
+          label="Arrival"
+          value={formatDate(booking.route.arrivalTime)}
+          detail={formatTime(booking.route.arrivalTime)}
+        />
+      </div>
+
+      {/* Passengers & Seats */}
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+          <Users className="h-4 w-4" />
+        </span>
+        <div className="flex-1">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Passengers &amp; Seats
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {booking.passengers.map((passenger, idx) => (
+              <span key={idx} className="rounded-sm bg-muted px-2.5 py-1 text-xs font-medium text-foreground">
+                {passenger.fullName} - Seat {passenger.seatNumber}
+              </span>
+            ))}
           </div>
         </div>
+      </div>
 
-        {/* Departure & Arrival */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-sm text-gray-500">Departure</p>
-              <p className="font-medium">{formatDate(booking.route.departureTime)}</p>
-              <p className="text-sm text-gray-600">{formatTime(booking.route.departureTime)}</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-            <div>
-              <p className="text-sm text-gray-500">Arrival</p>
-              <p className="font-medium">{formatDate(booking.route.arrivalTime)}</p>
-              <p className="text-sm text-gray-600">{formatTime(booking.route.arrivalTime)}</p>
-            </div>
-          </div>
+      {/* Bus Info */}
+      <div className="mb-4 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+        <div>
+          <span className="text-muted-foreground">Bus Type:</span>{' '}
+          <span className="font-semibold text-foreground">{booking.busType}</span>
         </div>
-
-        {/* Passengers & Seats */}
-        <div className="flex items-start gap-3 mb-4">
-          <Users className="w-5 h-5 text-gray-400 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm text-gray-500 mb-1">Passengers & Seats</p>
-            <div className="flex flex-wrap gap-2">
-              {booking.passengers.map((passenger, idx) => (
-                <span key={idx} className="text-sm px-3 py-1 bg-gray-100 rounded-full">
-                  {passenger.fullName} - Seat {passenger.seatNumber}
-                </span>
-              ))}
-            </div>
-          </div>
+        <div>
+          <span className="text-muted-foreground">License Plate:</span>{' '}
+          <span className="font-mono text-foreground">{booking.licensePlate}</span>
         </div>
+      </div>
 
-        {/* Bus Info */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
-          <div>
-            <span className="text-gray-500">Bus Type:</span> <span className="font-medium">{booking.busType}</span>
-          </div>
-          <div>
-            <span className="text-gray-500">License Plate:</span>{' '}
-            <span className="font-medium">{booking.licensePlate}</span>
-          </div>
-        </div>
+      {/* Actions */}
+      <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row">
+        <Link
+          href={`/booking/success/${booking.id}`}
+          className="inline-flex h-[42px] flex-1 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep"
+        >
+          <Ticket className="h-4 w-4" />
+          View E-Ticket
+        </Link>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t">
-          <Link
-            href={`/booking/success/${booking.id}`}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Ticket className="w-4 h-4" />
-            View E-Ticket
-          </Link>
-
-          {canCancel && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  disabled={isCancelling}
-                  className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        {canCancel && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={isCancelling}
+                className="inline-flex h-[42px] items-center justify-center rounded-md border border-border bg-card px-4 text-sm font-semibold text-error-ink transition-colors duration-150 hover:bg-error-soft disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isCancelling ? 'Cancelling...' : 'Cancel Booking'}
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="rounded-lg border-border bg-card! shadow-hn-md!">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="font-display text-xl text-foreground">Cancel Booking?</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground!">
+                  Are you sure you want to cancel this booking? A cancellation fee will apply according to our
+                  policy:
+                  <ul className="mt-2 space-y-1 text-sm">
+                    <li>• More than 24 hours before departure: 90% refund</li>
+                    <li>• 12-24 hours before departure: 50% refund</li>
+                    <li>• Less than 12 hours: No refund</li>
+                  </ul>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="h-[42px] border-border! bg-card! text-foreground! hover:bg-muted!">
+                  Keep Booking
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onCancel(booking.id)}
+                  className="h-[42px] bg-destructive! text-destructive-foreground! hover:bg-destructive/90!"
                 >
-                  {isCancelling ? 'Cancelling...' : 'Cancel Booking'}
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to cancel this booking? A cancellation fee will apply according to our
-                    policy:
-                    <ul className="mt-2 space-y-1 text-sm">
-                      <li>• More than 24 hours before departure: 90% refund</li>
-                      <li>• 12-24 hours before departure: 50% refund</li>
-                      <li>• Less than 12 hours: No refund</li>
-                    </ul>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onCancel(booking.id)}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Yes, Cancel
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
+                  Yes, Cancel
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function StatusChip({ label, tone }: { label: string; tone: 'success' | 'warning' | 'error' | 'neutral' }) {
+  const toneClassName =
+    tone === 'success'
+      ? 'bg-success-soft text-success-ink'
+      : tone === 'warning'
+        ? 'bg-warning-soft text-warning-ink'
+        : tone === 'error'
+          ? 'bg-error-soft text-error-ink'
+          : 'bg-muted text-muted-foreground';
+
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-sm px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${toneClassName}`}>
+      {label}
+    </span>
+  );
+}
+
+function RouteFact({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: typeof MapPin;
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+        <p className="mt-0.5 font-semibold text-foreground">{value}</p>
+        {detail ? <p className="font-mono text-sm text-muted-foreground">{detail}</p> : null}
       </div>
     </div>
   );
