@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Landmark } from 'lucide-react';
 
 function MockGatewayContent() {
   const router = useRouter();
@@ -40,53 +41,53 @@ function MockGatewayContent() {
 
   if (process.env.NODE_ENV === 'production') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600">404</h1>
-          <p className="text-gray-600">This page is only available in development mode.</p>
+          <h1 className="font-display text-2xl text-error-ink">404</h1>
+          <p className="text-muted-foreground">This page is only available in development mode.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md rounded-md border border-border bg-card p-8 shadow-hn-md">
         {/* Mock Gateway Header */}
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
-            <span className="text-3xl">🏦</span>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-info-soft">
+            <Landmark size={28} className="text-info-ink" aria-hidden="true" />
           </div>
-          <h1 className="mb-2 text-2xl font-bold text-gray-800">Mock Payment Gateway</h1>
-          <p className="text-sm text-gray-500">Simulation Environment (Development Only)</p>
+          <h1 className="mb-2 font-display text-2xl text-foreground">Mock Payment Gateway</h1>
+          <p className="text-sm text-muted-foreground">Simulation Environment (Development Only)</p>
         </div>
 
         {/* Transaction Details */}
-        <div className="mb-6 space-y-3 rounded-lg bg-gray-50 p-4">
+        <div className="mb-6 space-y-3 rounded-md bg-muted p-4">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Booking ID:</span>
-            <span className="font-mono font-semibold text-gray-800">{bookingId}</span>
+            <span className="text-muted-foreground">Booking ID:</span>
+            <span className="font-mono font-semibold text-foreground">{bookingId}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Amount:</span>
-            <span className="font-semibold text-gray-800">
+            <span className="text-muted-foreground">Amount:</span>
+            <span className="font-semibold text-foreground">
               {amount ? parseInt(amount).toLocaleString('vi-VN') + ' ₫' : 'N/A'}
             </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Method:</span>
-            <span className="font-semibold text-gray-800">{method}</span>
+            <span className="text-muted-foreground">Method:</span>
+            <span className="font-semibold text-foreground">{method}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Transaction ID:</span>
-            <span className="font-mono text-xs text-gray-600">{transactionId}</span>
+            <span className="text-muted-foreground">Transaction ID:</span>
+            <span className="font-mono text-xs text-muted-foreground">{transactionId}</span>
           </div>
         </div>
 
         {/* Simulation Instructions */}
-        <div className="mb-6 rounded-lg border-l-4 border-yellow-400 bg-yellow-50 p-4">
-          <p className="text-sm text-yellow-800">
-            <strong>⚠️ Test Mode:</strong> Choose an outcome to simulate the payment gateway response.
+        <div className="mb-6 rounded-md border-l-4 border-warning bg-warning-soft p-4">
+          <p className="text-sm text-warning-ink">
+            <strong>Test Mode:</strong> Choose an outcome to simulate the payment gateway response.
           </p>
         </div>
 
@@ -94,21 +95,21 @@ function MockGatewayContent() {
         <div className="space-y-3">
           <button
             onClick={handleSuccess}
-            className="w-full rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition-all hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300"
+            className="w-full rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
           >
-            ✅ Simulate SUCCESS
+            Simulate SUCCESS
           </button>
 
           <button
             onClick={handleFailure}
-            className="w-full rounded-lg bg-red-600 px-6 py-3 font-semibold text-white transition-all hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300"
+            className="w-full rounded-md bg-destructive px-6 py-3 font-semibold text-destructive-foreground transition-colors duration-150 hover:bg-error-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
           >
-            ❌ Simulate FAILURE
+            Simulate FAILURE
           </button>
 
           <button
             onClick={() => router.back()}
-            className="w-full rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-700 transition-all hover:bg-gray-50"
+            className="w-full rounded-md border border-input px-6 py-3 font-semibold text-foreground transition-colors duration-150 hover:bg-muted motion-reduce:transition-none"
           >
             ← Cancel & Go Back
           </button>
@@ -116,7 +117,7 @@ function MockGatewayContent() {
 
         {/* Auto-redirect info */}
         {countdown > 0 && (
-          <div className="mt-4 text-center text-xs text-gray-500">
+          <div className="mt-4 text-center text-xs text-muted-foreground">
             This is a mock payment gateway for testing purposes only.
           </div>
         )}
@@ -129,8 +130,8 @@ export default function MockGatewayPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
         </div>
       }
     >
