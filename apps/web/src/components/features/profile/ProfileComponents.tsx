@@ -142,7 +142,7 @@ function ProfileInput({
     <label className="block">
       <span className="mb-1.5 block text-sm font-semibold text-foreground">{label}</span>
       <span
-        className={`flex h-[42px] items-center gap-2.5 rounded-md border bg-card px-3.5 transition-colors duration-150 ${
+        className={`flex h-[42px] items-center gap-2.5 rounded-md border bg-field px-3.5 transition-colors duration-150 ${
           error
             ? 'border-2 border-error ring-[3px] ring-error-soft'
             : 'border-input hover:border-primary focus-within:border-2 focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15'

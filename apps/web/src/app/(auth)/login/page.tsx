@@ -36,7 +36,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const fieldBase =
-  'h-[42px] w-full rounded-md border border-input bg-card px-3.5 text-sm font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground transition-colors duration-150 focus:outline-none focus:ring-[3px]';
+  'h-[42px] w-full rounded-md border border-input bg-field px-3.5 text-sm font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground transition-colors duration-150 focus:outline-none focus:ring-[3px]';
 
 function fieldClass(hasError: boolean) {
   return cn(
