@@ -85,14 +85,14 @@ export function ProfileForm({ user }: { user: User }) {
         />
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4 md:p-5">
+      <div className="rounded-lg border border-border bg-muted p-4 md:p-5">
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-accent text-accent-foreground">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-black text-slate-950">Bảo mật và xác thực</h3>
-            <p className="text-sm text-slate-500">Theo dõi các kênh liên hệ đã được xác minh.</p>
+            <h3 className="font-display text-base text-foreground">Bảo mật và xác thực</h3>
+            <p className="text-sm text-muted-foreground">Theo dõi các kênh liên hệ đã được xác minh.</p>
           </div>
         </div>
 
@@ -102,22 +102,22 @@ export function ProfileForm({ user }: { user: User }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center">
         <button
           type="submit"
           disabled={updateProfileMutation.isPending || !isDirty}
-          className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#063C45] px-6 text-sm font-black text-white shadow-lg shadow-teal-950/15 transition-colors hover:bg-[#0F766E] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+          className="inline-flex h-[42px] items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-50"
         >
           {updateProfileMutation.isPending ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />
               Đang lưu...
             </span>
           ) : (
             'Lưu thay đổi'
           )}
         </button>
-        {!isDirty && <p className="text-sm font-medium text-slate-400">Không có thay đổi nào cần lưu.</p>}
+        {!isDirty && <p className="text-sm text-muted-foreground">Không có thay đổi nào cần lưu.</p>}
       </div>
     </form>
   );
@@ -140,21 +140,25 @@ function ProfileInput({
 }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-bold text-slate-700">{label}</span>
-      <span className={`flex h-12 items-center gap-3 rounded-2xl border bg-white px-4 shadow-sm transition-colors ${
-        error ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200 focus-within:border-teal-600 focus-within:ring-2 focus-within:ring-teal-100'
-      }`}>
-        <Icon className="h-5 w-5 text-slate-400" />
+      <span className="mb-1.5 block text-sm font-semibold text-foreground">{label}</span>
+      <span
+        className={`flex h-[42px] items-center gap-2.5 rounded-md border bg-card px-3.5 transition-colors duration-150 ${
+          error
+            ? 'border-2 border-error ring-[3px] ring-error-soft'
+            : 'border-input hover:border-primary focus-within:border-2 focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15'
+        }`}
+      >
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           {...inputProps}
           placeholder={placeholder}
-          className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-950 outline-none placeholder:text-slate-300"
+          className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
         />
       </span>
       {error ? (
-        <span className="mt-2 block text-sm font-semibold text-red-600">{error}</span>
+        <span className="mt-1 block text-xs text-error-ink">{error}</span>
       ) : helperText ? (
-        <span className="mt-2 block text-xs font-medium text-slate-400">{helperText}</span>
+        <span className="mt-1 block text-xs text-muted-foreground">{helperText}</span>
       ) : null}
     </label>
   );
@@ -163,25 +167,27 @@ function ProfileInput({
 function ProfileReadOnlyField({ label, value, icon: Icon, note }: { label: string; value: string; icon: typeof Mail; note: string }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-bold text-slate-700">{label}</span>
-      <span className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-500">
-        <Icon className="h-5 w-5 text-slate-400" />
-        <input value={value} disabled className="h-full min-w-0 flex-1 bg-transparent outline-none" />
+      <span className="mb-1.5 block text-sm font-semibold text-foreground">{label}</span>
+      <span className="flex h-[42px] items-center gap-2.5 rounded-md border border-border bg-muted px-3.5 text-sm font-medium text-muted-foreground">
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <input value={value} disabled className="h-full min-w-0 flex-1 bg-transparent text-muted-foreground outline-none" />
       </span>
-      <span className="mt-2 block text-xs font-medium text-slate-400">{note}</span>
+      <span className="mt-1 block text-xs text-muted-foreground">{note}</span>
     </label>
   );
 }
 
 function AccountStatusCard({ label, verified }: { label: string; verified: boolean }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-white bg-white px-4 py-3 shadow-sm">
-      <div>
-        <p className="text-sm font-bold text-slate-950">{label}</p>
-        <p className="text-xs text-slate-400">{verified ? 'Có thể nhận thông báo quan trọng' : 'Nên xác thực để bảo vệ tài khoản'}</p>
+    <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground">
+          {verified ? 'Có thể nhận thông báo quan trọng' : 'Nên xác thực để bảo vệ tài khoản'}
+        </p>
       </div>
-      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black ${
-        verified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+      <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2.5 py-1 text-xs font-semibold ${
+        verified ? 'bg-success-soft text-success-ink' : 'bg-warning-soft text-warning-ink'
       }`}>
         <CheckCircle2 className="h-3.5 w-3.5" />
         {verified ? 'Đã xác thực' : 'Chưa xác thực'}
@@ -197,7 +203,7 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; i
     return (
       <div className="grid gap-4">
         {[0, 1, 2].map((item) => (
-          <div key={item} className="h-40 animate-pulse rounded-3xl bg-slate-100" />
+          <div key={item} className="h-40 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
         ))}
       </div>
     );
@@ -205,18 +211,20 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; i
 
   if (bookings.length === 0) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center">
-        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-teal-700 shadow-sm">
+      <div className="rounded-lg border border-dashed border-border bg-muted px-6 py-14 text-center">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-md bg-card text-accent-foreground">
           <Ticket className="h-8 w-8" />
         </div>
-        <h3 className="text-xl font-black text-slate-950">Chưa có đặt chỗ</h3>
-        <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500">Bạn chưa thực hiện bất kỳ đặt vé nào. Khi đặt vé thành công, lịch sử sẽ hiển thị tại đây.</p>
+        <h3 className="font-display text-xl text-foreground">Chưa có đặt chỗ</h3>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+          Bạn chưa thực hiện bất kỳ đặt vé nào. Khi đặt vé thành công, lịch sử sẽ hiển thị tại đây.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-hn-sm">
       {bookings.map((booking) => {
         const totalAmount = getTotalAmount(booking);
         const seatList = booking.passengers?.map((p: any) => p.seatNumber).filter(Boolean) || booking.seats || [];
@@ -224,45 +232,55 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; i
         const bookingId = booking.bookingId || booking.id;
 
         return (
-          <article key={bookingId} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-xl hover:shadow-slate-200/60">
-            <div className="flex flex-col gap-4 border-b border-slate-100 p-5 md:flex-row md:items-start md:justify-between">
-              <div className="min-w-0">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <StatusBadge status={booking.status} />
-                  {booking.status === 'PENDING' && booking.paymentDeadline && (
-                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
-                      Hết hạn {new Date(booking.paymentDeadline).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  )}
+          <article
+            key={bookingId}
+            className="border-b border-border px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-accent"
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                  <Ticket className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={booking.status} />
+                    {booking.status === 'PENDING' && booking.paymentDeadline && (
+                      <span className="rounded-sm bg-error-soft px-2.5 py-1 text-xs font-semibold text-error-ink">
+                        Hết hạn {new Date(booking.paymentDeadline).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="truncate font-display text-lg text-foreground">
+                    {booking.route?.name || `${booking.route?.origin || 'Điểm đi'} - ${booking.route?.destination || 'Điểm đến'}`}
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Mã đặt vé: <span className="font-mono text-foreground">{booking.bookingCode || bookingId}</span>
+                  </p>
                 </div>
-                <h3 className="truncate text-xl font-black text-slate-950">
-                  {booking.route?.name || `${booking.route?.origin || 'Điểm đi'} - ${booking.route?.destination || 'Điểm đến'}`}
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Mã đặt vé: <span className="font-black text-teal-700">{booking.bookingCode || bookingId}</span>
-                </p>
               </div>
-              <div className="rounded-2xl bg-teal-50 px-4 py-3 md:text-right">
-                <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Tổng tiền</p>
-                <p className="text-2xl font-black text-[#063C45]">{new Intl.NumberFormat('vi-VN').format(totalAmount)}đ</p>
+              <div className="shrink-0 md:text-right">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tổng tiền</p>
+                <p className="font-mono text-xl font-semibold text-foreground">
+                  {new Intl.NumberFormat('vi-VN').format(totalAmount)}đ
+                </p>
               </div>
             </div>
 
-            <div className="grid gap-3 p-5 md:grid-cols-2">
+            <div className="mt-3 grid gap-2 border-t border-border pt-3 md:grid-cols-2">
               <BookingInfo icon={MapPin} label="Hành trình" value={`${booking.route?.origin || 'N/A'} → ${booking.route?.destination || 'N/A'}`} />
               <BookingInfo icon={Calendar} label="Khởi hành" value={formatDeparture(booking.route?.departureTime)} />
               <BookingInfo icon={Ticket} label="Ghế đã chọn" value={seatList.length > 0 ? seatList.join(', ') : 'Chưa có thông tin'} />
               <BookingInfo icon={CreditCard} label="Loại xe" value={formatBusType(booking.route?.busType)} />
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
               <span>Đặt lúc: {booking.createdAt ? new Date(booking.createdAt).toLocaleString('vi-VN') : 'N/A'}</span>
               {canViewTicket ? (
                 <button
                   onClick={() => window.open(`/booking/ticket/${bookingId}`, '_blank')}
-                  className="inline-flex items-center justify-center rounded-xl bg-[#063C45] px-4 py-2 font-bold text-white transition-colors hover:bg-[#0F766E]"
+                  className="inline-flex h-[42px] items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep"
                 >
-                  Xem chi tiết & in vé
+                  Xem chi tiết &amp; in vé
                 </button>
               ) : booking.status === 'PENDING' ? (
                 <button
@@ -271,9 +289,9 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; i
                     window.location.href = `/booking/payment?bookingId=${bookingId}`;
                   }}
                   disabled={navigatingBookingId === bookingId}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 font-bold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-warning-ink transition-colors duration-150 hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {navigatingBookingId === bookingId && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {navigatingBookingId === bookingId && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
                   Thanh toán ngay
                 </button>
               ) : null}
@@ -287,13 +305,13 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; i
 
 function BookingInfo({ icon: Icon, label, value }: { icon: typeof MapPin; label: string; value: string }) {
   return (
-    <div className="flex gap-3 rounded-2xl bg-slate-50 p-4">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-teal-700 shadow-sm">
-        <Icon className="h-5 w-5" />
-      </div>
+    <div className="flex items-center gap-2.5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
       <div className="min-w-0">
-        <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="mt-1 truncate text-sm font-black text-slate-950">{value}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+        <p className="truncate text-sm font-semibold text-foreground">{value}</p>
       </div>
     </div>
   );
@@ -302,14 +320,14 @@ function BookingInfo({ icon: Icon, label, value }: { icon: typeof MapPin; label:
 function StatusBadge({ status }: { status: string }) {
   const className =
     status === 'PENDING'
-      ? 'bg-amber-100 text-amber-700'
+      ? 'bg-warning-soft text-warning-ink'
       : status === 'CONFIRMED'
-        ? 'bg-emerald-100 text-emerald-700'
+        ? 'bg-success-soft text-success-ink'
         : status === 'CANCELLED'
-          ? 'bg-red-100 text-red-700'
+          ? 'bg-error-soft text-error-ink'
           : status === 'COMPLETED'
-            ? 'bg-sky-100 text-sky-700'
-            : 'bg-slate-100 text-slate-600';
+            ? 'bg-info-soft text-info-ink'
+            : 'bg-muted text-muted-foreground';
 
   const label =
     status === 'PENDING'
@@ -322,7 +340,7 @@ function StatusBadge({ status }: { status: string }) {
             ? 'Hoàn thành'
             : status || 'Không rõ';
 
-  return <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${className}`}>{label}</span>;
+  return <span className={`rounded-sm px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${className}`}>{label}</span>;
 }
 
 function getTotalAmount(booking: any) {
