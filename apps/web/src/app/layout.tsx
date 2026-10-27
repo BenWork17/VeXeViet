@@ -36,14 +36,14 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.googleapis.com/css2?family=Alike&family=Lora:wght@400;500&family=Nunito:wght@400;600;700;800&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120x120.png" />
-        <meta name="theme-color" content="#f8fafc" />
+        <meta name="theme-color" content="#FEF3C7" />
       </head>
-      <body className="flex min-h-screen flex-col font-sans transition-colors duration-200">
+      <body className="flex min-h-screen flex-col bg-background text-foreground font-sans transition-colors duration-200">
         <ErrorBoundary>
           <QueryProvider>
             <StoreProvider>
