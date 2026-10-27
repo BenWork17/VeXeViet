@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/hooks/useAuth';
 
@@ -35,12 +35,27 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+const fieldBase =
+  'h-[42px] w-full rounded-md border border-input bg-card px-3.5 text-sm font-semibold text-foreground placeholder:font-normal placeholder:text-muted-foreground transition-colors duration-150 focus:outline-none focus:ring-[3px]';
+
+function fieldClass(hasError: boolean) {
+  return cn(
+    fieldBase,
+    hasError
+      ? 'border-2 border-error focus:border-error focus:ring-error/[0.125]'
+      : 'hover:border-primary focus:border-2 focus:border-primary focus:ring-primary/[0.125]',
+  );
+}
+
+const labelClass = 'mb-1.5 block text-sm font-semibold text-foreground';
+const fieldErrorClass = 'mt-1 text-xs text-error-ink';
+
 function AuthPageContent() {
   const [isLogin, setIsLogin] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect') || '/';
-  
+
   const {
     user,
     isAuthenticated,
@@ -93,7 +108,6 @@ function AuthPageContent() {
   };
 
   const onRegisterSubmit = async (data: RegisterFormValues) => {
-    console.log('Register form submitted:', data);
     try {
       await register({
         method: 'email',
@@ -110,8 +124,9 @@ function AuthPageContent() {
     }
   };
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
+  const setMode = (nextIsLogin: boolean) => {
+    if (nextIsLogin === isLogin) return;
+    setIsLogin(nextIsLogin);
     loginForm.reset();
     registerForm.reset();
     resetLoginError();
@@ -121,241 +136,251 @@ function AuthPageContent() {
   const isLoading = isLoggingIn || isRegistering;
   const currentError = isLogin ? loginError?.message : registerError?.message;
 
+  const modeButtonClass = (active: boolean) =>
+    cn(
+      'flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/[0.125]',
+      active
+        ? 'bg-card text-foreground shadow-hn-sm'
+        : 'text-muted-foreground hover:text-foreground',
+    );
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-white dark:bg-zinc-950 py-12 px-4 font-sans transition-colors duration-300">
-      {/* Background Orbs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-amber-500/5 blur-[120px] rounded-full animate-pulse delay-700" />
-      
-      <div className="max-w-4xl w-full relative z-10 flex flex-col md:flex-row rounded-[2.5rem] border-4 border-slate-200 dark:border-blue-700 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.15)] overflow-hidden min-h-150">
-        
-        {/* Forms Container */}
-        <div className={cn(
-          "w-full md:w-1/2 relative transition-all duration-700 ease-in-out z-20 bg-white dark:bg-zinc-950 border-r-4 border-slate-200 dark:border-blue-700",
-          isLogin ? "translate-x-0" : "md:translate-x-full"
-        )}>
-          {/* Login Form */}
-          <div className={cn(
-            "absolute inset-0 p-8 md:p-12 transition-all duration-700 ease-in-out flex flex-col justify-center",
-            isLogin ? "opacity-100 z-20 pointer-events-auto" : "opacity-0 z-10 pointer-events-none"
-          )}>
-            <div className="text-center mb-10">
-              <Link href="/" className="inline-block mb-6">
-                <span className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">
-                  VEXEVIET<span className="text-primary">.</span>
-                </span>
-              </Link>
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Chào mừng trở lại</h2>
+    <div className="min-h-screen bg-background px-4 py-12 font-sans text-foreground">
+      <div className="mx-auto w-full max-w-md">
+        <div className="mb-6 text-center">
+          <Link href="/" className="font-display text-3xl text-foreground">
+            VEXEVIET<span className="text-primary">.</span>
+          </Link>
+        </div>
+
+        <div className="rounded-lg border border-border bg-card p-6 shadow-hn-md sm:p-8">
+          <div className="mb-6 flex rounded-md bg-muted p-1" role="tablist" aria-label="Chế độ xác thực">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isLogin}
+              onClick={() => setMode(true)}
+              className={modeButtonClass(isLogin)}
+            >
+              Đăng nhập
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isLogin}
+              onClick={() => setMode(false)}
+              className={modeButtonClass(!isLogin)}
+            >
+              Đăng ký
+            </button>
+          </div>
+
+          <h1 className="mb-1 font-display text-3xl leading-tight text-foreground">
+            {isLogin ? 'Chào mừng trở lại' : 'Tạo tài khoản mới'}
+          </h1>
+          <p className="mb-6 text-sm text-muted-foreground">
+            {isLogin
+              ? 'Đăng nhập để tiếp tục hành trình cùng VeXeViet.'
+              : 'Chỉ mất một phút để bắt đầu đặt vé.'}
+          </p>
+
+          {currentError && (
+            <div
+              role="alert"
+              className="mb-5 flex items-start gap-2 rounded-md bg-error-soft px-3.5 py-2.5 text-sm text-error-ink"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              <span>{currentError}</span>
             </div>
+          )}
 
-            <form className="space-y-6" onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
-              {currentError && isLogin && (
-                <div className="bg-primary/5 border-4 border-primary/20 rounded-2xl p-4">
-                  <p className="text-sm text-primary font-bold text-center">{currentError}</p>
-                </div>
-              )}
+          {isLogin ? (
+            <form className="space-y-4" onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
+              <div>
+                <label htmlFor="login-email" className={labelClass}>Email</label>
+                <input
+                  {...loginForm.register('email')}
+                  id="login-email"
+                  type="email"
+                  autoComplete="email"
+                  aria-invalid={Boolean(loginForm.formState.errors.email)}
+                  className={fieldClass(Boolean(loginForm.formState.errors.email))}
+                  placeholder="name@example.com"
+                />
+                {loginForm.formState.errors.email && (
+                  <p className={fieldErrorClass}>{loginForm.formState.errors.email.message}</p>
+                )}
+              </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 ml-1">Email</label>
-                  <input
-                    {...loginForm.register('email')}
-                    type="email"
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
-                    placeholder="name@example.com"
-                  />
-                  {loginForm.formState.errors.email && <p className="text-[10px] font-bold text-primary uppercase tracking-tighter ml-1">{loginForm.formState.errors.email.message}</p>}
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label htmlFor="login-password" className={cn(labelClass, 'mb-0')}>Mật khẩu</label>
+                  <Link
+                    href="#"
+                    className="text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:text-primary"
+                  >
+                    Quên?
+                  </Link>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center ml-1">
-                    <label className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Mật khẩu</label>
-                    <Link href="#" className="text-[10px] font-bold text-slate-500 hover:text-primary transition-colors uppercase tracking-widest">Quên?</Link>
-                  </div>
-                  <input
-                    {...loginForm.register('password')}
-                    type="password"
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
-                    placeholder="••••••••"
-                  />
-                  {loginForm.formState.errors.password && <p className="text-[10px] font-bold text-primary uppercase tracking-tighter ml-1">{loginForm.formState.errors.password.message}</p>}
-                </div>
+                <input
+                  {...loginForm.register('password')}
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  aria-invalid={Boolean(loginForm.formState.errors.password)}
+                  className={fieldClass(Boolean(loginForm.formState.errors.password))}
+                  placeholder="••••••••"
+                />
+                {loginForm.formState.errors.password && (
+                  <p className={fieldErrorClass}>{loginForm.formState.errors.password.message}</p>
+                )}
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
                 aria-busy={isLoggingIn}
-                className="w-full group relative flex items-center justify-center h-14 bg-slate-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-2xl hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 shadow-xl shadow-slate-200 dark:shadow-none"
+                className="mt-2 inline-flex h-[42px] w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isLoggingIn ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="animate-spin h-5 w-5" />
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
                     <span>Đang đăng nhập...</span>
-                  </span>
+                  </>
                 ) : (
                   <span>Đăng nhập</span>
                 )}
               </button>
             </form>
-          </div>
-
-          {/* Register Form */}
-          <div className={cn(
-            "absolute inset-0 p-8 md:p-12 transition-all duration-700 ease-in-out flex flex-col justify-center overflow-y-auto",
-            !isLogin ? "opacity-100 z-20 pointer-events-auto" : "opacity-0 z-10 pointer-events-none"
-          )}>
-            <div className="text-center mb-6">
-              <Link href="/" className="inline-block mb-4">
-                <span className="text-3xl font-black tracking-tighter text-slate-900 dark:text-white">
-                  VEXEVIET<span className="text-primary">.</span>
-                </span>
-              </Link>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Tạo tài khoản mới</h2>
-            </div>
-
-            <form className="space-y-3" onSubmit={(e) => {
-              e.preventDefault();
-              console.log('Form submit event triggered');
-              console.log('Form errors:', registerForm.formState.errors);
-              console.log('Form values:', registerForm.getValues());
-              registerForm.handleSubmit(onRegisterSubmit)(e);
-            }}>
-              {currentError && !isLogin && (
-                <div className="bg-primary/5 border-4 border-primary/20 rounded-2xl p-3">
-                  <p className="text-sm text-primary font-bold text-center">{currentError}</p>
-                </div>
-              )}
-
+          ) : (
+            <form className="space-y-4" onSubmit={registerForm.handleSubmit(onRegisterSubmit)}>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 ml-1">Họ</label>
+                <div>
+                  <label htmlFor="register-first-name" className={labelClass}>Họ</label>
                   <input
                     {...registerForm.register('firstName')}
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
+                    id="register-first-name"
+                    autoComplete="given-name"
+                    aria-invalid={Boolean(registerForm.formState.errors.firstName)}
+                    className={fieldClass(Boolean(registerForm.formState.errors.firstName))}
                     placeholder="Nguyễn"
                   />
-                  {registerForm.formState.errors.firstName && <p className="text-[10px] font-bold text-primary ml-1">{registerForm.formState.errors.firstName.message}</p>}
+                  {registerForm.formState.errors.firstName && (
+                    <p className={fieldErrorClass}>{registerForm.formState.errors.firstName.message}</p>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 ml-1">Tên</label>
+                <div>
+                  <label htmlFor="register-last-name" className={labelClass}>Tên</label>
                   <input
                     {...registerForm.register('lastName')}
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
+                    id="register-last-name"
+                    autoComplete="family-name"
+                    aria-invalid={Boolean(registerForm.formState.errors.lastName)}
+                    className={fieldClass(Boolean(registerForm.formState.errors.lastName))}
                     placeholder="Văn A"
                   />
-                  {registerForm.formState.errors.lastName && <p className="text-[10px] font-bold text-primary ml-1">{registerForm.formState.errors.lastName.message}</p>}
+                  {registerForm.formState.errors.lastName && (
+                    <p className={fieldErrorClass}>{registerForm.formState.errors.lastName.message}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 ml-1">Email</label>
+              <div>
+                <label htmlFor="register-email" className={labelClass}>Email</label>
                 <input
                   {...registerForm.register('email')}
+                  id="register-email"
                   type="email"
-                  className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
+                  autoComplete="email"
+                  aria-invalid={Boolean(registerForm.formState.errors.email)}
+                  className={fieldClass(Boolean(registerForm.formState.errors.email))}
                   placeholder="name@example.com"
                 />
-                {registerForm.formState.errors.email && <p className="text-[10px] font-bold text-primary ml-1">{registerForm.formState.errors.email.message}</p>}
+                {registerForm.formState.errors.email && (
+                  <p className={fieldErrorClass}>{registerForm.formState.errors.email.message}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 ml-1">Mật khẩu</label>
+                <div>
+                  <label htmlFor="register-password" className={labelClass}>Mật khẩu</label>
                   <input
                     {...registerForm.register('password')}
+                    id="register-password"
                     type="password"
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
+                    autoComplete="new-password"
+                    aria-invalid={Boolean(registerForm.formState.errors.password)}
+                    className={fieldClass(Boolean(registerForm.formState.errors.password))}
                     placeholder="••••••••"
                   />
-                  {registerForm.formState.errors.password && <p className="text-[10px] font-bold text-primary ml-1">{registerForm.formState.errors.password.message}</p>}
+                  {registerForm.formState.errors.password && (
+                    <p className={fieldErrorClass}>{registerForm.formState.errors.password.message}</p>
+                  )}
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 ml-1">Xác nhận</label>
+                <div>
+                  <label htmlFor="register-confirm-password" className={labelClass}>Xác nhận</label>
                   <input
                     {...registerForm.register('confirmPassword')}
+                    id="register-confirm-password"
                     type="password"
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border-4 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-0 focus:border-primary transition-all"
+                    autoComplete="new-password"
+                    aria-invalid={Boolean(registerForm.formState.errors.confirmPassword)}
+                    className={fieldClass(Boolean(registerForm.formState.errors.confirmPassword))}
                     placeholder="••••••••"
                   />
-                  {registerForm.formState.errors.confirmPassword && <p className="text-[10px] font-bold text-primary ml-1">{registerForm.formState.errors.confirmPassword.message}</p>}
+                  {registerForm.formState.errors.confirmPassword && (
+                    <p className={fieldErrorClass}>{registerForm.formState.errors.confirmPassword.message}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-start gap-2 pt-2">
+              <div className="flex items-start gap-2 pt-1">
                 <input
                   {...registerForm.register('agreeToTerms')}
                   type="checkbox"
                   id="agreeToTerms"
-                  className="w-4 h-4 mt-1 rounded border-slate-300 text-primary focus:ring-primary"
+                  className="mt-0.5 h-4 w-4 rounded-sm border-input accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/[0.125]"
                 />
-                <label htmlFor="agreeToTerms" className="text-xs text-slate-500 dark:text-slate-400">
-                  Tôi đồng ý với <Link href="/terms" className="text-primary hover:underline">Điều khoản dịch vụ</Link> và <Link href="/privacy" className="text-primary hover:underline">Chính sách bảo mật</Link>
+                <label htmlFor="agreeToTerms" className="text-xs leading-relaxed text-muted-foreground">
+                  Tôi đồng ý với{' '}
+                  <Link href="/terms" className="font-semibold text-primary hover:text-primary-deep">Điều khoản dịch vụ</Link>{' '}
+                  và{' '}
+                  <Link href="/privacy" className="font-semibold text-primary hover:text-primary-deep">Chính sách bảo mật</Link>
                 </label>
               </div>
-              {registerForm.formState.errors.agreeToTerms && <p className="text-[10px] font-bold text-primary ml-1">{registerForm.formState.errors.agreeToTerms.message}</p>}
+              {registerForm.formState.errors.agreeToTerms && (
+                <p className={fieldErrorClass}>{registerForm.formState.errors.agreeToTerms.message}</p>
+              )}
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full group relative flex items-center justify-center h-12 bg-slate-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest rounded-xl hover:bg-primary dark:hover:bg-primary dark:hover:text-white transition-all duration-500 disabled:opacity-50 mt-2"
+                className="mt-2 inline-flex h-[42px] w-full items-center justify-center gap-2 rounded-md bg-primary px-5 text-base font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isRegistering ? <Loader2 className="animate-spin h-5 w-5" /> : <span>Đăng ký</span>}
+                {isRegistering ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                    <span>Đang tạo tài khoản...</span>
+                  </>
+                ) : (
+                  <span>Đăng ký</span>
+                )}
               </button>
             </form>
-          </div>
-        </div>
+          )}
 
-        {/* Overlay Section */}
-        <div className={cn(
-          "hidden md:flex md:w-1/2 bg-primary items-center justify-center p-12 text-center transition-all duration-700 ease-in-out relative z-30",
-          isLogin ? "translate-x-0" : "md:-translate-x-full"
-        )}>
-          {/* Overlay Content - For Login Mode */}
-          <div className={cn(
-            "transition-all duration-700",
-            isLogin ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none absolute"
-          )}>
-            <h2 className="text-4xl font-black text-white mb-6 tracking-tighter">Chào bạn mới!</h2>
-            <p className="text-white/80 mb-8 font-medium">Đăng ký tài khoản để trải nghiệm những chuyến đi tuyệt vời cùng VEXEVIET.</p>
+          <div className="mt-6 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+            <span>{isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}</span>
             <button
-              onClick={toggleMode}
-              className="px-10 py-4 border-2 border-white text-white font-black uppercase tracking-widest rounded-2xl hover:bg-white hover:text-primary transition-all duration-300"
+              type="button"
+              onClick={() => setMode(!isLogin)}
+              className="inline-flex items-center gap-1 font-semibold text-primary transition-colors duration-150 hover:text-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/[0.125]"
             >
-              Đăng ký ngay
-            </button>
-          </div>
-
-          {/* Overlay Content - For Register Mode */}
-          <div className={cn(
-            "transition-all duration-700",
-            !isLogin ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none absolute"
-          )}>
-            <h2 className="text-4xl font-black text-white mb-6 tracking-tighter">Mừng trở lại!</h2>
-            <p className="text-white/80 mb-8 font-medium">Tiếp tục hành trình của bạn bằng cách đăng nhập vào tài khoản cá nhân.</p>
-            <button
-              onClick={toggleMode}
-              className="px-10 py-4 border-2 border-white text-white font-black uppercase tracking-widest rounded-2xl hover:bg-white hover:text-primary transition-all duration-300"
-            >
-              Đăng nhập
+              {isLogin ? 'Đăng ký ngay' : 'Đăng nhập'}
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
-
-        {/* Mobile Toggle */}
-        <div className="md:hidden p-6 border-t border-white/10 text-center">
-          <p className="text-gray-400 text-sm mb-4">
-            {isLogin ? "Chưa có tài khoản?" : "Đã có tài khoản?"}
-          </p>
-          <button
-            onClick={toggleMode}
-            className="text-primary font-bold flex items-center justify-center w-full group"
-          >
-            {isLogin ? "Đăng ký ngay" : "Đăng nhập"}
-            <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
-
       </div>
     </div>
   );
@@ -363,7 +388,7 @@ function AuthPageContent() {
 
 export default function AuthPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-white dark:bg-zinc-950" />}>
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
       <AuthPageContent />
     </Suspense>
   );

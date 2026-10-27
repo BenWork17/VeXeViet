@@ -25,11 +25,10 @@ export function OfflineIndicator() {
       aria-live="polite"
       aria-atomic="true"
       className={cn(
-        'fixed bottom-4 left-1/2 -translate-x-1/2 z-50',
-        'flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg',
-        'text-sm font-medium transition-all duration-300',
-        !isOnline && 'bg-red-600 text-white',
-        showReconnected && 'bg-green-600 text-white'
+        'fixed bottom-4 left-1/2 z-50 -translate-x-1/2',
+        'flex items-center gap-2 rounded-md border border-border px-4 py-3 shadow-hn-md',
+        'text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none',
+        !isOnline ? 'bg-error-soft text-error-ink' : 'bg-success-soft text-success-ink',
       )}
     >
       {!isOnline ? (

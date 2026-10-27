@@ -3,9 +3,22 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Home,
+  LifeBuoy,
+  Mail,
+  RotateCcw,
+  Ticket,
+  XCircle,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { setPaymentStatus } from '@/store/slices/bookingSlice';
 import { getPaymentStatusByTransactionRef } from '@/lib/api/payment';
 import type { PaymentResultParams, PaymentStatus } from '@/types/payment';
+import { cn } from '@/lib/utils';
 
 const FINAL_STATUSES: PaymentStatus[] = [
   'COMPLETED',
@@ -18,6 +31,103 @@ const FINAL_STATUSES: PaymentStatus[] = [
 
 const POLLING_INTERVAL_MS = 3000;
 const POLLING_TIMEOUT_MS = 60000;
+
+type ResultTone = 'success' | 'warning' | 'error' | 'info';
+
+interface ResultPresentation {
+  tone: ResultTone;
+  icon: LucideIcon;
+  title: string;
+  badge: string;
+}
+
+const TONE_STYLES: Record<
+  ResultTone,
+  { card: string; icon: string; title: string; badge: string; detail: string }
+> = {
+  success: {
+    card: 'bg-success-soft',
+    icon: 'text-success-ink',
+    title: 'text-success-ink',
+    badge: 'bg-success-soft text-success-ink',
+    detail: 'text-success-ink',
+  },
+  warning: {
+    card: 'bg-warning-soft',
+    icon: 'text-warning-ink',
+    title: 'text-warning-ink',
+    badge: 'bg-warning-soft text-warning-ink',
+    detail: 'text-warning-ink',
+  },
+  error: {
+    card: 'bg-error-soft',
+    icon: 'text-error-ink',
+    title: 'text-error-ink',
+    badge: 'bg-error-soft text-error-ink',
+    detail: 'text-error-ink',
+  },
+  info: {
+    card: 'bg-info-soft',
+    icon: 'text-info-ink',
+    title: 'text-info-ink',
+    badge: 'bg-info-soft text-info-ink',
+    detail: 'text-info-ink',
+  },
+};
+
+function getPresentation(status: PaymentStatus, success: boolean): ResultPresentation {
+  if (status === 'COMPLETED') {
+    return {
+      tone: 'success',
+      icon: CheckCircle2,
+      title: 'Thanh toán thành công!',
+      badge: 'Hoàn thành',
+    };
+  }
+
+  if (status === 'PENDING' || status === 'PROCESSING') {
+    return {
+      tone: 'info',
+      icon: Clock,
+      title: 'Đang xác nhận thanh toán',
+      badge: 'Đang xác nhận',
+    };
+  }
+
+  if (status === 'CANCELLED' || status === 'EXPIRED') {
+    return {
+      tone: 'warning',
+      icon: AlertTriangle,
+      title: status === 'CANCELLED' ? 'Thanh toán đã hủy' : 'Giao dịch đã hết hạn',
+      badge: status === 'CANCELLED' ? 'Đã hủy' : 'Hết hạn',
+    };
+  }
+
+  if (status === 'REFUNDED' || status === 'PARTIALLY_REFUNDED') {
+    return {
+      tone: 'info',
+      icon: Clock,
+      title: status === 'REFUNDED' ? 'Đã hoàn tiền' : 'Đã hoàn tiền một phần',
+      badge: status === 'REFUNDED' ? 'Đã hoàn tiền' : 'Hoàn tiền một phần',
+    };
+  }
+
+  if (success) {
+    return {
+      tone: 'success',
+      icon: CheckCircle2,
+      title: 'Thanh toán thành công!',
+      badge: 'Hoàn thành',
+    };
+  }
+
+  return {
+    tone: 'error',
+    icon: XCircle,
+    title: 'Thanh toán thất bại',
+    badge: 'Thất bại',
+  };
+}
 
 function PaymentResultContent() {
   const router = useRouter();
@@ -123,120 +233,114 @@ function PaymentResultContent() {
 
   if (!result) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
+      <div className="flex min-h-[400px] items-center justify-center bg-background">
+        <div
+          className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent motion-reduce:animate-none"
+          role="status"
+          aria-label="Đang tải kết quả thanh toán"
+        />
       </div>
     );
   }
 
-  const isSuccess = result.success;
+  const presentation = getPresentation(result.status, result.success);
+  const tone = TONE_STYLES[presentation.tone];
+  const StatusIcon = presentation.icon;
+  const isSuccess = result.status === 'COMPLETED';
+  const description = isCheckingStatus
+    ? 'Hệ thống đang xác nhận trạng thái thanh toán, vui lòng chờ...'
+    : result.message || (isSuccess
+      ? 'Giao dịch của bạn đã được xử lý thành công. Vé đã được đặt.'
+      : 'Giao dịch không thành công. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.');
+
+  const detailRowClass = 'flex items-center justify-between gap-3 py-2';
+  const detailLabelClass = 'text-sm text-muted-foreground';
+  const detailValueClass = 'font-mono text-sm font-semibold text-foreground';
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className={`mx-auto max-w-2xl transition-all duration-500 ${animate ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
-        <div
-          className={`rounded-2xl border-2 p-8 text-center shadow-lg ${
-            isSuccess
-              ? 'border-green-300 bg-gradient-to-b from-green-50 to-white dark:border-green-700 dark:from-green-950 dark:to-gray-900'
-              : 'border-red-300 bg-gradient-to-b from-red-50 to-white dark:border-red-700 dark:from-red-950 dark:to-gray-900'
-          }`}
-        >
-          <div className={`mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full ${
-            isSuccess ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
-          }`}>
-            <span className="text-5xl" aria-hidden="true">
-              {isSuccess ? '✅' : '❌'}
+    <div className="min-h-screen bg-background px-4 py-8 font-sans text-foreground sm:py-12">
+      <div
+        className={cn(
+          'mx-auto max-w-2xl transition-all duration-200 motion-reduce:transition-none',
+          animate ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
+        )}
+      >
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-hn-md">
+          <div
+            className={cn(
+              'flex flex-col items-center px-6 py-8 text-center sm:px-8',
+              tone.card,
+            )}
+          >
+            <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-card">
+              <StatusIcon className={cn('h-9 w-9', tone.icon)} aria-hidden="true" />
+            </div>
+
+            <h1 className={cn('font-display text-3xl leading-tight', tone.title)}>
+              {presentation.title}
+            </h1>
+
+            <span
+              className={cn(
+                'mt-3 inline-flex items-center rounded-sm px-3.5 py-1.5 text-xs font-semibold',
+                tone.badge,
+              )}
+            >
+              {presentation.badge}
             </span>
+
+            <p className={cn('mt-4 max-w-md text-base leading-relaxed', tone.detail)}>
+              {description}
+            </p>
           </div>
 
-          <h1
-            className={`mb-3 text-3xl font-bold ${
-              isSuccess ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-            }`}
-          >
-            {isSuccess ? 'Thanh toán thành công!' : 'Thanh toán thất bại'}
-          </h1>
-
-          <div className="mb-4">
-            <span className={`inline-block rounded-full px-4 py-1 text-sm font-semibold ${
-              result.status === 'COMPLETED'
-                ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200'
-                : result.status === 'CANCELLED'
-                  ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200'
-                  : result.status === 'PENDING' || result.status === 'PROCESSING'
-                    ? 'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
-                    : 'bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200'
-            }`}>
-              {result.status === 'COMPLETED'
-                ? 'Hoàn thành'
-                : result.status === 'CANCELLED'
-                  ? 'Đã hủy'
-                  : result.status === 'PENDING' || result.status === 'PROCESSING'
-                    ? 'Đang xác nhận'
-                    : 'Thất bại'}
-            </span>
-          </div>
-
-          <p
-            className={`mb-6 text-lg ${
-              isSuccess
-                ? 'text-green-700 dark:text-green-300'
-                : 'text-red-700 dark:text-red-300'
-            }`}
-          >
-            {isCheckingStatus
-              ? 'Hệ thống đang xác nhận trạng thái thanh toán, vui lòng chờ...'
-              : result.message || (isSuccess
-                ? 'Giao dịch của bạn đã được xử lý thành công. Vé đã được đặt.'
-                : 'Giao dịch không thành công. Vui lòng thử lại hoặc chọn phương thức thanh toán khác.')}
-          </p>
-
-          <div className="mb-6 space-y-3 rounded-xl border bg-white p-5 text-left shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <h3 className="mb-3 border-b pb-2 font-bold text-gray-900 dark:border-gray-700 dark:text-gray-100">
-              Chi tiết giao dịch
-            </h3>
-            {result.paymentId && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Mã thanh toán:</span>
-                <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">{result.paymentId}</span>
-              </div>
-            )}
-            {result.transactionId && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Mã giao dịch VNPay:</span>
-                <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{result.transactionId}</span>
-              </div>
-            )}
-            {result.bookingId && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Mã booking:</span>
-                <span className="font-mono text-sm text-gray-900 dark:text-gray-100">{result.bookingId}</span>
-              </div>
-            )}
-            {result.bankCode && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Ngân hàng:</span>
-                <span className="font-semibold text-gray-900 dark:text-gray-100">
-                  <span className="inline-block rounded bg-blue-100 px-2 py-0.5 text-sm text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+          <div className="px-6 py-6 sm:px-8">
+            <h2 className="mb-2 font-display text-xl text-foreground">Chi tiết giao dịch</h2>
+            <div className="divide-y divide-border">
+              {result.paymentId && (
+                <div className={detailRowClass}>
+                  <span className={detailLabelClass}>Mã thanh toán</span>
+                  <span className={detailValueClass}>{result.paymentId}</span>
+                </div>
+              )}
+              {result.transactionId && (
+                <div className={detailRowClass}>
+                  <span className={detailLabelClass}>Mã giao dịch VNPay</span>
+                  <span className={detailValueClass}>{result.transactionId}</span>
+                </div>
+              )}
+              {result.bookingId && (
+                <div className={detailRowClass}>
+                  <span className={detailLabelClass}>Mã booking</span>
+                  <span className={detailValueClass}>{result.bookingId}</span>
+                </div>
+              )}
+              {result.bankCode && (
+                <div className={detailRowClass}>
+                  <span className={detailLabelClass}>Ngân hàng</span>
+                  <span className="inline-flex items-center rounded-sm bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
                     {result.bankCode}
                   </span>
-                </span>
-              </div>
-            )}
-            {result.responseCode && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Mã phản hồi:</span>
-                <span className={`font-mono text-sm font-semibold ${
-                  result.responseCode === '00' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                }`}>
-                  {result.responseCode}
-                  {result.responseCode === '00' && ' (Thành công)'}
-                </span>
-              </div>
-            )}
+                </div>
+              )}
+              {result.responseCode && (
+                <div className={detailRowClass}>
+                  <span className={detailLabelClass}>Mã phản hồi</span>
+                  <span
+                    className={cn(
+                      'font-mono text-sm font-semibold',
+                      result.responseCode === '00' ? 'text-success-ink' : 'text-error-ink',
+                    )}
+                  >
+                    {result.responseCode}
+                    {result.responseCode === '00' && ' (Thành công)'}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <div className="flex flex-col gap-3 border-t border-border px-6 py-6 sm:flex-row sm:justify-center sm:px-8">
             {isSuccess ? (
               <>
                 <button
@@ -247,49 +351,58 @@ function PaymentResultContent() {
                     }
                     router.push('/profile');
                   }}
-                  className="rounded-xl bg-green-600 px-8 py-3 font-semibold text-white shadow-md transition-all hover:bg-green-700 active:scale-95 dark:bg-green-700 dark:hover:bg-green-600"
+                  className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125]"
                 >
-                  📋 Xem vé của tôi
+                  <Ticket className="h-4 w-4" aria-hidden="true" />
+                  Xem vé của tôi
                 </button>
                 <button
                   onClick={() => router.push('/')}
-                  className="rounded-xl border border-gray-300 px-8 py-3 font-semibold text-gray-700 transition-all hover:bg-gray-100 active:scale-95 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-primary bg-transparent px-6 text-sm font-semibold text-primary transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125]"
                 >
-                  🏠 Về trang chủ
+                  <Home className="h-4 w-4" aria-hidden="true" />
+                  Về trang chủ
                 </button>
               </>
             ) : (
               <>
                 <button
                   onClick={() => router.back()}
-                  className="rounded-xl bg-blue-600 px-8 py-3 font-semibold text-white shadow-md transition-all hover:bg-blue-700 active:scale-95 dark:bg-blue-700 dark:hover:bg-blue-600"
+                  className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125]"
                 >
-                  🔄 Thử lại
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  Thử lại
                 </button>
                 <button
                   onClick={() => router.push('/')}
-                  className="rounded-xl border border-gray-300 px-8 py-3 font-semibold text-gray-700 transition-all hover:bg-gray-100 active:scale-95 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                  className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-primary bg-transparent px-6 text-sm font-semibold text-primary transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125]"
                 >
-                  🏠 Về trang chủ
+                  <Home className="h-4 w-4" aria-hidden="true" />
+                  Về trang chủ
                 </button>
               </>
             )}
           </div>
         </div>
 
-        <div className="mt-6 rounded-xl border bg-blue-50 p-4 text-center text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+        <div className="mt-6 flex flex-col items-center gap-2 rounded-md border border-border bg-muted px-4 py-4 text-center text-sm text-muted-foreground sm:flex-row sm:justify-center">
+          <LifeBuoy className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
           <p>
-            Cần hỗ trợ? Liên hệ hotline <strong>1900-xxxx</strong> hoặc email{' '}
-            <a href="mailto:support@vexeviet.com" className="font-semibold underline hover:no-underline">
+            Cần hỗ trợ? Liên hệ hotline <strong className="font-semibold text-foreground">1900-xxxx</strong> hoặc email{' '}
+            <a
+              href="mailto:support@vexeviet.com"
+              className="inline-flex items-center gap-1 font-semibold text-primary transition-colors duration-150 hover:text-primary-deep"
+            >
+              <Mail className="h-3.5 w-3.5" aria-hidden="true" />
               support@vexeviet.com
             </a>
           </p>
         </div>
 
         {isSuccess && (
-          <div className="mt-4 text-center text-xs text-gray-400 dark:text-gray-500">
-            💡 Thông tin vé đã được gửi qua email đăng ký của bạn.
-          </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Thông tin vé đã được gửi qua email đăng ký của bạn.
+          </p>
         )}
       </div>
     </div>
@@ -300,8 +413,12 @@ export default function PaymentResultPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent" />
+        <div className="flex min-h-[400px] items-center justify-center bg-background">
+          <div
+            className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent motion-reduce:animate-none"
+            role="status"
+            aria-label="Đang tải kết quả thanh toán"
+          />
         </div>
       }
     >
