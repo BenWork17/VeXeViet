@@ -2,26 +2,21 @@ import {
   ArrowLeft,
   Star,
   MapPin,
-  Clock,
   ShieldCheck,
   Wifi,
   BatteryCharging,
   Wind,
   Coffee,
-  Package,
   XCircle,
-  Image as ImageIcon,
   Navigation,
-  Calendar,
   Users,
-  Bed,
-  Armchair,
-  Crown,
+  Package,
 } from 'lucide-react'
-import { Route, Amenity } from '@/types/models'
+import { Route } from '@/types/models'
 import { format } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
 import { BusTypePreview } from '../booking/BusTypePreview'
 
 export function RouteDetailHeader({ route }: { route: Route }) {
@@ -33,110 +28,88 @@ export function RouteDetailHeader({ route }: { route: Route }) {
       {/* Navigation & Back Button */}
       <Link
         href="/search"
-        className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-semibold transition-colors group mb-2 w-fit"
+        className="group mb-2 flex w-fit items-center gap-2 text-sm font-semibold text-muted-foreground transition-colors duration-150 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none"
       >
-        <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </div>
+        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card shadow-hn-sm transition-colors duration-150 group-hover:bg-muted motion-reduce:transition-none">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        </span>
         Quay lại tìm kiếm
       </Link>
 
-      {/* Hero Section with Gradient Background */}
-      <div className="relative bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 rounded-2xl overflow-hidden shadow-xl">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path
-                  d="M 40 0 L 0 0 0 40"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="1"
+      {/* Journey Card */}
+      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-hn">
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-5">
+          <div className="inline-flex items-center gap-2 rounded-sm bg-accent px-3.5 py-1.5 text-xs font-semibold text-accent-foreground">
+            <Navigation className="h-3.5 w-3.5" aria-hidden="true" />
+            {route.busType}
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-medium text-muted-foreground">Biển số xe</p>
+            <p className="font-mono text-sm font-semibold text-foreground">{route.licensePlate || 'N/A'}</p>
+          </div>
+        </div>
+
+        <div className="space-y-6 px-6 py-6">
+          {/* From -> To */}
+          <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[1fr_auto_1fr]">
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Điểm đi</p>
+              <h2 className="font-display text-2xl text-foreground md:text-3xl">
+                {route.departureLocation}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {format(depDate, 'HH:mm - EEEE, dd MMM yyyy', { locale: vi })}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center justify-center gap-2 sm:px-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
+                <span className="font-mono text-xs font-semibold text-foreground">{route.duration}</span>
+              </div>
+              <div className="h-px w-8 bg-border sm:h-8 sm:w-px" />
+            </div>
+
+            <div className="sm:text-right">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Điểm đến</p>
+              <h2 className="font-display text-2xl text-foreground md:text-3xl">
+                {route.arrivalLocation}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {format(arrDate, 'HH:mm - EEEE, dd MMM yyyy', { locale: vi })}
+              </p>
+            </div>
+          </div>
+
+          {/* Operator Info */}
+          <div className="flex items-center gap-4 border-t border-border pt-6">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border bg-muted p-2">
+              {route.operator.logoUrl ? (
+                <img
+                  src={route.operator.logoUrl}
+                  alt={route.operator.name}
+                  className="h-full w-full object-contain"
                 />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
-        </div>
-
-        {/* Content */}
-        <div className="relative p-8">
-          {/* Bus Type Badge */}
-          <div className="flex justify-between items-start mb-6">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-semibold border border-white/30">
-              <Navigation className="w-4 h-4" />
-              {route.busType}
+              ) : (
+                <span className="font-display text-lg text-primary">
+                  {route.operator.name.substring(0, 2).toUpperCase()}
+                </span>
+              )}
             </div>
-            <div className="text-white/90 text-right">
-              <p className="text-sm font-medium">Biển số xe</p>
-              <p className="text-lg font-bold">{route.licensePlate || 'N/A'}</p>
-            </div>
-          </div>
-
-          {/* Route Journey */}
-          <div className="space-y-6">
-            {/* From -> To */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="text-white/80 text-sm font-medium mb-1">Điểm đi</p>
-                <h2 className="text-2xl md:text-3xl font-bold text-white">
-                  {route.departureLocation}
-                </h2>
-                <p className="text-white/90 text-sm mt-1">
-                  {format(depDate, 'HH:mm - EEEE, dd MMM yyyy', { locale: vi })}
-                </p>
-              </div>
-              
-              <div className="flex flex-col items-center justify-center px-4">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/40">
-                  <div className="text-white text-xs font-bold">{route.duration}</div>
-                </div>
-                <div className="w-px h-8 bg-white/30 my-2" />
-              </div>
-
-              <div className="flex-1 text-right">
-                <p className="text-white/80 text-sm font-medium mb-1">Điểm đến</p>
-                <h2 className="text-2xl md:text-3xl font-bold text-white">
-                  {route.arrivalLocation}
-                </h2>
-                <p className="text-white/90 text-sm mt-1">
-                  {format(arrDate, 'HH:mm - EEEE, dd MMM yyyy', { locale: vi })}
-                </p>
-              </div>
-            </div>
-
-            {/* Operator Info */}
-            <div className="flex items-center gap-4 pt-6 border-t border-white/20">
-              <div className="w-14 h-14 rounded-xl bg-white p-2 shadow-lg flex items-center justify-center">
-                {route.operator.logoUrl ? (
-                  <img
-                    src={route.operator.logoUrl}
-                    alt={route.operator.name}
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <div className="text-blue-600 font-bold text-lg">
-                    {route.operator.name.substring(0, 2).toUpperCase()}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-white font-semibold text-lg">{route.operator.name}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex items-center gap-1 bg-amber-400 text-amber-900 px-2 py-0.5 rounded-md text-xs font-bold">
-                    <Star className="w-3 h-3 fill-current" />
-                    {route.operator.rating.toFixed(1)}
-                  </div>
-                  <span className="text-white/80 text-xs">
-                    {route.operator.totalReviews} chuyến đi
-                  </span>
-                </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">{route.operator.name}</h3>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning-ink">
+                  <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                  {route.operator.rating.toFixed(1)}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {route.operator.totalReviews} chuyến đi
+                </span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }
@@ -147,240 +120,248 @@ export function RouteJourneyTimeline({ route }: { route: Route }) {
 
 const AmenityIcon = ({ name }: { name: string }) => {
   const lowerName = name.toLowerCase()
-  if (lowerName.includes('wifi')) return <Wifi className="w-5 h-5" />
+  if (lowerName.includes('wifi')) return <Wifi className="h-5 w-5" aria-hidden="true" />
   if (lowerName.includes('charging') || lowerName.includes('usb'))
-    return <BatteryCharging className="w-5 h-5" />
-  if (lowerName.includes('ac') || lowerName.includes('air')) return <Wind className="w-5 h-5" />
+    return <BatteryCharging className="h-5 w-5" aria-hidden="true" />
+  if (lowerName.includes('ac') || lowerName.includes('air')) return <Wind className="h-5 w-5" aria-hidden="true" />
   if (lowerName.includes('water') || lowerName.includes('coffee'))
-    return <Coffee className="w-5 h-5" />
-  return <ShieldCheck className="w-5 h-5" />
+    return <Coffee className="h-5 w-5" aria-hidden="true" />
+  return <ShieldCheck className="h-5 w-5" aria-hidden="true" />
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+}: {
+  title: string
+  icon: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section className="overflow-hidden rounded-lg border border-border bg-card shadow-hn">
+      <div className="flex items-center gap-2 border-b border-border px-6 py-4">
+        <span className="text-primary" aria-hidden="true">{icon}</span>
+        <h3 className="font-display text-lg text-foreground">{title}</h3>
+      </div>
+      <div className="p-6">{children}</div>
+    </section>
+  )
+}
+
+function QuickStat({
+  label,
+  value,
+  icon,
+  tone,
+}: {
+  label: string
+  value: string | number
+  icon: React.ReactNode
+  tone: 'primary' | 'success' | 'info' | 'warning'
+}) {
+  const toneClass = {
+    primary: 'bg-accent text-accent-foreground',
+    success: 'bg-success-soft text-success-ink',
+    info: 'bg-info-soft text-info-ink',
+    warning: 'bg-warning-soft text-warning-ink',
+  }[tone]
+
+  return (
+    <div className="rounded-md border border-border bg-card p-5 shadow-hn-sm">
+      <div className="flex items-center gap-3">
+        <div className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-md', toneClass)}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+          <p className="font-mono text-2xl font-semibold text-foreground">{value}</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function RouteDetailTabs({ route }: { route: Route }) {
   return (
     <div className="space-y-6">
       {/* Quick Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-5 rounded-2xl border-2 border-blue-300 shadow-sm hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shadow-md">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-blue-700 font-semibold">Ghế trống</p>
-              <p className="text-2xl font-bold text-blue-900">{route.availableSeats}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-5 rounded-2xl border-2 border-green-300 shadow-sm hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center shadow-md">
-              <ShieldCheck className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-green-700 font-semibold">Tiện nghi</p>
-              <p className="text-2xl font-bold text-green-900">{route.amenities.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-5 rounded-2xl border-2 border-purple-300 shadow-sm hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center shadow-md">
-              <MapPin className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-purple-700 font-semibold">Điểm đón</p>
-              <p className="text-2xl font-bold text-purple-900">{route.pickupPoints.length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-5 rounded-2xl border-2 border-orange-300 shadow-sm hover:shadow-lg transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center shadow-md">
-              <Star className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-orange-700 font-semibold">Đánh giá</p>
-              <p className="text-2xl font-bold text-orange-900">{route.operator.rating.toFixed(1)}</p>
-            </div>
-          </div>
-        </div>
+      <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <QuickStat
+          label="Ghế trống"
+          value={route.availableSeats}
+          icon={<Users className="h-6 w-6" />}
+          tone="primary"
+        />
+        <QuickStat
+          label="Tiện nghi"
+          value={route.amenities.length}
+          icon={<ShieldCheck className="h-6 w-6" />}
+          tone="success"
+        />
+        <QuickStat
+          label="Điểm đón"
+          value={route.pickupPoints.length}
+          icon={<MapPin className="h-6 w-6" />}
+          tone="info"
+        />
+        <QuickStat
+          label="Đánh giá"
+          value={route.operator.rating.toFixed(1)}
+          icon={<Star className="h-6 w-6" />}
+          tone="warning"
+        />
       </div>
 
       {/* Bus Type Preview Section */}
-      <BusTypePreview 
-        busType={route.busType} 
+      <BusTypePreview
+        busType={route.busType}
         totalSeats={route.availableSeats}
       />
 
       {/* Amenities Section */}
-      <div className="bg-white rounded-2xl shadow-md border-2 border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 px-6 py-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5" />
-            Tiện nghi trên xe
-          </h3>
-        </div>
-        <div className="p-6">
-          {route.amenities.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {route.amenities.map((amenity) => (
-                <div
-                  key={amenity.id}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 hover:shadow-lg hover:scale-105 transition-all duration-200"
-                >
-                  <div className="text-blue-600 bg-white p-2 rounded-lg shadow-sm">
-                    <AmenityIcon name={amenity.name} />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900">{amenity.name}</span>
+      <SectionCard
+        title="Tiện nghi trên xe"
+        icon={<ShieldCheck className="h-5 w-5" />}
+      >
+        {route.amenities.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+            {route.amenities.map((amenity) => (
+              <div
+                key={amenity.id}
+                className="flex items-center gap-3 rounded-md border border-border bg-background p-3 transition-colors duration-150 hover:bg-muted motion-reduce:transition-none"
+              >
+                <div className="rounded-sm bg-card p-2 text-primary shadow-hn-sm">
+                  <AmenityIcon name={amenity.name} />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-gray-400 py-8">Chưa có thông tin tiện nghi</p>
-          )}
-        </div>
-      </div>
+                <span className="text-sm font-semibold text-foreground">{amenity.name}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">Chưa có thông tin tiện nghi</p>
+        )}
+      </SectionCard>
 
       {/* Pickup & Dropoff Points */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Pickup Points */}
-        <div className="bg-white rounded-2xl shadow-md border-2 border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-500 px-6 py-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Điểm đón khách
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-3">
-              {route.pickupPoints.length > 0 ? (
-                route.pickupPoints.map((point, idx) => (
-                  <div
-                    key={point.id}
-                    className="flex gap-4 p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 hover:shadow-md transition-shadow"
-                  >
-                    <div className="shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full flex items-center justify-center font-bold shadow-lg text-sm">
-                        {point.time}
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 flex items-center gap-2">
-                        <span className="w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
-                          {idx + 1}
-                        </span>
-                        {point.location}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1 ml-8">{point.address}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-400 text-center py-8">Chưa có điểm đón</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Dropoff Points */}
-        <div className="bg-white rounded-2xl shadow-md border-2 border-gray-200 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-500 to-red-500 px-6 py-4">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Điểm trả khách
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="space-y-3">
-              {route.dropoffPoints.length > 0 ? (
-                route.dropoffPoints.map((point, idx) => (
-                  <div
-                    key={point.id}
-                    className="flex gap-4 p-4 rounded-xl bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200 hover:shadow-md transition-shadow"
-                  >
-                    <div className="shrink-0">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-full flex items-center justify-center font-bold shadow-lg text-sm">
-                        {point.time}
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 flex items-center gap-2">
-                        <span className="w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold">
-                          {idx + 1}
-                        </span>
-                        {point.location}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1 ml-8">{point.address}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-400 text-center py-8">Chưa có điểm trả</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Policies Section */}
-      <div className="bg-white rounded-2xl shadow-md border-2 border-gray-200 overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4">
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Package className="w-5 h-5" />
-            Chính sách & Điều khoản
-          </h3>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {route.policies.length > 0 ? (
-              route.policies.map((policy, idx) => (
+      <div className="grid gap-6 md:grid-cols-2">
+        <SectionCard
+          title="Điểm đón khách"
+          icon={<MapPin className="h-5 w-5" />}
+        >
+          <div className="space-y-3">
+            {route.pickupPoints.length > 0 ? (
+              route.pickupPoints.map((point, idx) => (
                 <div
-                  key={idx}
-                  className="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 hover:shadow-md transition-shadow"
+                  key={point.id}
+                  className="flex gap-4 rounded-md border border-border bg-background p-4 transition-colors duration-150 hover:bg-muted motion-reduce:transition-none"
                 >
-                  <h4 className="font-bold text-gray-900 mb-2 text-lg">{policy.title}</h4>
-                  <p className="text-sm text-gray-600 leading-relaxed">{policy.description}</p>
+                  <div className="shrink-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary font-mono text-sm font-semibold text-primary-foreground">
+                      {point.time}
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 font-semibold text-foreground">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-xs font-semibold text-accent-foreground">
+                        {idx + 1}
+                      </span>
+                      {point.location}
+                    </p>
+                    <p className="mt-1 ml-8 text-sm text-muted-foreground">{point.address}</p>
+                  </div>
                 </div>
               ))
             ) : (
-              <div className="space-y-4">
-                <div className="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center shrink-0">
-                      <Package className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-lg">Hành lý</h4>
-                      <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                        Mỗi hành khách được miễn phí <strong>20kg hành lý</strong>. Hành lý vượt
-                        quá giới hạn sẽ được tính phí bổ sung theo quy định.
-                      </p>
+              <p className="py-8 text-center text-sm text-muted-foreground">Chưa có điểm đón</p>
+            )}
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="Điểm trả khách"
+          icon={<MapPin className="h-5 w-5" />}
+        >
+          <div className="space-y-3">
+            {route.dropoffPoints.length > 0 ? (
+              route.dropoffPoints.map((point, idx) => (
+                <div
+                  key={point.id}
+                  className="flex gap-4 rounded-md border border-border bg-background p-4 transition-colors duration-150 hover:bg-muted motion-reduce:transition-none"
+                >
+                  <div className="shrink-0">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary font-mono text-sm font-semibold text-primary-foreground">
+                      {point.time}
                     </div>
                   </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 font-semibold text-foreground">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-xs font-semibold text-accent-foreground">
+                        {idx + 1}
+                      </span>
+                      {point.location}
+                    </p>
+                    <p className="mt-1 ml-8 text-sm text-muted-foreground">{point.address}</p>
+                  </div>
                 </div>
-                <div className="p-5 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center shrink-0">
-                      <XCircle className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-lg">Chính sách hủy vé</h4>
-                      <p className="text-sm text-gray-600 mt-2 leading-relaxed">
-                        <strong>Miễn phí hủy vé</strong> trước 24 giờ khởi hành. Hủy trong vòng 24
-                        giờ sẽ bị phạt <strong>20% giá vé</strong>.
-                      </p>
-                    </div>
+              ))
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">Chưa có điểm trả</p>
+            )}
+          </div>
+        </SectionCard>
+      </div>
+
+      {/* Policies Section */}
+      <SectionCard
+        title="Chính sách & Điều khoản"
+        icon={<Package className="h-5 w-5" />}
+      >
+        <div className="space-y-4">
+          {route.policies.length > 0 ? (
+            route.policies.map((policy, idx) => (
+              <div
+                key={idx}
+                className="rounded-md border border-border bg-background p-5 transition-colors duration-150 hover:bg-muted motion-reduce:transition-none"
+              >
+                <h4 className="mb-2 font-semibold text-foreground">{policy.title}</h4>
+                <p className="text-sm leading-relaxed text-muted-foreground">{policy.description}</p>
+              </div>
+            ))
+          ) : (
+            <div className="space-y-4">
+              <div className="rounded-md border border-border bg-background p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                    <Package className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Hành lý</h4>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      Mỗi hành khách được miễn phí <strong className="font-semibold text-foreground">20kg hành lý</strong>. Hành lý vượt
+                      quá giới hạn sẽ được tính phí bổ sung theo quy định.
+                    </p>
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+              <div className="rounded-md border border-border bg-background p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                    <XCircle className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Chính sách hủy vé</h4>
+                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                      <strong className="font-semibold text-foreground">Miễn phí hủy vé</strong> trước 24 giờ khởi hành. Hủy trong vòng 24
+                      giờ sẽ bị phạt <strong className="font-semibold text-foreground">20% giá vé</strong>.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </SectionCard>
     </div>
   )
 }
