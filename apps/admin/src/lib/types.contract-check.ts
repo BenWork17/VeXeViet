@@ -55,7 +55,7 @@ export type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T exte
   : false;
 
 /** Every key in `K` is present on `T`. */
-export type HasKeys<T, K extends PropertyKey> = [Extract<K, keyof T>] extends [K] ? true : false;
+export type HasKeys<T, K extends PropertyKey> = [Exclude<K, keyof T>] extends [never] ? true : false;
 
 /** `T` has no key outside `K` — catches a stray `operatorId` on a session. */
 export type HasNoExtraKeys<T, K extends PropertyKey> = [Exclude<keyof T, K>] extends [never]
