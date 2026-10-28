@@ -2,23 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import {
-  Activity,
-  BarChart3,
-  Bell,
-  Bus,
-  CreditCard,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Route,
-  Search,
-  ShieldCheck,
-  Ticket,
-  Users,
-} from 'lucide-react';
+import { Activity, Bus, CreditCard, LayoutDashboard, Menu, Route, Ticket, Users, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { canAccessSection, roleLabel } from '@/lib/rbac';
 import type { AdminSection } from '@/lib/types';
@@ -34,10 +20,39 @@ const navItems: Array<{ href: string; section: AdminSection; label: string; icon
   { href: '/audit-logs', section: 'audit-logs', label: 'Audit logs', icon: Activity },
 ];
 
+function NavList({ pathname, role, onNavigate }: { pathname: string; role: Parameters<typeof canAccessSection>[0]; onNavigate?: () => void }) {
+  return (
+    <nav className="mt-6 space-y-0.5" aria-label="Khu vực quản trị">
+      {navItems.map((item) => {
+        if (!canAccessSection(role, item.section)) return null;
+        const Icon = item.icon;
+        const active = pathname.startsWith(item.href);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={active ? 'page' : undefined}
+            className={clsx(
+              'relative flex h-9 items-center gap-2.5 rounded-control pl-3 pr-2 text-[13px] transition-colors duration-[120ms]',
+              active ? 'bg-active font-semibold text-ink' : 'font-normal text-muted hover:bg-active hover:text-ink'
+            )}
+          >
+            {active ? <span aria-hidden="true" className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-[1px] bg-accent" /> : null}
+            <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+            {item.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { session, ready, logout } = useAdminSession();
+  const [drawer, setDrawer] = useState(false);
 
   useEffect(() => {
     if (ready && !session) router.replace('/login');
@@ -55,111 +70,99 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [activeSection, ready, router, session]);
 
   if (!ready || !session) {
-    return <div className="min-h-screen bg-[#063C45]" />;
+    return <div className="min-h-screen bg-ground" />;
   }
 
+  const sectionLabel = navItems.find((item) => item.section === activeSection)?.label ?? 'Dashboard';
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-teal-900/30 bg-[#063C45] p-4 text-white lg:block">
-        <div className="flex h-full flex-col">
-          <div className="mb-6 flex items-center gap-3 px-2">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400 text-lg font-black text-teal-950">VX</div>
-            <div>
-              <p className="text-lg font-black">VeXeViet</p>
-              <p className="text-xs font-semibold text-teal-100/80">Operations Admin</p>
+    <div className="min-h-screen bg-ground">
+      <div className="lg:grid lg:grid-cols-[228px_minmax(0,1fr)]">
+        <aside className="hidden lg:block">
+          <div className="sticky top-0 flex h-screen flex-col px-5 py-5">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-control bg-accent text-[12px] font-semibold text-white">VX</span>
+              <span className="font-display text-section text-ink">VeXeViet</span>
+            </div>
+
+            <NavList pathname={pathname} role={session.role} />
+
+            <div className="mt-auto border-t border-border pt-4">
+              <p className="text-small font-semibold text-ink">{roleLabel(session.role)}</p>
+              <p className="mt-0.5 truncate text-small text-muted">{session.email}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  router.replace('/login');
+                }}
+                className="mt-2 h-8 rounded-control px-2 text-[13px] text-muted transition-colors duration-[120ms] hover:bg-active hover:text-ink"
+              >
+                Đăng xuất
+              </button>
             </div>
           </div>
+        </aside>
 
-          <nav className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname.startsWith(item.href);
-              const allowed = canAccessSection(session.role, item.section);
-              if (!allowed) return null;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    'flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-bold transition-colors',
-                    active ? 'bg-white text-[#063C45] shadow-lg shadow-teal-950/20' : 'text-teal-50/85 hover:bg-white/10 hover:text-white'
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="mt-auto rounded-2xl border border-white/15 bg-white/10 p-4">
-            <div className="mb-3 flex items-center gap-2 text-amber-100">
-              <ShieldCheck className="h-4 w-4" />
-              <span className="text-xs font-black uppercase">{roleLabel(session.role)}</span>
-            </div>
-            <p className="truncate text-sm font-black">{session.name}</p>
-            <p className="truncate text-xs text-teal-100/70">{session.email}</p>
+        <div className="min-w-0 pb-2 pr-2">
+          <header className="flex h-12 items-center gap-3 px-5 lg:px-6">
             <button
               type="button"
-              onClick={() => {
-                logout();
-                router.replace('/login');
-              }}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm font-bold text-white hover:bg-white/15"
+              onClick={() => setDrawer(true)}
+              className="grid h-8 w-8 place-items-center rounded-control text-ink transition-colors duration-[120ms] hover:bg-active lg:hidden"
+              aria-label="Mở điều hướng"
+              aria-expanded={drawer}
             >
-              <LogOut className="h-4 w-4" />
-              Đăng xuất
+              <Menu className="h-4 w-4" strokeWidth={1.75} />
             </button>
+            <p className="hidden text-[13px] text-muted lg:block">{sectionLabel}</p>
+            <p className="ml-auto text-small text-muted">Dữ liệu mẫu</p>
+          </header>
+
+          <main className="min-h-[calc(100vh-56px)] rounded-sheet border border-border bg-sheet px-6 py-6">
+            {children}
+          </main>
+        </div>
+      </div>
+
+      {drawer ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            aria-label="Đóng điều hướng"
+            onClick={() => setDrawer(false)}
+            className="absolute inset-0 bg-ink/20 transition-opacity duration-[160ms]"
+          />
+          <div className="absolute inset-y-0 left-0 w-[264px] bg-ground px-4 py-5 transition-transform duration-[160ms]">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-section text-ink">VeXeViet</span>
+              <button
+                type="button"
+                onClick={() => setDrawer(false)}
+                className="grid h-8 w-8 place-items-center rounded-control text-muted transition-colors duration-[120ms] hover:bg-active hover:text-ink"
+                aria-label="Đóng điều hướng"
+              >
+                <X className="h-4 w-4" strokeWidth={1.75} />
+              </button>
+            </div>
+            <NavList pathname={pathname} role={session.role} onNavigate={() => setDrawer(false)} />
+            <div className="mt-6 border-t border-border pt-4">
+              <p className="text-small font-semibold text-ink">{roleLabel(session.role)}</p>
+              <p className="mt-0.5 truncate text-small text-muted">{session.email}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  router.replace('/login');
+                }}
+                className="mt-2 h-8 rounded-control px-2 text-[13px] text-muted transition-colors duration-[120ms] hover:bg-active hover:text-ink"
+              >
+                Đăng xuất
+              </button>
+            </div>
           </div>
         </div>
-      </aside>
-
-      <div className="lg:pl-72">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:px-8">
-          <div className="flex items-center gap-3">
-            <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 lg:hidden" aria-label="Admin navigation">
-              <Menu className="h-5 w-5" />
-            </button>
-            <div className="hidden min-w-[280px] items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-400 md:flex">
-              <Search className="h-4 w-4" />
-              Tìm booking, route, user...
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">Mock data</span>
-              <button className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50" aria-label="Notifications">
-                <Bell className="h-5 w-5" />
-                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-              </button>
-              <BarChart3 className="hidden h-5 w-5 text-teal-700 sm:block" />
-            </div>
-          </div>
-          <nav className="mt-3 flex gap-2 overflow-x-auto pb-1 lg:hidden">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = pathname.startsWith(item.href);
-              const allowed = canAccessSection(session.role, item.section);
-              if (!allowed) return null;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    'flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-black',
-                    active ? 'bg-[#063C45] text-white' : 'bg-slate-100 text-slate-600'
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </header>
-
-        <main className="px-4 py-6 lg:px-8 lg:py-8">{children}</main>
-      </div>
+      ) : null}
     </div>
   );
 }

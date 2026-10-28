@@ -8,38 +8,94 @@ export type AdminSession = {
   email: string;
   name: string;
   role: AdminRole;
-  operatorId?: string;
 };
 
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'EXPIRED';
-export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
-export type RouteStatus = 'ACTIVE' | 'INACTIVE' | 'CANCELLED';
-export type UserStatus = 'ACTIVE' | 'PENDING_VERIFICATION' | 'SUSPENDED' | 'DELETED';
+export type PaymentStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'EXPIRED'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED';
+export type RouteStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
+export type BusType = 'STANDARD' | 'VIP' | 'LIMOUSINE' | 'SLEEPER';
+export type OperatorStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+export type UserStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DELETED';
+
+export type Pagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export type ListResponse<T> = {
+  success: true;
+  data: T[];
+  pagination: Pagination;
+};
+
+export type ItemResponse<T> = {
+  success: true;
+  data: T;
+};
 
 export type AdminBooking = {
   id: string;
   bookingCode: string;
   customerName: string;
   customerEmail: string;
+  customerPhone: string;
   operatorId: string;
   operatorName: string;
+  routeId: string;
   routeName: string;
   departureDate: string;
   seats: string[];
   status: BookingStatus;
-  paymentStatus: PaymentStatus;
+  paymentStatus: PaymentStatus | null;
   totalAmount: number;
   createdAt: string;
 };
 
+export type DashboardPoint = { label: string; value: number };
+
+export type AdminDashboardStats = {
+  todayBookings: number;
+  revenueCompleted: number;
+  paymentsNeedingAction: number;
+  activeRoutes: number;
+  operatorCount: number;
+  revenueTrend: DashboardPoint[];
+  bookingStatusSummary: DashboardPoint[];
+};
+
+export type PaymentProvider = 'VNPay' | 'Momo' | 'ZaloPay' | 'BankTransfer' | 'Cash';
+export type PaymentMethod = 'VNPAY' | 'MOMO' | 'ZALOPAY' | 'BANK_TRANSFER' | 'CASH';
+
 export type AdminPayment = {
   id: string;
   bookingCode: string;
-  provider: 'VNPay' | 'Momo' | 'ZaloPay';
+  provider: PaymentProvider;
+  method: PaymentMethod;
   status: PaymentStatus;
   amount: number;
-  updatedAt: string;
   risk: 'normal' | 'watch' | 'urgent';
+  transactionRef: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LabeledCount = { label: string; value: number };
+
+export type AdminPaymentSummary = {
+  totalCompleted: number;
+  countByStatus: LabeledCount[];
+  providerTrend: LabeledCount[];
+  expiredCount: number;
 };
 
 export type AdminRoute = {
@@ -50,12 +106,16 @@ export type AdminRoute = {
   origin: string;
   destination: string;
   departureTime: string;
-  busType: 'LIMOUSINE' | 'SLEEPER' | 'STANDARD' | 'VIP';
-  totalSeats: number;
-  availableSeats: number;
+  busType: BusType;
+  totalSeats: number | null;
+  availableSeats: number | null;
   price: number;
   status: RouteStatus;
+  seatDataAvailable: boolean;
+  hasBusTemplate: boolean;
 };
+
+export type OperatorRoute = AdminRoute;
 
 export type AdminOperator = {
   id: string;
@@ -63,26 +123,34 @@ export type AdminOperator = {
   contactEmail: string;
   activeRoutes: number;
   monthlyBookings: number;
-  rating: number;
-  status: 'ACTIVE' | 'REVIEW' | 'SUSPENDED';
+  rating: null;
+  status: OperatorStatus;
+  createdAt: string;
 };
 
 export type AdminUser = {
   id: string;
   name: string;
   email: string;
+  phone: string | null;
   role: UserRole;
   status: UserStatus;
   verified: boolean;
+  isEmailVerified: boolean;
+  isPhoneVerified: boolean;
   createdAt: string;
 };
 
-export type AuditLog = {
+export type AuditSeverity = 'info' | 'warning' | 'danger';
+
+export type AuditLogItem = {
   id: string;
   actor: string;
-  role: AdminRole;
+  actorId: string | null;
+  role: string;
   action: string;
   target: string;
+  severity: AuditSeverity;
+  metadata: unknown;
   createdAt: string;
-  severity: 'info' | 'warning' | 'danger';
 };

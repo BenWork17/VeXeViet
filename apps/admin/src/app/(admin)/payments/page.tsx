@@ -1,89 +1,140 @@
-import { AlertTriangle, CreditCard, ShieldCheck } from 'lucide-react';
-import { ActionButton, ChartPanel, DonutChart, ManagementQueue, PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
-import { paymentProviderSummary, payments } from '@/lib/mock-data';
+'use client';
+
+import { useMemo, useState } from 'react';
+import { Button, EmptyState, Kebab, PageHeader, SearchField, SortSelect, StatusPill, Toolbar, tdClass, tdNumberClass, thClass, thNumberClass } from '@/components/ui';
+import { ListTabs } from '@/components/list-tabs';
+import { paymentSummary, payments } from '@/lib/mock-data';
 import { formatDateTime, formatVnd } from '@/lib/format';
+import { paymentMark, riskMark } from '@/lib/status';
+import type { PaymentStatus } from '@/lib/types';
+
+type Filter = 'all' | PaymentStatus;
+
+const TABS: Array<{ id: Filter; label: string }> = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'PENDING', label: 'Chờ thanh toán' },
+  { id: 'PROCESSING', label: 'Đang xử lý' },
+  { id: 'COMPLETED', label: 'Hoàn tất' },
+  { id: 'FAILED', label: 'Thất bại' },
+  { id: 'REFUNDED', label: 'Hoàn tiền' },
+];
+
+const SORTS = ['Mới nhất', 'Số tiền cao nhất'];
 
 export default function PaymentsPage() {
-  const completed = payments.filter((payment) => payment.status === 'COMPLETED').length;
-  const failed = payments.filter((payment) => payment.status === 'FAILED').length;
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState(SORTS[0] ?? 'Mới nhất');
+
+  const counts = useMemo(() => {
+    const map = new Map<Filter, number>([['all', payments.length]]);
+    for (const payment of payments) map.set(payment.status, (map.get(payment.status) ?? 0) + 1);
+    return map;
+  }, []);
+
+  const rows = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const filtered = payments.filter((payment) => {
+      if (filter !== 'all' && payment.status !== filter) return false;
+      if (!term) return true;
+      return [payment.bookingCode, payment.transactionRef, payment.provider].join(' ').toLowerCase().includes(term);
+    });
+
+    return [...filtered].sort((a, b) =>
+      sort === 'Số tiền cao nhất' ? b.amount - a.amount : b.updatedAt.localeCompare(a.updatedAt)
+    );
+  }, [filter, query, sort]);
 
   return (
     <>
       <PageHeader
-        eyebrow="Payment operations"
         title="Giám sát thanh toán"
-        description="Theo dõi VNPay, Momo, ZaloPay và các giao dịch cần đối soát với Booking Service."
+        description="VNPay, Momo, ZaloPay, chuyển khoản và tiền mặt, kèm trạng thái đối soát."
+        action={<Button tone="secondary">Đối soát lại</Button>}
       />
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <StatCard label="Hoàn tất" value={String(completed)} helper="Payment COMPLETED" icon={ShieldCheck} tone="green" />
-        <StatCard label="Lỗi cần xử lý" value={String(failed)} helper="Đối soát booking sync" icon={AlertTriangle} tone="red" />
-        <StatCard label="Tổng giao dịch" value={String(payments.length)} helper="Mock payment service" icon={CreditCard} />
-      </div>
 
-      <div className="mb-6 grid gap-6 xl:grid-cols-[380px_1fr]">
-        <ChartPanel title="Tỷ trọng cổng thanh toán">
-          <DonutChart data={paymentProviderSummary} />
-        </ChartPanel>
-        <Panel className="p-5">
-          <h2 className="text-lg font-black text-slate-950">Reconciliation queue</h2>
-          <div className="mt-4">
-            <ManagementQueue
-              items={[
-                { title: 'VNPay pending quá 15 phút', description: 'Tự động gọi provider status API trước khi release ghế.', badge: 'Check', tone: 'amber' },
-                { title: 'Payment failed sau khi giữ ghế', description: 'Đồng bộ lại Booking Service để tránh ghế bị treo.', badge: 'Urgent', tone: 'red' },
-                { title: 'Hoàn tiền thủ công', description: 'Cần luồng approve 2 bước cho refund giá trị cao.', badge: 'Policy', tone: 'teal' },
-              ]}
-            />
-          </div>
-        </Panel>
-      </div>
+      <ListTabs
+        label="Trạng thái thanh toán"
+        tabs={TABS.map((tab) => ({ ...tab, count: counts.get(tab.id) ?? 0 }))}
+        value={filter}
+        onChange={setFilter}
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <TableShell>
-          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
-            <ActionButton>Đối soát lại</ActionButton>
-            <ActionButton tone="secondary">Đồng bộ booking</ActionButton>
-            <ActionButton tone="danger">Mở case lỗi</ActionButton>
-          </div>
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-5 py-3">Giao dịch</th>
-                <th className="px-5 py-3">Booking</th>
-                <th className="px-5 py-3">Cổng</th>
-                <th className="px-5 py-3">Trạng thái</th>
-                <th className="px-5 py-3">Rủi ro</th>
-                <th className="px-5 py-3 text-right">Số tiền</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {payments.map((payment) => (
-                <tr key={payment.id}>
-                  <td className="px-5 py-4">
-                    <p className="font-black text-slate-950">{payment.id}</p>
-                    <p className="text-xs text-slate-500">{formatDateTime(payment.updatedAt)}</p>
+      <Toolbar>
+        <SearchField placeholder="Tìm mã booking, mã giao dịch…" value={query} onChange={setQuery} />
+        <div className="flex items-center gap-4">
+          <span className="text-small text-muted">{rows.length} giao dịch</span>
+          <SortSelect label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
+        </div>
+      </Toolbar>
+
+      <div className="relative mt-4 overflow-x-auto">
+        <table className="w-full min-w-[880px] table-fixed border-collapse">
+          <thead>
+            <tr>
+              <th className={`${thClass} w-[20%]`}>Giao dịch</th>
+              <th className={`${thClass} w-[14%]`}>Booking</th>
+              <th className={`${thClass} w-[13%]`}>Cổng</th>
+              <th className={`${thClass} w-[16%]`}>Trạng thái</th>
+              <th className={`${thClass} w-[13%]`}>Rủi ro</th>
+              <th className={`${thNumberClass} w-[11%]`}>Số tiền</th>
+              <th className={`${thClass} w-[36px]`}>
+                <span className="sr-only">Hành động</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((payment) => {
+              const mark = paymentMark(payment.status);
+              const risk = riskMark(payment.risk);
+              return (
+                <tr key={payment.id} className="transition-colors duration-[120ms] hover:bg-raised">
+                  <td className={tdClass}>
+                    <p className="truncate font-mono text-[12px] text-ink">{payment.transactionRef}</p>
+                    <p className="text-small text-muted">{formatDateTime(payment.updatedAt)}</p>
                   </td>
-                  <td className="px-5 py-4 font-black text-teal-700">{payment.bookingCode}</td>
-                  <td className="px-5 py-4 font-bold text-slate-700">{payment.provider}</td>
-                  <td className="px-5 py-4">
-                    <StatusBadge label={payment.status} tone={payment.status === 'COMPLETED' ? 'green' : payment.status === 'FAILED' ? 'red' : 'amber'} />
+                  <td className={`${tdClass} font-semibold`}>{payment.bookingCode}</td>
+                  <td className={tdClass}>
+                    <p className="text-ink">{payment.provider}</p>
+                    <p className="text-small text-muted">{payment.method}</p>
                   </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge label={payment.risk} tone={payment.risk === 'urgent' ? 'red' : payment.risk === 'watch' ? 'amber' : 'green'} />
+                  <td className={tdClass}>
+                    <StatusPill tone={mark.tone}>{mark.label}</StatusPill>
                   </td>
-                  <td className="px-5 py-4 text-right font-black text-slate-950">{formatVnd(payment.amount)}</td>
+                  <td className={tdClass}>
+                    <StatusPill tone={risk.tone}>{risk.label}</StatusPill>
+                  </td>
+                  <td className={tdNumberClass}>{formatVnd(payment.amount)}</td>
+                  <td className={`${tdClass} text-right`}>
+                    <Kebab label={`Hành động cho ${payment.transactionRef}`} />
+                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableShell>
+              );
+            })}
+          </tbody>
+        </table>
 
-        <Panel className="p-5">
-          <h2 className="text-lg font-black text-slate-950">Luồng cần BE khóa chặt</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">
-            Payment webhook cần đồng bộ booking theo thứ tự rõ ràng, có idempotency key, và hạn chế internal endpoint để tránh cập nhật trạng thái trái phép.
-          </p>
-        </Panel>
+        {rows.length === 0 ? (
+          <EmptyState
+            title="Không có giao dịch nào khớp bộ lọc"
+            description="Chọn tab Tất cả hoặc xoá từ khoá tìm kiếm để xem lại toàn bộ giao dịch."
+          />
+        ) : null}
+      </div>
+
+      <div className="mt-6 grid gap-6 border-t border-rule pt-5 md:grid-cols-3">
+        <div>
+          <p className="text-small text-muted">Tổng đã thu</p>
+          <p className="mt-1 text-[18px] tabular text-ink">{formatVnd(paymentSummary.totalCompleted)}</p>
+        </div>
+        <div>
+          <p className="text-small text-muted">Giao dịch hết hạn</p>
+          <p className="mt-1 text-[18px] tabular text-ink">{paymentSummary.expiredCount}</p>
+        </div>
+        <div>
+          <p className="text-small text-muted">Cổng dùng nhiều nhất</p>
+          <p className="mt-1 text-[18px] text-ink">{paymentSummary.providerTrend[0]?.label ?? '—'}</p>
+        </div>
       </div>
     </>
   );

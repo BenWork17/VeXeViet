@@ -1,6 +1,6 @@
 import type { AdminRole, AdminSection } from './types';
 
-const OPERATOR_ALLOWED: AdminSection[] = ['dashboard', 'bookings', 'routes', 'payments', 'audit-logs'];
+const OPERATOR_ALLOWED: AdminSection[] = ['dashboard', 'bookings', 'payments', 'routes'];
 
 export function canAccessSection(role: AdminRole, section: AdminSection) {
   if (role === 'ADMIN') return true;

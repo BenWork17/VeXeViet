@@ -1,139 +1,135 @@
-import { CheckCircle2, Clock, Download, MessageSquare, Search, ShieldAlert, TicketX } from 'lucide-react';
-import { ActionButton, ChartPanel, FilterBar, MiniBarChart, PageHeader, Panel, StatCard, StatusBadge, TableShell } from '@/components/ui';
+'use client';
+
+import { useMemo, useState } from 'react';
+import { Button, EmptyState, Kebab, PageHeader, SearchField, SortSelect, StatusPill, Toolbar, tdClass, tdNumberClass, thClass, thNumberClass } from '@/components/ui';
+import { ListTabs } from '@/components/list-tabs';
 import { bookings } from '@/lib/mock-data';
 import { formatDateTime, formatVnd } from '@/lib/format';
+import { bookingMark, paymentMark } from '@/lib/status';
+import type { BookingStatus } from '@/lib/types';
+
+type Filter = 'all' | BookingStatus;
+
+const TABS: Array<{ id: Filter; label: string }> = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'PENDING', label: 'Chờ xử lý' },
+  { id: 'CONFIRMED', label: 'Đã xác nhận' },
+  { id: 'COMPLETED', label: 'Hoàn tất' },
+  { id: 'EXPIRED', label: 'Hết hạn' },
+  { id: 'CANCELLED', label: 'Đã huỷ' },
+];
+
+const SORTS = ['Mới nhất', 'Khởi hành sớm nhất', 'Giá trị cao nhất'];
 
 export default function BookingsPage() {
-  const pending = bookings.filter((booking) => booking.status === 'PENDING').length;
-  const confirmed = bookings.filter((booking) => booking.status === 'CONFIRMED').length;
-  const failedPayment = bookings.filter((booking) => booking.paymentStatus === 'FAILED').length;
-  const firstBooking = bookings[0];
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState(SORTS[0] ?? 'Mới nhất');
+
+  const counts = useMemo(() => {
+    const map = new Map<Filter, number>([['all', bookings.length]]);
+    for (const booking of bookings) map.set(booking.status, (map.get(booking.status) ?? 0) + 1);
+    return map;
+  }, []);
+
+  const rows = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const filtered = bookings.filter((booking) => {
+      if (filter !== 'all' && booking.status !== filter) return false;
+      if (!term) return true;
+      return [booking.bookingCode, booking.customerName, booking.customerEmail, booking.routeName, booking.operatorName]
+        .join(' ')
+        .toLowerCase()
+        .includes(term);
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sort === 'Khởi hành sớm nhất') return a.departureDate.localeCompare(b.departureDate);
+      if (sort === 'Giá trị cao nhất') return b.totalAmount - a.totalAmount;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+  }, [filter, query, sort]);
 
   return (
     <>
       <PageHeader
-        eyebrow="Booking management"
         title="Quản lý booking"
-        description="Màn hình theo dõi đặt vé, ghế, trạng thái booking và trạng thái thanh toán theo docs Booking Service."
-        action={
-          <button className="inline-flex items-center gap-2 rounded-2xl bg-[#063C45] px-4 py-3 text-sm font-black text-white shadow-sm hover:bg-teal-900">
-            <Download className="h-4 w-4" />
-            Xuất dữ liệu
-          </button>
-        }
+        description="Đặt vé, ghế, trạng thái booking và trạng thái thanh toán."
+        action={<Button tone="secondary">Xuất dữ liệu</Button>}
       />
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Đang giữ chỗ" value={String(pending)} helper="Cần nhắc thanh toán" icon={Clock} tone="amber" />
-        <StatCard label="Đã xác nhận" value={String(confirmed)} helper="Sẵn sàng xuất vé" icon={CheckCircle2} tone="green" />
-        <StatCard label="Payment lỗi" value={String(failedPayment)} helper="Cần đối soát" icon={ShieldAlert} tone="red" />
-        <StatCard label="Ghế bị mất" value="3" helper="Expired booking hôm nay" icon={TicketX} tone="teal" />
-      </div>
-      <FilterBar>
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-400">
-          <Search className="h-4 w-4" />
-          Tìm mã booking, email, tuyến...
-        </div>
-        <select className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700">
-          <option>Tất cả trạng thái</option>
-          <option>PENDING</option>
-          <option>CONFIRMED</option>
-          <option>EXPIRED</option>
-        </select>
-      </FilterBar>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-        <TableShell>
-          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-5 py-3">
-            <ActionButton>Xác nhận hàng loạt</ActionButton>
-            <ActionButton tone="secondary">Gửi nhắc thanh toán</ActionButton>
-            <ActionButton tone="danger">Hủy booking lỗi</ActionButton>
-          </div>
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-400">
-              <tr>
-                <th className="px-5 py-3">Booking</th>
-                <th className="px-5 py-3">Khách hàng</th>
-                <th className="px-5 py-3">Nhà xe / tuyến</th>
-                <th className="px-5 py-3">Ghế</th>
-                <th className="px-5 py-3">Booking</th>
-                <th className="px-5 py-3">Payment</th>
-                <th className="px-5 py-3 text-right">Tổng tiền</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {bookings.map((booking) => (
-                <tr key={booking.id} className="hover:bg-slate-50/70">
-                  <td className="px-5 py-4">
-                    <p className="font-black text-teal-700">{booking.bookingCode}</p>
-                    <p className="text-xs text-slate-500">{formatDateTime(booking.createdAt)}</p>
+      <ListTabs
+        label="Trạng thái booking"
+        tabs={TABS.map((tab) => ({ ...tab, count: counts.get(tab.id) ?? 0 }))}
+        value={filter}
+        onChange={setFilter}
+      />
+
+      <Toolbar>
+        <SearchField placeholder="Tìm mã booking, khách, tuyến…" value={query} onChange={setQuery} />
+        <div className="flex items-center gap-4">
+          <span className="text-small text-muted">{rows.length} booking</span>
+          <SortSelect label="Sắp xếp" value={sort} options={SORTS} onChange={setSort} />
+        </div>
+      </Toolbar>
+
+      <div className="relative mt-4 overflow-x-auto">
+        <table className="w-full min-w-[880px] table-fixed border-collapse">
+          <thead>
+            <tr>
+              <th className={`${thClass} w-[18%]`}>Booking</th>
+              <th className={`${thClass} w-[22%]`}>Khách hàng</th>
+              <th className={`${thClass} w-[20%]`}>Nhà xe / tuyến</th>
+              <th className={`${thClass} w-[8%]`}>Ghế</th>
+              <th className={`${thClass} w-[11%]`}>Booking</th>
+              <th className={`${thClass} w-[11%]`}>Payment</th>
+              <th className={`${thNumberClass} w-[11%]`}>Tổng tiền</th>
+              <th className={`${thClass} w-[36px]`}>
+                <span className="sr-only">Hành động</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((booking) => {
+              const mark = bookingMark(booking.status);
+              const pay = booking.paymentStatus ? paymentMark(booking.paymentStatus) : null;
+              return (
+                <tr key={booking.id} className="transition-colors duration-[120ms] hover:bg-raised">
+                  <td className={tdClass}>
+                    <p className="font-semibold text-ink">{booking.bookingCode}</p>
+                    <p className="text-small text-muted">{formatDateTime(booking.createdAt)}</p>
                   </td>
-                  <td className="px-5 py-4">
-                    <p className="font-bold text-slate-950">{booking.customerName}</p>
-                    <p className="text-xs text-slate-500">{booking.customerEmail}</p>
+                  <td className={tdClass}>
+                    <p className="truncate text-ink">{booking.customerName}</p>
+                    <p className="truncate text-small text-muted">{booking.customerEmail}</p>
                   </td>
-                  <td className="px-5 py-4">
-                    <p className="font-bold text-slate-950">{booking.operatorName}</p>
-                    <p className="text-xs text-slate-500">{booking.routeName}</p>
+                  <td className={tdClass}>
+                    <p className="truncate text-ink">{booking.operatorName}</p>
+                    <p className="truncate text-small text-muted">{booking.routeName}</p>
                   </td>
-                  <td className="px-5 py-4 font-black text-slate-700">{booking.seats.join(', ')}</td>
-                  <td className="px-5 py-4">
-                    <StatusBadge label={booking.status} tone={booking.status === 'CONFIRMED' ? 'green' : booking.status === 'EXPIRED' ? 'red' : 'amber'} />
+                  <td className={`${tdClass} tabular text-muted`}>{booking.seats.join(', ')}</td>
+                  <td className={tdClass}>
+                    <StatusPill tone={mark.tone}>{mark.label}</StatusPill>
                   </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge label={booking.paymentStatus} tone={booking.paymentStatus === 'COMPLETED' ? 'green' : booking.paymentStatus === 'FAILED' ? 'red' : 'amber'} />
+                  <td className={tdClass}>
+                    {pay ? <StatusPill tone={pay.tone}>{pay.label}</StatusPill> : <span className="text-muted">—</span>}
                   </td>
-                  <td className="px-5 py-4 text-right font-black text-slate-950">{formatVnd(booking.totalAmount)}</td>
+                  <td className={tdNumberClass}>{formatVnd(booking.totalAmount)}</td>
+                  <td className={`${tdClass} text-right`}>
+                    <Kebab label={`Hành động cho ${booking.bookingCode}`} />
+                  </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </TableShell>
+              );
+            })}
+          </tbody>
+        </table>
 
-        <div className="space-y-6">
-          <Panel className="p-5">
-            <h2 className="text-lg font-black text-slate-950">Chi tiết nhanh</h2>
-            {firstBooking ? (
-              <div className="mt-4 space-y-4">
-                <div className="rounded-2xl bg-teal-50 p-4">
-                  <p className="text-xs font-black uppercase text-teal-700">Đang chọn</p>
-                  <p className="mt-1 text-2xl font-black text-slate-950">{firstBooking.bookingCode}</p>
-                  <p className="text-sm font-semibold text-slate-600">{firstBooking.customerName}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-2xl border border-slate-200 p-3">
-                    <p className="font-black text-slate-400">Seats</p>
-                    <p className="mt-1 font-black text-slate-950">{firstBooking.seats.join(', ')}</p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 p-3">
-                    <p className="font-black text-slate-400">Amount</p>
-                    <p className="mt-1 font-black text-slate-950">{formatVnd(firstBooking.totalAmount)}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <ActionButton>Giữ ghế thêm</ActionButton>
-                  <ActionButton tone="secondary">Gửi email</ActionButton>
-                  <ActionButton tone="secondary">Ghi chú</ActionButton>
-                </div>
-              </div>
-            ) : null}
-          </Panel>
-          <ChartPanel title="Booking theo trạng thái">
-            <MiniBarChart
-              data={[
-                { label: 'Pending', value: pending, tone: 'amber' },
-                { label: 'Confirmed', value: confirmed, tone: 'green' },
-                { label: 'Payment failed', value: failedPayment, tone: 'red' },
-              ]}
-            />
-          </ChartPanel>
-          <Panel className="p-5">
-            <div className="flex items-center gap-2 text-teal-700">
-              <MessageSquare className="h-5 w-5" />
-              <h2 className="font-black text-slate-950">Ghi chú vận hành</h2>
-            </div>
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-500">Khi BE có endpoint audit/note, panel này nên lưu lịch sử hỗ trợ từng booking.</p>
-          </Panel>
-        </div>
+        {rows.length === 0 ? (
+          <EmptyState
+            title="Không có booking nào khớp bộ lọc"
+            description="Xoá từ khoá tìm kiếm hoặc chọn tab Tất cả để xem toàn bộ booking."
+          />
+        ) : null}
       </div>
     </>
   );
