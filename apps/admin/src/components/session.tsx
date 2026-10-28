@@ -1,40 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { AdminSession } from '@/lib/types';
-import { mockSessions } from '@/lib/mock-data';
+import { clearSession, loadSession, signOut } from '@/lib/api';
 
-const STORAGE_KEY = 'vexeviet-admin-session';
-
+/**
+ * Session state for the console, read from `lib/api.ts`.
+ *
+ * There is no setter exposed: a session is only ever created by `signIn()` and
+ * only ever destroyed by `signOut()`, so nothing in the UI can mint one. The
+ * demo-session helper that used to live here is gone (D6/D7) — the operator
+ * fixture for inspection is seeded straight into localStorage.
+ */
 export function useAdminSession() {
-  const [session, setSessionState] = useState<AdminSession | null>(null);
+  const [session, setSession] = useState<AdminSession | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        setSessionState(JSON.parse(raw) as AdminSession);
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
-      }
-    }
+    // `loadSession()` validates the stored shape and clears anything that does
+    // not match, so a stale demo value can never come back as a live session.
+    setSession(loadSession());
     setReady(true);
   }, []);
 
-  const setSession = (next: AdminSession) => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setSessionState(next);
-  };
+  const logout = useCallback(() => {
+    // Revoke first (the token must still be in storage for that), then drop the
+    // local copy immediately — a dead API must not strand the user.
+    void signOut();
+    clearSession();
+    setSession(null);
+  }, []);
 
-  const logout = () => {
-    window.localStorage.removeItem(STORAGE_KEY);
-    setSessionState(null);
-  };
-
-  return { session, ready, setSession, logout };
-}
-
-export function getDemoSession(kind: 'admin' | 'operator') {
-  return mockSessions[kind];
+  return { session, ready, logout };
 }

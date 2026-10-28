@@ -56,6 +56,8 @@ export function Button({
   className,
   onClick,
   type = 'button',
+  disabled = false,
+  title,
   'aria-label': ariaLabel,
 }: {
   children: React.ReactNode;
@@ -64,19 +66,26 @@ export function Button({
   className?: string;
   onClick?: () => void;
   type?: 'button' | 'submit';
+  disabled?: boolean;
+  title?: string;
   'aria-label'?: string;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
+      disabled={disabled}
+      aria-disabled={disabled || undefined}
+      title={title}
       aria-label={ariaLabel}
       className={clsx(
         'inline-flex items-center justify-center gap-1.5 rounded-control font-semibold transition-colors duration-[120ms]',
         size === 'md' ? 'h-9 px-3 text-[13px]' : 'h-8 px-2.5 text-[13px]',
-        tone === 'primary'
-          ? 'bg-ink text-white hover:bg-[#292524]'
-          : 'border border-control bg-sheet text-ink hover:bg-active',
+        disabled
+          ? 'cursor-not-allowed border border-control bg-raised text-muted'
+          : tone === 'primary'
+            ? 'bg-ink text-white hover:bg-[#292524]'
+            : 'border border-control bg-sheet text-ink hover:bg-active',
         className
       )}
     >
@@ -84,6 +93,9 @@ export function Button({
     </button>
   );
 }
+
+/** Copy the console uses for any control whose endpoint is not wired yet (§7). */
+export const DEFERRED_TITLE = 'Chưa nối ở bước này';
 
 export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return <section className={clsx('rounded-card border border-border bg-sheet', className)}>{children}</section>;
@@ -93,9 +105,21 @@ export function Toolbar({ children }: { children: React.ReactNode }) {
   return <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">{children}</div>;
 }
 
-export function SearchField({ placeholder, value, onChange }: { placeholder: string; value: string; onChange: (next: string) => void }) {
+export function SearchField({
+  placeholder,
+  value,
+  onChange,
+  disabled = false,
+  title,
+}: {
+  placeholder: string;
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  title?: string;
+}) {
   return (
-    <label className="relative block w-full sm:w-[288px]">
+    <label className="relative block w-full sm:w-[288px]" title={title}>
       <span className="sr-only">{placeholder}</span>
       <svg
         aria-hidden="true"
@@ -113,24 +137,40 @@ export function SearchField({ placeholder, value, onChange }: { placeholder: str
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-8 w-full rounded-control border border-control bg-sheet pl-8 pr-3 text-[13px] text-ink transition-colors duration-[120ms] placeholder:text-muted focus:border-accent focus:outline-none"
+        disabled={disabled}
+        className="h-8 w-full rounded-control border border-control bg-sheet pl-8 pr-3 text-[13px] text-ink transition-colors duration-[120ms] placeholder:text-muted focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:border-rule disabled:bg-raised disabled:text-muted"
       />
     </label>
   );
 }
 
-export function SortSelect({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (next: string) => void }) {
+export function SortSelect({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false,
+  title,
+}: {
+  label: string;
+  value: string;
+  options: Array<{ label: string; value: string }>;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  title?: string;
+}) {
   return (
-    <label className="flex items-center gap-2 text-[13px] text-muted">
+    <label className="flex items-center gap-2 text-[13px] text-muted" title={title}>
       <span>{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-8 rounded-control border border-control bg-sheet pl-2 pr-7 text-[13px] text-ink transition-colors duration-[120ms] focus:border-accent focus:outline-none"
+        disabled={disabled}
+        className="h-8 rounded-control border border-control bg-sheet pl-2 pr-7 text-[13px] text-ink transition-colors duration-[120ms] focus:border-accent focus:outline-none disabled:cursor-not-allowed disabled:border-rule disabled:bg-raised disabled:text-muted"
       >
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -152,7 +192,10 @@ export function Kebab({ label }: { label: string }) {
     <button
       type="button"
       aria-label={label}
-      className="inline-grid h-7 w-7 place-items-center rounded-control text-muted transition-colors duration-[120ms] hover:bg-active hover:text-ink"
+      aria-disabled="true"
+      disabled
+      title={DEFERRED_TITLE}
+      className="inline-grid h-7 w-7 cursor-not-allowed place-items-center rounded-control text-control"
     >
       <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
         <circle cx="3" cy="8" r="1.2" />
@@ -160,6 +203,102 @@ export function Kebab({ label }: { label: string }) {
         <circle cx="13" cy="8" r="1.2" />
       </svg>
     </button>
+  );
+}
+
+/**
+ * Rendered read failure (§10.6). Distinct from `EmptyState` on purpose: a failed
+ * request must never be presented as "there is nothing here" (D10).
+ */
+export function ErrorState({
+  message,
+  code,
+  status,
+  details = [],
+  onRetry,
+}: {
+  message: string;
+  code?: string;
+  status?: number | null;
+  details?: string[];
+  onRetry?: () => void;
+}) {
+  return (
+    <div role="alert" className="mt-4 border-t border-rule py-8">
+      <p className="text-[14px] font-semibold text-ink">Không tải được dữ liệu</p>
+      <p className="mt-1 max-w-lg text-[13px] leading-5 text-muted">{message}</p>
+      {details.length > 0 ? (
+        <ul className="mt-2 max-w-lg space-y-0.5 text-small leading-5 text-muted">
+          {details.slice(0, 5).map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="mt-2 text-small tabular text-muted">
+        {code ?? 'ERROR'}
+        {typeof status === 'number' ? ` · HTTP ${status}` : ' · không có phản hồi từ máy chủ'}
+      </p>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-3 h-8 rounded-control border border-control bg-sheet px-2.5 text-[13px] font-semibold text-ink transition-colors duration-[120ms] hover:bg-active"
+        >
+          Thử lại
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Loading placeholder for a table body — never a spinner with no end. */
+export function LoadingRows({ label = 'Đang tải dữ liệu…' }: { label?: string }) {
+  return (
+    <div className="mt-4 border-t border-rule py-8" aria-busy="true" aria-live="polite">
+      <p className="text-[13px] text-muted">{label}</p>
+    </div>
+  );
+}
+
+/** Server-side pager. Uses the returned `pagination`, never `data.length` (§8). */
+export function Pager({
+  page,
+  totalPages,
+  total,
+  unit,
+  onPage,
+}: {
+  page: number;
+  totalPages: number;
+  total: number;
+  unit: string;
+  onPage: (next: number) => void;
+}) {
+  const last = Math.max(totalPages, 1);
+  return (
+    <div className="mt-4 flex flex-col gap-2 border-t border-rule pt-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-small text-muted">
+        {total} {unit} · trang {page}/{last}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPage(page - 1)}
+          disabled={page <= 1}
+          className="h-8 rounded-control border border-control bg-sheet px-2.5 text-[13px] text-ink transition-colors duration-[120ms] hover:bg-active disabled:cursor-not-allowed disabled:border-rule disabled:bg-raised disabled:text-muted"
+        >
+          Trang trước
+        </button>
+        <button
+          type="button"
+          onClick={() => onPage(page + 1)}
+          disabled={page >= last}
+          className="h-8 rounded-control border border-control bg-sheet px-2.5 text-[13px] text-ink transition-colors duration-[120ms] hover:bg-active disabled:cursor-not-allowed disabled:border-rule disabled:bg-raised disabled:text-muted"
+        >
+          Trang sau
+        </button>
+      </div>
+    </div>
   );
 }
 

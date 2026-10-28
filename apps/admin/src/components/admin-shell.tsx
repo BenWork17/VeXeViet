@@ -116,7 +116,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Menu className="h-4 w-4" strokeWidth={1.75} />
             </button>
             <p className="hidden text-[13px] text-muted lg:block">{sectionLabel}</p>
-            <p className="ml-auto text-small text-muted">Dữ liệu mẫu</p>
           </header>
 
           <main className="min-h-[calc(100vh-56px)] rounded-sheet border border-border bg-sheet px-6 py-6">
