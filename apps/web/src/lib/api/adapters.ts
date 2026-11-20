@@ -21,6 +21,7 @@ import type {
   Booking as FEBooking,
   User as FEUser,
 } from '@/types/models';
+import { resolveMediaUrl, resolveMediaUrls } from '@/lib/api/media';
 
 // ========================
 // Route Adapters
@@ -41,7 +42,11 @@ export function adaptBERouteToFE(beRoute: BERoute): FERoute {
         beRoute.operator?.name ??
         ([beRoute.operator?.firstName, beRoute.operator?.lastName].filter(Boolean).join(' ') ||
           'Unknown Operator'),
-      logoUrl: beRoute.operator?.logo ?? '/images/default-operator.png',
+      logoUrl:
+        resolveMediaUrl(beRoute.operator?.operatorAvatarUrl ?? beRoute.operator?.logo) ??
+        '/images/default-operator.png',
+      interiorImages: resolveMediaUrls(beRoute.operator?.interiorImages),
+      exteriorImages: resolveMediaUrls(beRoute.operator?.exteriorImages),
       rating: beRoute.operator?.rating ?? 0,
       totalReviews: beRoute.operator?.reviewCount ?? beRoute.operator?.totalTrips ?? 0,
     },

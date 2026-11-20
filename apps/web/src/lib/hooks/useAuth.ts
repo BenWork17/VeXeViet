@@ -14,6 +14,7 @@ import {
   parseApiError,
 } from '@/lib/api/auth';
 import { tokenStorage } from '@/lib/api/client';
+import { uploadUserAvatar, deleteUserAvatar } from '@/lib/api/media';
 import {
   LoginRequest,
   RegisterRequest,
@@ -128,6 +129,46 @@ export function useUpdateProfile() {
     },
     onError: (error) => {
       console.error('Profile update failed:', parseApiError(error));
+    },
+  });
+}
+
+/**
+ * Upload / replace the current user's avatar.
+ * On success the shared auth cache is patched so the header and profile update instantly.
+ */
+export function useUploadAvatar() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadUserAvatar(file),
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(authKeys.profile(), (prev: User | undefined) => ({
+        ...(prev ?? {}),
+        ...updatedUser,
+      }));
+    },
+    onError: (error) => {
+      console.error('Avatar upload failed:', parseApiError(error));
+    },
+  });
+}
+
+/** Remove the current user's avatar. */
+export function useRemoveAvatar() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => deleteUserAvatar(),
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData(authKeys.profile(), (prev: User | undefined) => ({
+        ...(prev ?? {}),
+        ...updatedUser,
+        avatarUrl: null,
+      }));
+    },
+    onError: (error) => {
+      console.error('Avatar removal failed:', parseApiError(error));
     },
   });
 }

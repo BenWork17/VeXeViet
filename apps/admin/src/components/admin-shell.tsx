@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
-import { Activity, Bus, CreditCard, LayoutDashboard, Menu, Route, Star, Ticket, Users, X } from 'lucide-react';
+import { Activity, Bus, CreditCard, ImageIcon, LayoutDashboard, Menu, Route, Star, Ticket, Users, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { canAccessSection, roleLabel } from '@/lib/rbac';
 import type { AdminSection } from '@/lib/types';
@@ -16,6 +16,7 @@ const navItems: Array<{ href: string; section: AdminSection; label: string; icon
   { href: '/payments', section: 'payments', label: 'Payments', icon: CreditCard },
   { href: '/routes', section: 'routes', label: 'Routes', icon: Route },
   { href: '/reviews', section: 'reviews', label: 'Đánh giá', icon: Star },
+  { href: '/operator-images', section: 'operator-images', label: 'Hình ảnh nhà xe', icon: ImageIcon },
   { href: '/operators', section: 'operators', label: 'Operators', icon: Bus },
   { href: '/users', section: 'users', label: 'Users', icon: Users },
   { href: '/audit-logs', section: 'audit-logs', label: 'Audit logs', icon: Activity },

@@ -22,6 +22,7 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { BusTypePreview } from '../booking/BusTypePreview'
 import { OperatorReviewsSection } from '../reviews'
+import { OperatorGallery } from './OperatorGallery'
 
 export function RouteDetailHeader({ route }: { route: Route }) {
   const depDate = new Date(route.departureTime)
@@ -292,6 +293,18 @@ export function RouteDetailTabs({ route }: { route: Route }) {
             busType={route.busType}
             totalSeats={route.availableSeats}
           />
+
+      {/* Operator photos (interior / exterior) */}
+      <SectionCard
+        title="Hình ảnh xe của nhà xe"
+        icon={<Package className="h-5 w-5" />}
+      >
+        <OperatorGallery
+          operatorName={route.operator.name}
+          interiorImages={route.operator.interiorImages}
+          exteriorImages={route.operator.exteriorImages}
+        />
+      </SectionCard>
 
       {/* Amenities Section */}
       <SectionCard

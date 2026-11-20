@@ -4,6 +4,7 @@ import { memo, useState } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { CardWatermark } from '@/components/brand'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 import { formatCurrency } from '@/lib/utils'
 import type { Route } from '@vexeviet/types'
 
@@ -24,6 +25,10 @@ export const PopularRouteCard = memo(({ route }: PopularRouteCardProps) => {
   const [isNavigating, setIsNavigating] = useState(false)
   const price = typeof route.price === 'string' ? parseFloat(route.price) : route.price
   const formattedPrice = formatCurrency(price)
+  const operatorName =
+    route.operator?.name ||
+    ([route.operator?.firstName, route.operator?.lastName].filter(Boolean).join(' ') || undefined)
+  const operatorAvatar = route.operator?.operatorAvatarUrl ?? route.operator?.logo
 
   return (
     <Link
@@ -84,7 +89,19 @@ export const PopularRouteCard = memo(({ route }: PopularRouteCardProps) => {
       </div>
 
       <div className="relative z-10 flex items-end justify-between gap-3 border-t border-border/70 pt-4">
-        <div>
+        <div className="min-w-0">
+          {operatorName ? (
+            <div className="mb-1.5 flex items-center gap-1.5">
+              <UserAvatar
+                src={operatorAvatar}
+                alt={operatorName}
+                fallback={operatorName.substring(0, 2).toUpperCase()}
+                className="h-5 w-5 border border-border bg-muted"
+                fallbackClassName="text-[9px] font-bold text-primary"
+              />
+              <span className="truncate text-xs font-medium text-muted-foreground">{operatorName}</span>
+            </div>
+          ) : null}
           <p className="text-xs text-muted-foreground">Giá từ</p>
           <div className="text-xl font-extrabold text-primary">{formattedPrice}</div>
         </div>

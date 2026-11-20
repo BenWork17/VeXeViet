@@ -7,6 +7,7 @@ export type AdminSection =
   | 'payments'
   | 'routes'
   | 'reviews'
+  | 'operator-images'
   | 'operators'
   | 'users'
   | 'audit-logs';
@@ -133,6 +134,8 @@ export type AdminOperator = {
   monthlyBookings: number;
   rating: null;
   status: OperatorStatus;
+  avatarUrl?: string | null;
+  operatorAvatarUrl?: string | null;
   createdAt: string;
 };
 

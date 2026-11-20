@@ -20,6 +20,7 @@ import type { Route } from '@vexeviet/types';
 import { Button } from '@vexeviet/ui'
 import { cn, formatCurrency } from '@/lib/utils'
 import { CardWatermark } from '@/components/brand'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 
 export interface SearchRouteCardProps {
   route: Route;
@@ -131,6 +132,13 @@ export function SearchRouteCard({ route, onBook, className }: SearchRouteCardPro
         <div className="flex flex-col justify-between gap-3 p-5">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
+              <UserAvatar
+                src={route.operator?.operatorAvatarUrl ?? route.operator?.logo}
+                alt={operatorName}
+                fallback={operatorName.substring(0, 2).toUpperCase()}
+                className="h-8 w-8 border border-border bg-muted"
+                fallbackClassName="text-[11px] font-bold text-primary"
+              />
               <span className="text-base font-extrabold tracking-tight text-foreground">
                 {operatorName}
               </span>
