@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import {
   ArrowLeft,
   Star,
@@ -18,6 +21,7 @@ import { vi } from 'date-fns/locale'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { BusTypePreview } from '../booking/BusTypePreview'
+import { OperatorReviewsSection } from '../reviews'
 
 export function RouteDetailHeader({ route }: { route: Route }) {
   const depDate = new Date(route.departureTime)
@@ -97,14 +101,26 @@ export function RouteDetailHeader({ route }: { route: Route }) {
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-foreground">{route.operator.name}</h3>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning-ink">
-                  <Star className="h-3 w-3 fill-current" aria-hidden="true" />
-                  {route.operator.rating.toFixed(1)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {route.operator.totalReviews} chuyến đi
-                </span>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                {route.operator.rating > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning-ink">
+                    <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                    {route.operator.rating.toFixed(1)}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    <Star className="h-3 w-3" aria-hidden="true" />
+                    Chưa có đánh giá
+                  </span>
+                )}
+                <a
+                  href="#operator-reviews"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  {route.operator.totalReviews > 0
+                    ? `${route.operator.totalReviews} đánh giá`
+                    : 'Xem đánh giá nhà xe'}
+                </a>
               </div>
             </div>
           </div>
@@ -183,6 +199,8 @@ function QuickStat({
 }
 
 export function RouteDetailTabs({ route }: { route: Route }) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'reviews'>('overview')
+
   return (
     <div className="space-y-6">
       {/* Quick Stats Bar */}
@@ -207,17 +225,73 @@ export function RouteDetailTabs({ route }: { route: Route }) {
         />
         <QuickStat
           label="Đánh giá"
-          value={route.operator.rating.toFixed(1)}
+          value={route.operator.rating > 0 ? route.operator.rating.toFixed(1) : '—'}
           icon={<Star className="h-6 w-6" />}
           tone="warning"
         />
       </div>
 
-      {/* Bus Type Preview Section */}
-      <BusTypePreview
-        busType={route.busType}
-        totalSeats={route.availableSeats}
-      />
+      {/* Section Tabs */}
+      <div
+        role="tablist"
+        aria-label="Thông tin tuyến xe"
+        className="inline-flex gap-1 rounded-lg border border-border bg-card p-1 shadow-hn-sm"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'overview'}
+          onClick={() => setActiveTab('overview')}
+          className={cn(
+            'rounded-md px-4 py-2 text-sm font-semibold transition-colors duration-150',
+            activeTab === 'overview'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-foreground hover:bg-muted'
+          )}
+        >
+          Thông tin chuyến đi
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'reviews'}
+          onClick={() => setActiveTab('reviews')}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-semibold transition-colors duration-150',
+            activeTab === 'reviews'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-foreground hover:bg-muted'
+          )}
+        >
+          <Star className="h-3.5 w-3.5" aria-hidden="true" />
+          Đánh giá nhà xe
+          {route.operator.totalReviews > 0 ? (
+            <span
+              className={cn(
+                'rounded-sm px-1.5 py-0.5 text-xs font-semibold',
+                activeTab === 'reviews'
+                  ? 'bg-card text-accent-foreground'
+                  : 'bg-muted text-muted-foreground'
+              )}
+            >
+              {route.operator.totalReviews}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
+      {activeTab === 'reviews' ? (
+        <OperatorReviewsSection
+          operatorId={route.operator.id}
+          operatorName={route.operator.name}
+        />
+      ) : (
+        <>
+          {/* Bus Type Preview Section */}
+          <BusTypePreview
+            busType={route.busType}
+            totalSeats={route.availableSeats}
+          />
 
       {/* Amenities Section */}
       <SectionCard
@@ -362,6 +436,14 @@ export function RouteDetailTabs({ route }: { route: Route }) {
           )}
         </div>
       </SectionCard>
+
+      {/* Operator Reviews Section */}
+      <OperatorReviewsSection
+        operatorId={route.operator.id}
+        operatorName={route.operator.name}
+      />
+        </>
+      )}
     </div>
   )
 }

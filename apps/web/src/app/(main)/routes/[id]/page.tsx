@@ -39,13 +39,13 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
             id: data.id,
             operator: data.operator
               ? {
-                  id: data.operator.id || '',
+                  id: data.operator.id || data.operatorId || '',
                   name: data.operator.name || `${data.operator.firstName || ''} ${data.operator.lastName || ''}`.trim() || 'Unknown',
                   logoUrl: data.operator.logo || '',
-                  rating: data.operator.rating || 0,
-                  totalReviews: data.operator.totalTrips || 0
+                  rating: data.operator.rating ?? 0,
+                  totalReviews: data.operator.reviewCount ?? 0,
                 }
-              : { id: '', name: 'Unknown', logoUrl: '', rating: 0, totalReviews: 0 },
+              : { id: data.operatorId || '', name: 'Unknown', logoUrl: '', rating: 0, totalReviews: 0 },
             busType: data.busType || 'STANDARD',
             licensePlate: data.licensePlate || '',
             departureTime: data.departureTime,
@@ -141,6 +141,10 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
       from: route.departureLocation,
       to: route.arrivalLocation,
       departureTime: route.departureTime,
+      operatorId: route.operator.id,
+      operatorName: route.operator.name,
+      operatorRating: route.operator.rating,
+      operatorReviewCount: route.operator.totalReviews,
       pickupPoints: route.pickupPoints,
       dropoffPoints: route.dropoffPoints,
     }));

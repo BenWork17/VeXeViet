@@ -48,6 +48,16 @@ export {
 // Payment API
 export { initiatePayment, getPaymentStatus } from './payment';
 
+// Reviews API
+export {
+  createReview,
+  getMyReviews,
+  getReviewEligibility,
+  getOperatorReviewSummary,
+  getOperatorReviews,
+} from './reviews';
+export type { GetOperatorReviewsParams } from './reviews';
+
 // Mock APIs (for development/fallback)
 export { mockSearchRoutes } from '@vexeviet/api-client';
 export { getRouteDetailById as getMockRouteById } from './mock/routes';

@@ -134,10 +134,15 @@ export function SearchRouteCard({ route, onBook, className }: SearchRouteCardPro
               <span className="text-base font-extrabold tracking-tight text-foreground">
                 {operatorName}
               </span>
-              {route.operator?.rating !== undefined && (
+              {route.operator?.rating != null && route.operator.rating > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700 dark:border-amber-700/50 dark:bg-amber-950/40 dark:text-amber-300">
                   <Star size={12} className="fill-current" aria-hidden="true" />
-                  {route.operator.rating.toFixed(1)}
+                  <span>{route.operator.rating.toFixed(1)}</span>
+                  {typeof route.operator.reviewCount === 'number' && route.operator.reviewCount > 0 && (
+                    <span className="font-medium opacity-80">
+                      ({route.operator.reviewCount})
+                    </span>
+                  )}
                 </span>
               )}
             </div>

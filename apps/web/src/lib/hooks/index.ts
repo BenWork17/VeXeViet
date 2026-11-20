@@ -24,6 +24,16 @@ export {
 // Seat holding hook
 export { useSeatHold } from './useSeatHold';
 
+// Review hooks
+export {
+  useReviewEligibility,
+  useMyReviews,
+  useOperatorReviewSummary,
+  useOperatorReviews,
+  useCreateReview,
+  reviewKeys,
+} from './useReviews';
+
 // Utility hooks
 export { useTheme } from './useTheme';
 export { useOnlineStatus } from './useOnlineStatus';

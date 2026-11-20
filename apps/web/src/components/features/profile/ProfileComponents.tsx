@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useUpdateProfile } from '@/lib/hooks/useAuth';
+import { useReviewEligibility } from '@/lib/hooks/useReviews';
 import { useToast } from '@/components/error/ToastProvider';
+import { ReviewModal, StarRating } from '@/components/features/reviews';
 import { User } from '@vexeviet/types';
 import {
   Calendar,
@@ -12,8 +14,10 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessageSquareReply,
   Phone,
   ShieldCheck,
+  Star,
   Ticket,
   UserRound,
 } from 'lucide-react';
@@ -216,6 +220,26 @@ function AccountStatusCard({ label, verified }: { label: string; verified: boole
 
 export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; isLoading?: boolean }) {
   const [navigatingBookingId, setNavigatingBookingId] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<{
+    bookingId: string;
+    bookingCode?: string;
+    routeLabel?: string;
+    operatorName?: string;
+  } | null>(null);
+  const { showSuccess } = useToast();
+
+  const bookingIds = useMemo(
+    () =>
+      bookings
+        .map((booking) => booking.bookingId || booking.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+    [bookings]
+  );
+
+  const { data: eligibilityMap } = useReviewEligibility(
+    bookingIds,
+    !isLoading && bookingIds.length > 0
+  );
 
   if (isLoading) {
     return (
@@ -242,82 +266,168 @@ export function BookingHistoryList({ bookings, isLoading }: { bookings: any[]; i
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-hn-sm">
-      {bookings.map((booking) => {
-        const totalAmount = getTotalAmount(booking);
-        const seatList = booking.passengers?.map((p: any) => p.seatNumber).filter(Boolean) || booking.seats || [];
-        const canViewTicket = booking.status === 'CONFIRMED' || booking.status === 'COMPLETED';
-        const bookingId = booking.bookingId || booking.id;
+    <>
+      <div className="overflow-hidden rounded-lg border border-border bg-card shadow-hn-sm">
+        {bookings.map((booking) => {
+          const totalAmount = getTotalAmount(booking);
+          const seatList = booking.passengers?.map((p: any) => p.seatNumber).filter(Boolean) || booking.seats || [];
+          const canViewTicket = booking.status === 'CONFIRMED' || booking.status === 'COMPLETED';
+          const bookingId = booking.bookingId || booking.id;
+          const eligibility = eligibilityMap?.[bookingId];
+          const submittedReview = eligibility?.review ?? null;
+          const canReview = Boolean(eligibility?.canReview);
+          const routeLabel =
+            booking.route?.name ||
+            `${booking.route?.origin || 'Điểm đi'} → ${booking.route?.destination || 'Điểm đến'}`;
+          const operatorName =
+            booking.route?.operator?.name ||
+            booking.operator?.name ||
+            undefined;
 
-        return (
-          <article
-            key={bookingId}
-            className="border-b border-border px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-accent"
-          >
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="flex min-w-0 items-start gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
-                  <Ticket className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <StatusBadge status={booking.status} />
-                    {booking.status === 'PENDING' && booking.paymentDeadline && (
-                      <span className="rounded-sm bg-error-soft px-2.5 py-1 text-xs font-semibold text-error-ink">
-                        Hết hạn {new Date(booking.paymentDeadline).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    )}
+          return (
+            <article
+              key={bookingId}
+              className="border-b border-border px-4 py-3 transition-colors duration-150 last:border-b-0 hover:bg-accent"
+            >
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
+                    <Ticket className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <StatusBadge status={booking.status} />
+                      {submittedReview ? (
+                        <span className="inline-flex items-center gap-1 rounded-sm bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning-ink">
+                          <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                          Đã đánh giá {submittedReview.rating}★
+                        </span>
+                      ) : null}
+                      {booking.status === 'PENDING' && booking.paymentDeadline && (
+                        <span className="rounded-sm bg-error-soft px-2.5 py-1 text-xs font-semibold text-error-ink">
+                          Hết hạn {new Date(booking.paymentDeadline).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="truncate font-display text-lg text-foreground">
+                      {booking.route?.name || `${booking.route?.origin || 'Điểm đi'} - ${booking.route?.destination || 'Điểm đến'}`}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Mã đặt vé: <span className="font-mono text-foreground">{booking.bookingCode || bookingId}</span>
+                    </p>
                   </div>
-                  <h3 className="truncate font-display text-lg text-foreground">
-                    {booking.route?.name || `${booking.route?.origin || 'Điểm đi'} - ${booking.route?.destination || 'Điểm đến'}`}
-                  </h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Mã đặt vé: <span className="font-mono text-foreground">{booking.bookingCode || bookingId}</span>
+                </div>
+                <div className="shrink-0 md:text-right">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tổng tiền</p>
+                  <p className="font-mono text-xl font-semibold text-foreground">
+                    {new Intl.NumberFormat('vi-VN').format(totalAmount)}đ
                   </p>
                 </div>
               </div>
-              <div className="shrink-0 md:text-right">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tổng tiền</p>
-                <p className="font-mono text-xl font-semibold text-foreground">
-                  {new Intl.NumberFormat('vi-VN').format(totalAmount)}đ
-                </p>
+
+              <div className="mt-3 grid gap-2 border-t border-border pt-3 md:grid-cols-2">
+                <BookingInfo icon={MapPin} label="Hành trình" value={`${booking.route?.origin || 'N/A'} → ${booking.route?.destination || 'N/A'}`} />
+                <BookingInfo icon={Calendar} label="Khởi hành" value={formatDeparture(booking.route?.departureTime)} />
+                <BookingInfo icon={Ticket} label="Ghế đã chọn" value={seatList.length > 0 ? seatList.join(', ') : 'Chưa có thông tin'} />
+                <BookingInfo icon={CreditCard} label="Loại xe" value={formatBusType(booking.route?.busType)} />
               </div>
-            </div>
 
-            <div className="mt-3 grid gap-2 border-t border-border pt-3 md:grid-cols-2">
-              <BookingInfo icon={MapPin} label="Hành trình" value={`${booking.route?.origin || 'N/A'} → ${booking.route?.destination || 'N/A'}`} />
-              <BookingInfo icon={Calendar} label="Khởi hành" value={formatDeparture(booking.route?.departureTime)} />
-              <BookingInfo icon={Ticket} label="Ghế đã chọn" value={seatList.length > 0 ? seatList.join(', ') : 'Chưa có thông tin'} />
-              <BookingInfo icon={CreditCard} label="Loại xe" value={formatBusType(booking.route?.busType)} />
-            </div>
-
-            <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span>Đặt lúc: {booking.createdAt ? new Date(booking.createdAt).toLocaleString('vi-VN') : 'N/A'}</span>
-              {canViewTicket ? (
-                <button
-                  onClick={() => window.open(`/booking/ticket/${bookingId}`, '_blank')}
-                  className="inline-flex h-[42px] items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep"
-                >
-                  Xem chi tiết &amp; in vé
-                </button>
-              ) : booking.status === 'PENDING' ? (
-                <button
-                  onClick={() => {
-                    setNavigatingBookingId(bookingId);
-                    window.location.href = `/booking/payment?bookingId=${bookingId}`;
-                  }}
-                  disabled={navigatingBookingId === bookingId}
-                  className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-warning-ink transition-colors duration-150 hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {navigatingBookingId === bookingId && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
-                  Thanh toán ngay
-                </button>
+              {submittedReview ? (
+                <div className="mt-3 rounded-md border border-border bg-background p-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-foreground">Đánh giá của bạn</span>
+                      <StarRating value={submittedReview.rating} readOnly size="sm" />
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(submittedReview.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  {submittedReview.comment ? (
+                    <p className="mt-2 whitespace-pre-line text-sm text-foreground">
+                      {submittedReview.comment}
+                    </p>
+                  ) : null}
+                  {submittedReview.operatorReply ? (
+                    <div className="mt-2.5 rounded-sm border border-border bg-card p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                          <MessageSquareReply className="h-3.5 w-3.5" aria-hidden="true" />
+                          Phản hồi từ nhà xe
+                        </span>
+                        {submittedReview.repliedAt ? (
+                          <span className="text-[11px] text-muted-foreground">
+                            {new Date(submittedReview.repliedAt).toLocaleDateString('vi-VN')}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-foreground">
+                        {submittedReview.operatorReply}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
-            </div>
-          </article>
-        );
-      })}
-    </div>
+
+              <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                <span>Đặt lúc: {booking.createdAt ? new Date(booking.createdAt).toLocaleString('vi-VN') : 'N/A'}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {canReview ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReviewTarget({
+                          bookingId,
+                          bookingCode: booking.bookingCode,
+                          routeLabel,
+                          operatorName,
+                        })
+                      }
+                      className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-primary bg-card px-4 text-sm font-semibold text-primary transition-colors duration-150 hover:bg-accent"
+                    >
+                      <Star className="h-4 w-4" aria-hidden="true" />
+                      Đánh giá nhà xe
+                    </button>
+                  ) : null}
+                  {canViewTicket ? (
+                    <button
+                      onClick={() => window.open(`/booking/ticket/${bookingId}`, '_blank')}
+                      className="inline-flex h-[42px] items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep"
+                    >
+                      Xem chi tiết &amp; in vé
+                    </button>
+                  ) : booking.status === 'PENDING' ? (
+                    <button
+                      onClick={() => {
+                        setNavigatingBookingId(bookingId);
+                        window.location.href = `/booking/payment?bookingId=${bookingId}`;
+                      }}
+                      disabled={navigatingBookingId === bookingId}
+                      className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-semibold text-warning-ink transition-colors duration-150 hover:bg-warning-soft disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {navigatingBookingId === bookingId && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />}
+                      Thanh toán ngay
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <ReviewModal
+        open={Boolean(reviewTarget)}
+        onClose={() => setReviewTarget(null)}
+        bookingId={reviewTarget?.bookingId ?? ''}
+        bookingCode={reviewTarget?.bookingCode}
+        routeLabel={reviewTarget?.routeLabel}
+        operatorName={reviewTarget?.operatorName}
+        onSubmitted={() => {
+          showSuccess('Cảm ơn bạn đã đánh giá nhà xe!');
+        }}
+      />
+    </>
   );
 }
 

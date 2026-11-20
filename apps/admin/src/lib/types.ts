@@ -1,7 +1,15 @@
 import type { UserRole } from '@vexeviet/types';
 
 export type AdminRole = Extract<UserRole, 'ADMIN' | 'OPERATOR'>;
-export type AdminSection = 'dashboard' | 'bookings' | 'payments' | 'routes' | 'operators' | 'users' | 'audit-logs';
+export type AdminSection =
+  | 'dashboard'
+  | 'bookings'
+  | 'payments'
+  | 'routes'
+  | 'reviews'
+  | 'operators'
+  | 'users'
+  | 'audit-logs';
 
 export type AdminSession = {
   id: string;
@@ -153,4 +161,43 @@ export type AuditLogItem = {
   severity: AuditSeverity;
   metadata: unknown;
   createdAt: string;
+};
+
+export type ReviewStatus = 'VISIBLE' | 'HIDDEN';
+
+export type ReviewDistribution = {
+  '1': number;
+  '2': number;
+  '3': number;
+  '4': number;
+  '5': number;
+};
+
+export type AdminReview = {
+  id: string;
+  bookingId: string;
+  bookingCode: string;
+  rating: number;
+  comment: string | null;
+  reviewerName: string;
+  createdAt: string;
+  route: {
+    fromCity: string;
+    toCity: string;
+  } | null;
+  tripDate: string | null;
+  verified: boolean;
+  operatorReply: string | null;
+  repliedAt: string | null;
+  status: ReviewStatus;
+};
+
+export type AdminReviewStats = {
+  operatorId: string | null;
+  averageRating: number;
+  totalReviews: number;
+  distribution: ReviewDistribution;
+  repliedCount: number;
+  unrepliedCount: number;
+  last30DaysCount: number;
 };

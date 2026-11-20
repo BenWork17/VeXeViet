@@ -7,6 +7,7 @@ import { BusSeatLayout } from '@/components/features/booking/SeatMap/layouts';
 import { CountdownTimer } from '@/components/features/booking/CountdownTimer';
 import { SeatConflictModal } from '@/components/features/booking/SeatConflictModal';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
+import { OperatorRatingChip } from '@/components/features/reviews';
 import { FadeIn } from '@/components/motion';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -236,6 +237,13 @@ export default function BookingPage({ params }: { params: { id: string } }) {
             from: (data as any).departureLocation || data.origin || '',
             to: (data as any).arrivalLocation || data.destination || '',
             departureTime: data.departureTime,
+            operatorId: data.operator?.id || data.operatorId,
+            operatorName:
+              data.operator?.name ||
+              [data.operator?.firstName, data.operator?.lastName].filter(Boolean).join(' ') ||
+              undefined,
+            operatorRating: data.operator?.rating ?? null,
+            operatorReviewCount: data.operator?.reviewCount ?? 0,
             pickupPoints: (data.pickupPoints || []).map((p: any, i: number) => ({
               id: p.id || `p-${i + 1}`,
               time: p.time,
@@ -572,6 +580,20 @@ export default function BookingPage({ params }: { params: { id: string } }) {
             </h2>
             <p className="booking-panel-note">{selectedSeats.length}/5 ghế</p>
           </div>
+
+          {currentRoute.operatorName ? (
+            <div className="booking-summary-block">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-foreground">
+                  {currentRoute.operatorName}
+                </span>
+                <OperatorRatingChip
+                  rating={currentRoute.operatorRating}
+                  reviewCount={currentRoute.operatorReviewCount}
+                />
+              </div>
+            </div>
+          ) : null}
 
           {expiresAt && !isExpired ? (
             <div className="booking-summary-block">

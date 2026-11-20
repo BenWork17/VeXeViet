@@ -17,6 +17,10 @@ export interface Route {
   from: string;
   to: string;
   departureTime: string;
+  operatorId?: string;
+  operatorName?: string;
+  operatorRating?: number | null;
+  operatorReviewCount?: number;
   pickupPoints?: BookingStopPoint[];
   dropoffPoints?: BookingStopPoint[];
 }

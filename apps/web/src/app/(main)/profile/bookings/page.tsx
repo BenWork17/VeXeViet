@@ -4,8 +4,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { cancelBooking } from '@/lib/api/bookings';
 import { useMyBookings } from '@/lib/hooks/useBookings';
+import { useReviewEligibility } from '@/lib/hooks/useReviews';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { BookingDetails } from '@/types/booking';
+import { ReviewModal, StarRating } from '@/components/features/reviews';
+import type { ReviewEligibilityItem } from '@vexeviet/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle2, Star, MessageSquareReply } from 'lucide-react';
 import Link from 'next/link';
 import { FadeIn } from '@/components/motion';
 
@@ -101,10 +104,17 @@ export default function BookingsDashboardPage() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<BookingDetails | null>(null);
 
   const bookings = useMemo(
     () => (Array.isArray(rawBookings) ? rawBookings.map(normalizeBooking) : []),
     [rawBookings]
+  );
+
+  const bookingIds = useMemo(() => bookings.map((b) => b.id).filter(Boolean), [bookings]);
+  const { data: eligibilityMap } = useReviewEligibility(
+    bookingIds,
+    Boolean(user) && !loading && bookingIds.length > 0
   );
 
   useEffect(() => {
@@ -257,11 +267,29 @@ export default function BookingsDashboardPage() {
                 onCancel={handleCancelBooking}
                 canCancel={canCancel(booking)}
                 isCancelling={cancellingId === booking.id}
+                eligibility={eligibilityMap?.[booking.id]}
+                onReview={() => setReviewTarget(booking)}
               />
             ))}
           </div>
         )}
       </FadeIn>
+
+      <ReviewModal
+        open={Boolean(reviewTarget)}
+        onClose={() => setReviewTarget(null)}
+        bookingId={reviewTarget?.id ?? ''}
+        bookingCode={reviewTarget?.bookingCode}
+        routeLabel={
+          reviewTarget
+            ? `${reviewTarget.route.from} → ${reviewTarget.route.to}`
+            : undefined
+        }
+        operatorName={reviewTarget?.operator.name}
+        onSubmitted={() => {
+          showToast('Cảm ơn bạn đã đánh giá nhà xe!', 'success');
+        }}
+      />
     </div>
   );
 }
@@ -271,11 +299,15 @@ function BookingCard({
   onCancel,
   canCancel,
   isCancelling,
+  eligibility,
+  onReview,
 }: {
   booking: BookingDetails;
   onCancel: (id: string) => void;
   canCancel: boolean;
   isCancelling: boolean;
+  eligibility?: ReviewEligibilityItem;
+  onReview: () => void;
 }) {
   const formatDate = (isoString: string) => {
     const date = new Date(isoString);
@@ -388,6 +420,47 @@ function BookingCard({
         </div>
       </div>
 
+      {/* Submitted Review */}
+      {eligibility?.review ? (
+        <div className="mb-4 rounded-md border border-border bg-background p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-semibold text-warning-ink">
+                <Star className="h-3 w-3 fill-current" aria-hidden="true" />
+                Đã đánh giá {eligibility.review.rating}★
+              </span>
+              <StarRating value={eligibility.review.rating} readOnly size="sm" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {new Date(eligibility.review.createdAt).toLocaleDateString('vi-VN')}
+            </span>
+          </div>
+          {eligibility.review.comment ? (
+            <p className="mt-2 whitespace-pre-line text-sm text-foreground">
+              {eligibility.review.comment}
+            </p>
+          ) : null}
+          {eligibility.review.operatorReply ? (
+            <div className="mt-3 rounded-sm border border-border bg-card p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
+                  <MessageSquareReply className="h-3.5 w-3.5" aria-hidden="true" />
+                  Phản hồi từ nhà xe
+                </span>
+                {eligibility.review.repliedAt ? (
+                  <span className="text-[11px] text-muted-foreground">
+                    {new Date(eligibility.review.repliedAt).toLocaleDateString('vi-VN')}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 whitespace-pre-line text-xs leading-relaxed text-foreground">
+                {eligibility.review.operatorReply}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Actions */}
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row">
         <Link
@@ -397,6 +470,17 @@ function BookingCard({
           <Ticket className="h-4 w-4" />
           View E-Ticket
         </Link>
+
+        {eligibility?.canReview ? (
+          <button
+            type="button"
+            onClick={onReview}
+            className="inline-flex h-[42px] items-center justify-center gap-2 rounded-md border border-primary bg-card px-4 text-sm font-semibold text-primary transition-colors duration-150 hover:bg-accent"
+          >
+            <Star className="h-4 w-4" aria-hidden="true" />
+            Đánh giá nhà xe
+          </button>
+        ) : null}
 
         {canCancel && (
           <AlertDialog>

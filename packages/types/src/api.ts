@@ -176,7 +176,8 @@ export interface RouteOperator {
   lastName?: string;
   name?: string;
   logo?: string;
-  rating?: number;
+  rating?: number | null;
+  reviewCount?: number;
   totalTrips?: number;
 }
 
@@ -203,7 +204,8 @@ export interface Operator {
   id: string;
   name: string;
   logo?: string;
-  rating?: number;
+  rating?: number | null;
+  reviewCount?: number;
   totalTrips?: number;
 }
 
@@ -470,6 +472,109 @@ export interface ReleaseSeatsResponse {
 }
 
 // ========================
+// Review Types
+// ========================
+
+export type ReviewStatus = 'VISIBLE' | 'HIDDEN';
+
+export interface ReviewDistribution {
+  '1': number;
+  '2': number;
+  '3': number;
+  '4': number;
+  '5': number;
+}
+
+export interface ReviewRouteBrief {
+  fromCity: string;
+  toCity: string;
+  departureTime?: string;
+}
+
+export interface Review {
+  id: string;
+  bookingId: string;
+  rating: number;
+  comment: string | null;
+  status: ReviewStatus;
+  operatorId: string;
+  routeId: string;
+  operatorReply: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  route?: ReviewRouteBrief | null;
+}
+
+export interface PublicReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  reviewerName: string;
+  createdAt: string;
+  route: {
+    fromCity: string;
+    toCity: string;
+  } | null;
+  tripDate: string | null;
+  verified: boolean;
+  operatorReply: string | null;
+  repliedAt: string | null;
+}
+
+export interface ManageReview extends PublicReview {
+  bookingId: string;
+  bookingCode: string;
+  status: ReviewStatus;
+}
+
+export interface ReviewSummary {
+  operatorId: string;
+  averageRating: number;
+  totalReviews: number;
+  distribution: ReviewDistribution;
+}
+
+export interface ManageReviewStats extends ReviewSummary {
+  repliedCount: number;
+  unrepliedCount: number;
+  last30DaysCount: number;
+}
+
+export type ReviewEligibilityReason =
+  | 'TRIP_NOT_COMPLETED'
+  | 'ALREADY_REVIEWED'
+  | 'NOT_OWNER'
+  | null;
+
+export interface ReviewEligibilityReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  operatorReply: string | null;
+  repliedAt: string | null;
+}
+
+export interface ReviewEligibilityItem {
+  canReview: boolean;
+  reason: ReviewEligibilityReason;
+  review: ReviewEligibilityReview | null;
+}
+
+export type ReviewEligibilityMap = Record<string, ReviewEligibilityItem>;
+
+export interface CreateReviewRequest {
+  bookingId: string;
+  rating: number;
+  comment?: string;
+}
+
+export interface ReplyReviewRequest {
+  reply: string;
+}
+
+// ========================
 // Error Codes
 // ========================
 
@@ -486,6 +591,7 @@ export type ErrorCode =
   | 'NOT_FOUND'
   | 'ROUTE_NOT_FOUND'
   | 'BOOKING_NOT_FOUND'
+  | 'REVIEW_NOT_FOUND'
   // Booking errors
   | 'SEATS_UNAVAILABLE'
   | 'SEATS_ALREADY_HELD'
@@ -494,6 +600,9 @@ export type ErrorCode =
   | 'INSUFFICIENT_SEATS'
   | 'INVALID_SEAT_NUMBERS'
   | 'PASSENGER_SEAT_MISMATCH'
+  // Review errors
+  | 'TRIP_NOT_COMPLETED'
+  | 'REVIEW_ALREADY_EXISTS'
   // System errors
   | 'INTERNAL_ERROR'
   | 'SERVICE_UNAVAILABLE';
@@ -558,6 +667,16 @@ export const API_ENDPOINTS = {
 
   // Booking by code (public)
   BOOKINGS_BY_CODE: (code: string) => `/bookings/code/${code}`,
+
+  // Reviews
+  REVIEWS_CREATE: '/reviews',
+  REVIEWS_MY: '/reviews/my',
+  REVIEWS_ELIGIBILITY: '/reviews/eligibility',
+  REVIEWS_OPERATOR_SUMMARY: (operatorId: string) => `/reviews/operators/${operatorId}/summary`,
+  REVIEWS_OPERATOR_LIST: (operatorId: string) => `/reviews/operators/${operatorId}`,
+  REVIEWS_MANAGE_LIST: '/reviews/manage',
+  REVIEWS_MANAGE_STATS: '/reviews/manage/stats',
+  REVIEWS_MANAGE_REPLY: (id: string) => `/reviews/manage/${id}/reply`,
 } as const;
 
 // ========================
@@ -574,6 +693,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   NOT_FOUND: 'Không tìm thấy dữ liệu',
   ROUTE_NOT_FOUND: 'Không tìm thấy tuyến xe',
   BOOKING_NOT_FOUND: 'Không tìm thấy đơn đặt vé',
+  REVIEW_NOT_FOUND: 'Không tìm thấy đánh giá',
   SEATS_UNAVAILABLE: 'Ghế đã được đặt, vui lòng chọn ghế khác',
   SEATS_ALREADY_HELD: 'Ghế đang được giữ bởi người khác',
   BOOKING_EXPIRED: 'Đơn đặt vé đã hết hạn',
@@ -581,6 +701,8 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   INSUFFICIENT_SEATS: 'Không đủ ghế trống',
   INVALID_SEAT_NUMBERS: 'Số ghế không hợp lệ',
   PASSENGER_SEAT_MISMATCH: 'Số hành khách không khớp với số ghế đã chọn',
+  TRIP_NOT_COMPLETED: 'Bạn chỉ có thể đánh giá sau khi hoàn thành chuyến đi',
+  REVIEW_ALREADY_EXISTS: 'Bạn đã đánh giá chuyến đi này trước đó',
   INTERNAL_ERROR: 'Đã xảy ra lỗi hệ thống, vui lòng thử lại sau',
   SERVICE_UNAVAILABLE: 'Dịch vụ tạm thời không khả dụng',
 };

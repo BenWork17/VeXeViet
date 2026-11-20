@@ -43,7 +43,7 @@ export function adaptBERouteToFE(beRoute: BERoute): FERoute {
           'Unknown Operator'),
       logoUrl: beRoute.operator?.logo ?? '/images/default-operator.png',
       rating: beRoute.operator?.rating ?? 0,
-      totalReviews: beRoute.operator?.totalTrips ?? 0,
+      totalReviews: beRoute.operator?.reviewCount ?? beRoute.operator?.totalTrips ?? 0,
     },
     busType: beRoute.busType ?? beRoute.vehicleType ?? 'STANDARD',
     licensePlate: beRoute.licensePlate ?? '',
