@@ -51,9 +51,19 @@ export interface User {
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   status: UserStatus;
+  avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+// Operator images (avatar + interior/exterior vehicle photos)
+export interface OperatorImages {
+  operatorAvatarUrl: string | null;
+  interiorImages: string[];
+  exteriorImages: string[];
+}
+
+export type OperatorImageType = 'interior' | 'exterior';
 
 // Auth - Register
 export interface RegisterRequest {
@@ -176,6 +186,9 @@ export interface RouteOperator {
   lastName?: string;
   name?: string;
   logo?: string;
+  operatorAvatarUrl?: string | null;
+  interiorImages?: string[] | null;
+  exteriorImages?: string[] | null;
   rating?: number;
   totalTrips?: number;
 }

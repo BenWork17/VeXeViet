@@ -1,7 +1,15 @@
 import type { UserRole } from '@vexeviet/types';
 
 export type AdminRole = Extract<UserRole, 'ADMIN' | 'OPERATOR'>;
-export type AdminSection = 'dashboard' | 'bookings' | 'payments' | 'routes' | 'operators' | 'users' | 'audit-logs';
+export type AdminSection =
+  | 'dashboard'
+  | 'bookings'
+  | 'payments'
+  | 'routes'
+  | 'operator-images'
+  | 'operators'
+  | 'users'
+  | 'audit-logs';
 
 export type AdminSession = {
   id: string;
@@ -125,6 +133,8 @@ export type AdminOperator = {
   monthlyBookings: number;
   rating: null;
   status: OperatorStatus;
+  avatarUrl?: string | null;
+  operatorAvatarUrl?: string | null;
   createdAt: string;
 };
 

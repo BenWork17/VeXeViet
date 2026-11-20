@@ -298,7 +298,7 @@ async function send(path: string, init: RequestInitWithQuery, retried: boolean):
 
   const headers = new Headers(rest.headers);
   headers.set('Accept', 'application/json');
-  if (rest.body !== undefined && !headers.has('Content-Type')) {
+  if (rest.body !== undefined && !headers.has('Content-Type') && !(rest.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -439,6 +439,40 @@ export async function signOut(): Promise<void> {
   }
 
   clearSession();
+}
+
+/* ------------------------------------------------------------------ *
+ * Media (multipart upload) helpers
+ * ------------------------------------------------------------------ */
+
+export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+export const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/** Stored media paths are relative (`/api/v1/uploads/...`); make them loadable. */
+export function resolveMediaUrl(path?: string | null): string | undefined {
+  if (!path) return undefined;
+  if (/^(https?:|data:|blob:)/i.test(path)) return path;
+  if (path.startsWith('/api/')) return `${apiBaseUrl.replace(/\/api\/v1$/, '')}${path}`;
+  return path;
+}
+
+export function validateImageFile(file: File): string | null {
+  if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) return 'Chỉ chấp nhận ảnh JPG, PNG hoặc WebP.';
+  if (file.size > MAX_IMAGE_SIZE) return 'Ảnh vượt quá dung lượng tối đa 5MB.';
+  if (file.size === 0) return 'Tệp ảnh trống.';
+  return null;
+}
+
+/** Send `file` as multipart (field name `file`); Content-Type is left to the browser. */
+export async function uploadFile<T>(
+  path: string,
+  file: File,
+  method: 'POST' | 'PUT' = 'POST',
+  query?: ApiQuery
+): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  return request<T>(path, { method, body: form, query });
 }
 
 /* ------------------------------------------------------------------ *

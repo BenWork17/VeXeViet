@@ -24,6 +24,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { UserAvatar } from '@/components/ui/UserAvatar'
 import { ThemeSwitcher } from '@/components/theme'
 import { VietnamFlagIcon } from '@/components/brand'
 import { usePathname, useRouter } from 'next/navigation'
@@ -655,9 +656,12 @@ export function Header() {
                   className="site-account-link inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pr-3 pl-1.5 text-xs font-bold transition-colors hover:border-primary/50 hover:bg-accent/60"
                   aria-current={isCurrentPath('/profile') ? 'page' : undefined}
                 >
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-extrabold text-primary-foreground">
-                    {userInitials}
-                  </span>
+                  <UserAvatar
+                    src={user.avatarUrl}
+                    fallback={userInitials}
+                    className="h-6 w-6"
+                    fallbackClassName="bg-primary text-[11px] font-extrabold text-primary-foreground"
+                  />
                   <span className="max-w-[120px] truncate">
                     {user.firstName} {user.lastName}
                   </span>

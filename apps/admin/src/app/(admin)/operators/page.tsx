@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { ImageIcon } from 'lucide-react';
 import {
   Button,
   DEFERRED_TITLE,
@@ -19,7 +21,7 @@ import {
   thNumberClass,
 } from '@/components/ui';
 import { ListTabs } from '@/components/list-tabs';
-import { useApi } from '@/lib/api';
+import { resolveMediaUrl, useApi } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { accountMark } from '@/lib/status';
 import type { AdminOperator, ListResponse, OperatorStatus } from '@/lib/types';
@@ -100,7 +102,7 @@ export default function OperatorsPage() {
                   <th className={`${thNumberClass} w-[14%]`}>Booking tháng</th>
                   <th className={`${thClass} w-[13%]`}>Trạng thái</th>
                   <th className={`${thClass} w-[10%]`}>Tham gia</th>
-                  <th className={`${thClass} w-[36px]`}>
+                  <th className={`${thClass} w-[76px]`}>
                     <span className="sr-only">Hành động</span>
                   </th>
                 </tr>
@@ -108,9 +110,22 @@ export default function OperatorsPage() {
               <tbody>
                 {rows.map((operator) => {
                   const mark = accountMark(operator.status);
+                  const avatarSrc = resolveMediaUrl(operator.operatorAvatarUrl ?? operator.avatarUrl);
                   return (
                     <tr key={operator.id} className="transition-colors duration-[120ms] hover:bg-raised">
-                      <td className={`${tdClass} truncate font-semibold`}>{operator.name}</td>
+                      <td className={`${tdClass} truncate font-semibold`}>
+                        <span className="inline-flex items-center gap-2.5">
+                          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-rule bg-raised text-[11px] font-bold text-ink">
+                            {avatarSrc ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={avatarSrc} alt={operator.name} className="h-full w-full object-cover" />
+                            ) : (
+                              operator.name.substring(0, 2).toUpperCase()
+                            )}
+                          </span>
+                          <span className="truncate">{operator.name}</span>
+                        </span>
+                      </td>
                       <td className={`${tdClass} truncate text-muted`}>{operator.contactEmail}</td>
                       <td className={tdNumberClass}>{operator.activeRoutes}</td>
                       <td className={tdNumberClass}>{operator.monthlyBookings}</td>
@@ -119,7 +134,14 @@ export default function OperatorsPage() {
                       </td>
                       <td className={`${tdClass} tabular text-muted`}>{formatDate(operator.createdAt)}</td>
                       <td className={`${tdClass} text-right`}>
-                        <Kebab label={`Hành động cho ${operator.name}`} />
+                        <Link
+                          href={`/operator-images?operatorId=${operator.id}`}
+                          className="inline-flex items-center gap-1 rounded-control border border-control bg-sheet px-2 py-1 text-xs font-semibold text-ink hover:bg-active"
+                          title={`Quản lý ảnh cho ${operator.name}`}
+                        >
+                          <ImageIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                          Ảnh
+                        </Link>
                       </td>
                     </tr>
                   );

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Users, ShieldCheck, XCircle, Clock, Info, CircleAlert } from 'lucide-react';
 import { getRouteById } from '@/lib/api/routes';
+import { resolveMediaUrl, resolveMediaUrls } from '@/lib/api/media';
 import { RouteDetailHeader, RouteDetailTabs } from '@/components/features/route-detail/RouteDetailComponents';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { initBooking } from '@/store/slices/bookingSlice';
@@ -41,7 +42,9 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
               ? {
                   id: data.operator.id || '',
                   name: data.operator.name || `${data.operator.firstName || ''} ${data.operator.lastName || ''}`.trim() || 'Unknown',
-                  logoUrl: data.operator.logo || '',
+                  logoUrl: resolveMediaUrl(data.operator.operatorAvatarUrl ?? data.operator.logo) || '',
+                  interiorImages: resolveMediaUrls(data.operator.interiorImages),
+                  exteriorImages: resolveMediaUrls(data.operator.exteriorImages),
                   rating: data.operator.rating || 0,
                   totalReviews: data.operator.totalTrips || 0
                 }

@@ -50,6 +50,8 @@ export interface Operator {
   id: string;
   name: string;
   logoUrl: string;
+  interiorImages?: string[];
+  exteriorImages?: string[];
   rating: number;
   totalReviews: number;
 }

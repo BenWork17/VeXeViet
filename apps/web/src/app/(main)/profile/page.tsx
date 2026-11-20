@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ProfileForm, BookingHistoryList } from '@/components/features/profile/ProfileComponents';
 import { FadeIn } from '@/components/motion';
+import { AvatarUploader } from '@/components/features/profile/AvatarUploader';
 import { Spinner } from '@/components/ui/spinner';
 import {
   Bell,
@@ -171,9 +172,7 @@ export default function ProfilePage() {
           <div className="px-6 py-8 md:px-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-border bg-card font-display text-2xl text-accent-foreground">
-                  {initials}
-                </div>
+                <AvatarUploader avatarUrl={user.avatarUrl} initials={initials} name={fullName} />
                 <div>
                   <div className="mb-2 inline-flex items-center gap-2 rounded-sm border border-primary-foreground/25 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground">
                     <ShieldCheck className="h-3.5 w-3.5" />
