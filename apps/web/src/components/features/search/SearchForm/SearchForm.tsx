@@ -6,26 +6,42 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { format } from 'date-fns'
 import { useRouter } from 'next/navigation'
-import { Button, Input, cn } from '@vexeviet/ui'
+import { Button, cn } from '@vexeviet/ui'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ProvinceSelect } from '@/components/ui/province-select'
-import { ArrowLeftRight, Search, CalendarDays, Users, MapPin, Navigation } from 'lucide-react'
+import { ArrowLeftRight, Search, CalendarDays, Users, MapPin, Navigation, Loader2 } from 'lucide-react'
 
 const searchFormSchema = z
   .object({
-    origin: z.string().min(1, 'Origin is required'),
-    destination: z.string().min(1, 'Destination is required'),
+    origin: z.string().min(1, 'Vui lòng chọn điểm đi'),
+    destination: z.string().min(1, 'Vui lòng chọn điểm đến'),
     departureDate: z
       .date({
-        message: 'Departure date is required',
+        message: 'Vui lòng chọn ngày đi',
       })
       .refine((date) => date >= new Date(new Date().setHours(0, 0, 0, 0)), {
-        message: 'Departure date cannot be in the past',
+        message: 'Ngày đi không thể ở quá khứ',
       }),
     returnDate: z.date().optional(),
-    passengers: z.number().min(1, 'At least 1 passenger').max(10, 'Maximum 10 passengers'),
+    passengers: z
+      .number({ message: 'Vui lòng nhập số hành khách' })
+      .int('Số hành khách phải là số nguyên')
+      .min(1, 'Tối thiểu 1 hành khách')
+      .max(10, 'Tối đa 10 hành khách'),
   })
+  .refine(
+    (data) => {
+      if (data.origin && data.destination) {
+        return data.origin.trim().toLowerCase() !== data.destination.trim().toLowerCase()
+      }
+      return true
+    },
+    {
+      message: 'Điểm đến phải khác điểm đi',
+      path: ['destination'],
+    }
+  )
   .refine(
     (data) => {
       if (data.returnDate && data.departureDate) {
@@ -34,7 +50,7 @@ const searchFormSchema = z
       return true
     },
     {
-      message: 'Return date must be after departure date',
+      message: 'Ngày về phải sau ngày đi',
       path: ['returnDate'],
     }
   )
@@ -59,6 +75,8 @@ export function SearchForm({
     handleSubmit,
     formState: { errors },
     setValue,
+    getValues,
+    reset,
     watch,
     control,
   } = useForm<SearchFormValues>({
@@ -73,36 +91,54 @@ export function SearchForm({
   })
 
   const departureDate = watch('departureDate')
-  const returnDate = watch('returnDate')
-  const origin = watch('origin')
-  const destination = watch('destination')
 
   const [departureDateOpen, setDepartureDateOpen] = React.useState(false)
-  const [returnDateOpen, setReturnDateOpen] = React.useState(false)
-  const [isSwapping, setIsSwapping] = React.useState(false)
+  const [passengersInput, setPassengersInput] = React.useState(
+    String(initialValues?.passengers || 1)
+  )
+
+  const initialOrigin = initialValues?.origin || ''
+  const initialDestination = initialValues?.destination || ''
+  const initialDepartureTime = initialValues?.departureDate?.getTime()
+  const initialReturnTime = initialValues?.returnDate?.getTime()
+  const initialPassengers = initialValues?.passengers || 1
+
+  React.useEffect(() => {
+    reset({
+      origin: initialOrigin,
+      destination: initialDestination,
+      departureDate: initialDepartureTime ? new Date(initialDepartureTime) : undefined,
+      returnDate: initialReturnTime ? new Date(initialReturnTime) : undefined,
+      passengers: initialPassengers,
+    })
+    setPassengersInput(String(initialPassengers))
+  }, [
+    initialOrigin,
+    initialDestination,
+    initialDepartureTime,
+    initialReturnTime,
+    initialPassengers,
+    reset,
+  ])
 
   const handleSwapLocations = () => {
-    setIsSwapping(true)
-    const currentOrigin = origin
-    const currentDestination = destination
-    
-    setTimeout(() => {
-      setValue('origin', currentDestination)
-      setValue('destination', currentOrigin)
-      setIsSwapping(false)
-    }, 300)
+    const currentOrigin = getValues('origin')
+    const currentDestination = getValues('destination')
+    setValue('origin', currentDestination, { shouldValidate: true })
+    setValue('destination', currentOrigin, { shouldValidate: true })
   }
 
   const handleFormSubmit = (data: SearchFormValues) => {
+    if (onSubmit) {
+      onSubmit(data)
+      return
+    }
+
     // Format date as local date (YYYY-MM-DD) without timezone conversion
     const year = data.departureDate.getFullYear()
     const month = String(data.departureDate.getMonth() + 1).padStart(2, '0')
     const day = String(data.departureDate.getDate()).padStart(2, '0')
     const formattedDate = `${year}-${month}-${day}`
-
-    if (onSubmit) {
-      onSubmit(data)
-    }
 
     const params = new URLSearchParams()
     params.set('origin', data.origin)
@@ -120,7 +156,11 @@ export function SearchForm({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className={cn('search-form overflow-visible', className)}>
+    <form
+      onSubmit={handleSubmit(handleFormSubmit)}
+      className={cn('search-form overflow-visible', className)}
+      noValidate
+    >
       <div className="search-fields overflow-visible">
         <div className="search-field province-field">
           <label className="search-field-label"><MapPin aria-hidden="true" /><span>Điểm đi</span></label>
@@ -131,8 +171,14 @@ export function SearchForm({
               <ProvinceSelect value={field.value} onValueChange={field.onChange} placeholder="Chọn điểm đi" disabled={isLoading} error={errors.origin?.message} />
             )}
           />
-          <button type="button" onClick={handleSwapLocations} disabled={isLoading || isSwapping} className="swap-button" aria-label="Hoán đổi điểm đi và điểm đến">
-            <ArrowLeftRight size={15} aria-hidden="true" />
+          <button
+            type="button"
+            onClick={handleSwapLocations}
+            disabled={isLoading}
+            className="swap-button top-[calc(50%+14px)]! right-[-18px]! h-8! w-8! rounded-full! border! border-border! bg-card! text-muted-foreground! shadow-xs! transition-colors hover:border-primary! hover:bg-accent! hover:text-primary!"
+            aria-label="Hoán đổi điểm đi và điểm đến"
+          >
+            <ArrowLeftRight size={14} aria-hidden="true" />
           </button>
         </div>
 
@@ -151,7 +197,7 @@ export function SearchForm({
           <label className="search-field-label"><CalendarDays aria-hidden="true" /><span>Ngày đi</span></label>
           <Popover open={departureDateOpen} onOpenChange={setDepartureDateOpen}>
             <PopoverTrigger asChild>
-              <button type="button" disabled={isLoading} className={cn('search-control flex items-center justify-start text-left', !departureDate && 'text-steel', departureDate && 'font-semibold')}>
+              <button type="button" disabled={isLoading} className={cn('search-control flex items-center justify-start border border-input bg-field text-left', !departureDate && 'text-steel', departureDate && 'font-semibold')}>
                 <CalendarDays size={16} className="mr-3 text-primary" aria-hidden="true" />
                 <span>{departureDate ? format(departureDate, 'dd/MM/yyyy') : 'Chọn ngày'}</span>
               </button>
@@ -164,11 +210,40 @@ export function SearchForm({
         </div>
 
         <div className="search-field">
-          <label className="search-field-label"><Users aria-hidden="true" /><span>Số khách</span></label>
+          <label htmlFor="search-passengers" className="search-field-label"><Users aria-hidden="true" /><span>Số khách</span></label>
           <Controller
             name="passengers"
             control={control}
-            render={({ field }) => <input type="number" min={1} max={10} disabled={isLoading} value={field.value} onChange={(e) => field.onChange(parseInt(e.target.value, 10))} className="search-control" aria-label="Số khách" />}
+            render={({ field }) => (
+              <input
+                id="search-passengers"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={10}
+                disabled={isLoading}
+                value={passengersInput}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setPassengersInput(raw)
+                  if (raw === '') return
+                  const parsed = parseInt(raw, 10)
+                  if (!Number.isNaN(parsed)) {
+                    field.onChange(parsed)
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = parseInt(passengersInput, 10)
+                  const clamped = Number.isNaN(parsed) ? 1 : Math.min(10, Math.max(1, parsed))
+                  setPassengersInput(String(clamped))
+                  field.onChange(clamped)
+                  field.onBlur()
+                }}
+                aria-invalid={Boolean(errors.passengers)}
+                className="search-control border border-input bg-field"
+                aria-label="Số khách"
+              />
+            )}
           />
           {errors.passengers && <p className="search-field-error">{errors.passengers.message}</p>}
         </div>
@@ -176,8 +251,18 @@ export function SearchForm({
 
       <div className="search-form-footer">
         <div className="search-form-note"><span>Đặt vé nhanh chóng</span><span>500+ tuyến đường</span><span>Giá rõ ràng</span></div>
-        <Button type="submit" size="lg" disabled={isLoading} className="search-submit">
-          {isLoading ? 'Đang tìm...' : <><Search size={18} className="mr-2" aria-hidden="true" />Tìm chuyến xe</>}
+        <Button type="submit" size="lg" disabled={isLoading} aria-busy={isLoading} className="search-submit">
+          {isLoading ? (
+            <>
+              <Loader2 size={18} className="mr-2 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              Đang tìm...
+            </>
+          ) : (
+            <>
+              <Search size={18} className="mr-2" aria-hidden="true" />
+              Tìm chuyến xe
+            </>
+          )}
         </Button>
       </div>
     </form>

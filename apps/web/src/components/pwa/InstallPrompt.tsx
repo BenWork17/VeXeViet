@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { Download, X } from 'lucide-react';
 import { usePWAInstall } from '@/lib/hooks/usePWA';
@@ -13,6 +13,7 @@ const TRANSACTIONAL_ROUTES = ['/search', '/booking', '/payment'];
 export function InstallPrompt() {
   const { isInstallable, isInstalled, installPrompt } = usePWAInstall();
   const [shouldShow, setShouldShow] = useState(false);
+  const hasCountedVisitRef = useRef(false);
   const pathname = usePathname();
   const isTransactionalRoute = TRANSACTIONAL_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
@@ -29,8 +30,12 @@ export function InstallPrompt() {
       if (daysSinceDismissed < 7) return;
     }
 
-    const visitCount = parseInt(localStorage.getItem(VISIT_COUNT_KEY) || '0', 10) + 1;
-    localStorage.setItem(VISIT_COUNT_KEY, visitCount.toString());
+    let visitCount = parseInt(localStorage.getItem(VISIT_COUNT_KEY) || '0', 10);
+    if (!hasCountedVisitRef.current) {
+      hasCountedVisitRef.current = true;
+      visitCount += 1;
+      localStorage.setItem(VISIT_COUNT_KEY, visitCount.toString());
+    }
 
     if (visitCount >= REQUIRED_VISITS) {
       setShouldShow(true);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode, SyntheticEvent } from 'react';
 import {
   Check,
@@ -1063,6 +1063,50 @@ const ANALYSIS_STEPS = [
   'Hoàn thiện lộ trình…',
 ];
 
+const SimulatedDayRoute = memo(function SimulatedDayRoute({
+  coordinates,
+  routeColor,
+  progressColor,
+  canSimulateRoute,
+  getProgress,
+  subscribeProgress,
+}: {
+  coordinates: [number, number][];
+  routeColor: string;
+  progressColor: string;
+  canSimulateRoute: boolean;
+  getProgress: () => number;
+  subscribeProgress: (listener: (progress: number) => void) => () => void;
+}) {
+  const [progress, setProgress] = useState(getProgress);
+
+  useEffect(() => {
+    setProgress(getProgress());
+    return subscribeProgress(setProgress);
+  }, [getProgress, subscribeProgress]);
+
+  return (
+    <MapRoute
+      id="day-road-route"
+      coordinates={coordinates}
+      color={routeColor}
+      width={3}
+      opacity={0.55}
+      progress={progress}
+      interactive={false}
+    >
+      <RouteProgress color={progressColor} width={5} />
+      {canSimulateRoute && progress > 0 && (
+        <RouteMarker at="progress" anchor="center">
+          <MarkerContent className="travel-route-marker">
+            <Navigation size={13} aria-hidden="true" />
+          </MarkerContent>
+        </RouteMarker>
+      )}
+    </MapRoute>
+  );
+});
+
 function MapViewportSync({
   center,
   zoom,
@@ -1141,12 +1185,17 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
   const [directionsExpanded, setDirectionsExpanded] = useState(false);
   const [activeDirectionId, setActiveDirectionId] = useState<string | null>(null);
   const [routeSimulationStatus, setRouteSimulationStatus] = useState<RouteSimulationStatus>('idle');
-  const [routeSimulationProgress, setRouteSimulationProgress] = useState(0);
+  const [hasSimulationProgress, setHasSimulationProgress] = useState(false);
+  const [isSimulationComplete, setIsSimulationComplete] = useState(false);
+  const [activeSimulationPlaceIndex, setActiveSimulationPlaceIndex] = useState<number | null>(null);
   const [routeSimulationSpeed, setRouteSimulationSpeed] = useState<1 | 2>(1);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [mapFocusCenter, setMapFocusCenter] = useState(() => getMapCenter([guide.startPoint, ...guide.places]));
   const [mapColors, setMapColors] = useState<MapColors | null>(null);
+  const routeSimulationProgressRef = useRef(0);
+  const routeSimulationBarRef = useRef<HTMLSpanElement | null>(null);
+  const routeSimulationListenersRef = useRef<Set<(progress: number) => void>>(new Set());
   const routeSimulationFrameRef = useRef<number | null>(null);
   const routeSimulationLastTickRef = useRef<number | null>(null);
 
@@ -1177,7 +1226,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     setRouteDirections([]);
     setRouteError(null);
     setRouteSimulationStatus('idle');
-    setRouteSimulationProgress(0);
+    routeSimulationProgressRef.current = 0;
+    if (routeSimulationBarRef.current) {
+      routeSimulationBarRef.current.style.transform = 'scaleX(0)';
+    }
+    routeSimulationListenersRef.current.forEach((listener) => listener(0));
+    setHasSimulationProgress(false);
+    setIsSimulationComplete(false);
+    setActiveSimulationPlaceIndex(null);
     setRouteSimulationSpeed(1);
     // Clear validation errors on guide change
     setLandmarkError(null);
@@ -1314,18 +1370,42 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     () => getRouteStopProgresses(roadRoute, suggestedRoute),
     [roadRoute, suggestedRoute]
   );
-  const activeSimulationPlaceIndex = useMemo(() => {
-    if (!canSimulateRoute || routeSimulationProgress <= 0) return null;
+  const computeActiveSimulationIndex = useCallback(
+    (progress: number): number | null => {
+      if (!canSimulateRoute || progress <= 0) return null;
 
-    let activeIndex: number | null = null;
-    routeSimulationStopProgresses.slice(1, activeDayPlaces.length + 1).forEach((stopProgress, index) => {
-      if (routeSimulationProgress >= stopProgress - 0.02) {
-        activeIndex = index;
+      let activeIndex: number | null = null;
+      routeSimulationStopProgresses.slice(1, activeDayPlaces.length + 1).forEach((stopProgress, index) => {
+        if (progress >= stopProgress - 0.02) {
+          activeIndex = index;
+        }
+      });
+
+      return activeIndex;
+    },
+    [activeDayPlaces.length, canSimulateRoute, routeSimulationStopProgresses]
+  );
+  const applySimulationProgress = useCallback(
+    (next: number) => {
+      const clamped = Math.max(0, Math.min(1, next));
+      routeSimulationProgressRef.current = clamped;
+      if (routeSimulationBarRef.current) {
+        routeSimulationBarRef.current.style.transform = `scaleX(${clamped})`;
       }
-    });
-
-    return activeIndex;
-  }, [activeDayPlaces.length, canSimulateRoute, routeSimulationProgress, routeSimulationStopProgresses]);
+      routeSimulationListenersRef.current.forEach((listener) => listener(clamped));
+      setHasSimulationProgress(clamped > 0);
+      setIsSimulationComplete(clamped >= 1);
+      setActiveSimulationPlaceIndex(computeActiveSimulationIndex(clamped));
+    },
+    [computeActiveSimulationIndex]
+  );
+  const subscribeSimulationProgress = useCallback((listener: (progress: number) => void) => {
+    routeSimulationListenersRef.current.add(listener);
+    return () => {
+      routeSimulationListenersRef.current.delete(listener);
+    };
+  }, []);
+  const getSimulationProgress = useCallback(() => routeSimulationProgressRef.current, []);
   const activeSimulationPlace = activeSimulationPlaceIndex === null ? null : activeDayPlaces[activeSimulationPlaceIndex] ?? null;
 
   useEffect(() => {
@@ -1368,13 +1448,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     if (canSimulateRoute) return;
 
     setRouteSimulationStatus('idle');
-    setRouteSimulationProgress(0);
+    applySimulationProgress(0);
     routeSimulationLastTickRef.current = null;
     if (routeSimulationFrameRef.current !== null) {
       cancelAnimationFrame(routeSimulationFrameRef.current);
       routeSimulationFrameRef.current = null;
     }
-  }, [canSimulateRoute]);
+  }, [applySimulationProgress, canSimulateRoute]);
 
   useEffect(() => {
     if (routeSimulationStatus !== 'playing' || !canSimulateRoute) {
@@ -1390,15 +1470,16 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     const tick = (timestamp: number) => {
       const previousTimestamp = routeSimulationLastTickRef.current ?? timestamp;
       routeSimulationLastTickRef.current = timestamp;
-      const delta = timestamp - previousTimestamp;
+      const delta = Math.min(Math.max(timestamp - previousTimestamp, 0), 100);
 
-      setRouteSimulationProgress((current) => {
-        const next = Math.min(1, current + (delta / durationMs) * routeSimulationSpeed);
-        if (next >= 1) {
-          setRouteSimulationStatus('idle');
-        }
-        return next;
-      });
+      const next = Math.min(1, routeSimulationProgressRef.current + (delta / durationMs) * routeSimulationSpeed);
+      applySimulationProgress(next);
+
+      if (next >= 1) {
+        routeSimulationFrameRef.current = null;
+        setRouteSimulationStatus('idle');
+        return;
+      }
 
       routeSimulationFrameRef.current = requestAnimationFrame(tick);
     };
@@ -1411,23 +1492,25 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
         routeSimulationFrameRef.current = null;
       }
     };
-  }, [canSimulateRoute, routeSimulationSpeed, routeSimulationStatus]);
+  }, [applySimulationProgress, canSimulateRoute, routeSimulationSpeed, routeSimulationStatus]);
 
   const toggleRouteSimulation = () => {
     if (!canSimulateRoute) return;
 
-    setRouteSimulationStatus((current) => {
-      if (current === 'playing') return 'paused';
-      if (routeSimulationProgress >= 1) {
-        setRouteSimulationProgress(0);
-      }
-      return 'playing';
-    });
+    if (routeSimulationStatus === 'playing') {
+      setRouteSimulationStatus('paused');
+      return;
+    }
+
+    if (routeSimulationProgressRef.current >= 1) {
+      applySimulationProgress(0);
+    }
+    setRouteSimulationStatus('playing');
   };
 
   const resetRouteSimulation = () => {
     setRouteSimulationStatus('idle');
-    setRouteSimulationProgress(0);
+    applySimulationProgress(0);
   };
 
   const skipToNextSimulationStop = () => {
@@ -1435,9 +1518,9 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
 
     const nextStopProgress = routeSimulationStopProgresses
       .slice(1)
-      .find((stopProgress) => stopProgress > routeSimulationProgress + 0.03);
+      .find((stopProgress) => stopProgress > routeSimulationProgressRef.current + 0.03);
 
-    setRouteSimulationProgress(nextStopProgress ?? 1);
+    applySimulationProgress(nextStopProgress ?? 1);
     setRouteSimulationStatus('paused');
   };
 
@@ -1480,7 +1563,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     setAnalysisState('idle');
     setAnalysisStepIndex(0);
     setRouteSimulationStatus('idle');
-    setRouteSimulationProgress(0);
+    applySimulationProgress(0);
   };
 
   const togglePlace = (id: string) => {
@@ -1786,14 +1869,20 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
     : null;
 
   return (
-    <section className={cn('travel-shell', className)}>
-      <div className="travel-shell-inner">
-        {controls ? <header className="travel-hero">{controls}</header> : null}
+    <section className={cn('travel-shell w-full! max-w-none! px-3! py-3! sm:px-4! lg:px-5!', className)}>
+      <div className="travel-shell-inner w-full! max-w-none! mx-0!">
+        {controls ? <header className="travel-hero mb-3! p-0!">{controls}</header> : null}
 
-        <div className="travel-workspace">
-          <aside className="travel-rail" aria-label="Bảng lập lịch trình">
-            <div className="travel-rail-inner">
-              <section className="travel-panel travel-panel--ledger" aria-labelledby="travel-destination-title">
+        <div className="travel-workspace grid! grid-cols-1! gap-4! items-stretch! lg:h-[calc(100dvh-176px)]! lg:min-h-[540px]! lg:grid-cols-[390px_minmax(0,1fr)]! xl:grid-cols-[410px_minmax(0,1fr)]!">
+          <aside
+            className="travel-rail lg:h-full! lg:min-h-0! lg:overflow-y-auto! lg:overscroll-contain! lg:pr-1!"
+            aria-label="Bảng lập lịch trình"
+          >
+            <div className="travel-rail-inner space-y-3! gap-3!">
+              <section
+                className="travel-panel travel-panel--ledger bg-card! border! border-border! rounded-xl! p-3.5! shadow-xs"
+                aria-labelledby="travel-destination-title"
+              >
                 <div className="travel-panel-head">
                   <div>
                     <h2 id="travel-destination-title" className="travel-panel-title">{guide.center}</h2>
@@ -1817,7 +1906,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 </dl>
               </section>
 
-              <section className="travel-panel" aria-labelledby="travel-departure-title">
+              <section
+                className="travel-panel bg-card! border! border-border! rounded-xl! p-3.5! shadow-xs"
+                aria-labelledby="travel-departure-title"
+              >
                 <div className="travel-panel-head">
                   <div>
                     <h2 id="travel-departure-title" className="travel-panel-title">Điểm xuất phát</h2>
@@ -1835,14 +1927,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       setDepartureError(null);
                     }}
                     placeholder="Nhập điểm xuất phát của bạn…"
-                    className="travel-input"
+                    className="travel-input rounded-lg! border! border-input! bg-field! focus:border-primary!"
                   />
                 </label>
                 {departureLoading && (
                   <p className="travel-inline-status" role="status" aria-live="polite">Đang tìm địa chỉ…</p>
                 )}
                 {departureSuggestions.length > 0 && (
-                  <div className="travel-suggestions">
+                  <div className="travel-suggestions rounded-lg! border! border-border! bg-card! shadow-sm">
                     {departureSuggestions.map((suggestion) => (
                       <button
                         key={suggestion.place_id}
@@ -1860,7 +1952,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   type="button"
                   onClick={useCurrentLocation}
                   disabled={isLocating}
-                  className="travel-button travel-button--quiet"
+                  className="travel-button travel-button--quiet rounded-lg! border! border-input! bg-card! hover:border-primary/50! hover:bg-accent/50!"
                 >
                   <LocateFixed size={17} aria-hidden="true" />
                   {isLocating ? 'Đang lấy vị trí…' : 'Dùng vị trí hiện tại'}
@@ -1870,13 +1962,16 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 <p className="travel-current-point">Đang dùng: {departurePoint.label}</p>
               </section>
 
-              <section className="travel-panel" aria-labelledby="travel-days-title">
+              <section
+                className="travel-panel bg-card! border! border-border! rounded-xl! p-3.5! shadow-xs"
+                aria-labelledby="travel-days-title"
+              >
                 <div className="travel-panel-head">
                   <div>
                     <h2 id="travel-days-title" className="travel-panel-title">Lịch trình theo ngày</h2>
                     <p className="travel-panel-note">{dayCount} ngày vui chơi · tối đa {DAY_TIME_LIMIT_HOURS} giờ mỗi ngày</p>
                   </div>
-                  <div className="travel-stepper" role="group" aria-label="Số ngày">
+                  <div className="travel-stepper rounded-lg! border! border-input! bg-field!" role="group" aria-label="Số ngày">
                     <button
                       type="button"
                       onClick={() => updateDayCount(dayCount - 1)}
@@ -1904,7 +1999,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       type="button"
                       onClick={() => setActiveDayIndex(day.day - 1)}
                       aria-pressed={activeDayIndex === day.day - 1}
-                      className={cn('travel-day-tab', activeDayIndex === day.day - 1 && 'is-active')}
+                      className={cn(
+                        'travel-day-tab rounded-lg! border! transition-colors',
+                        activeDayIndex === day.day - 1
+                          ? 'is-active border-primary! bg-accent! text-accent-foreground!'
+                          : 'border-input! bg-card! hover:border-primary/50!'
+                      )}
                     >
                       <span className="travel-day-tab-name">
                         <span className="travel-day-dot" style={{ backgroundColor: day.color }} aria-hidden="true" />
@@ -1922,7 +2022,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     type="button"
                     onClick={autoDistributeSelectedPlaces}
                     disabled={selectedPlaces.length === 0}
-                    className="travel-button travel-button--quiet"
+                    className="travel-button travel-button--quiet rounded-lg! border! border-input! bg-card! hover:border-primary/50! hover:bg-accent/50!"
                   >
                     Chia đều theo ngày
                   </button>
@@ -1935,7 +2035,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                       key={`day-plan-${day.day}`}
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={() => handlePlaceDrop(day.day - 1)}
-                      className={cn('travel-day-card', activeDayIndex === day.day - 1 && 'is-active')}
+                      className={cn(
+                        'travel-day-card rounded-lg! border! transition-colors',
+                        activeDayIndex === day.day - 1
+                          ? 'is-active border-primary/50! bg-accent/35!'
+                          : 'border-border! bg-card!'
+                      )}
                     >
                       <div className="travel-day-card-head">
                         <button
@@ -1962,7 +2067,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                           type="time"
                           value={day.startTime}
                           onChange={(event) => updateDayStartTime(day.day - 1, event.target.value)}
-                          className="travel-time-input"
+                          className="travel-time-input rounded-md! border! border-input! bg-field!"
                         />
                       </label>
 
@@ -2030,14 +2135,17 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 </div>
               </section>
 
-              <section className="travel-places" aria-labelledby="travel-places-title">
+              <section
+                className="travel-places bg-card! border! border-border! rounded-xl! p-3.5! shadow-xs"
+                aria-labelledby="travel-places-title"
+              >
                 <div className="travel-places-head">
                   <h2 id="travel-places-title" className="travel-panel-title">Địa điểm đã chọn</h2>
                   <p>{selectedPlaces.length} điểm trong lịch trình</p>
                 </div>
 
                 {selectedPlaces.length === 0 ? (
-                  <p className="travel-empty-state">
+                  <p className="travel-empty-state rounded-lg! border! border-dashed! border-border! bg-muted/40!">
                     Chưa có địa điểm nào trong lịch trình. Chọn một điểm trên bản đồ rồi thêm vào chuyến đi.
                   </p>
                 ) : (
@@ -2052,7 +2160,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     return (
                       <article
                         key={place.id}
-                        className={cn('travel-place', expanded && 'is-expanded')}
+                        className={cn(
+                          'travel-place rounded-lg! border! border-border! bg-card! shadow-xs',
+                          expanded && 'is-expanded border-primary/40!'
+                        )}
                         style={{ '--travel-day-color': dayColor } as CSSProperties}
                       >
                         <div className="travel-place-summary">
@@ -2162,7 +2273,10 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 )}
               </section>
 
-              <section className="travel-panel" aria-labelledby="travel-transport-title">
+              <section
+                className="travel-panel bg-card! border! border-border! rounded-xl! p-3.5! shadow-xs"
+                aria-labelledby="travel-transport-title"
+              >
                 <div className="travel-panel-head">
                   <div>
                     <h2 id="travel-transport-title" className="travel-panel-title">Phương tiện trong thành phố</h2>
@@ -2181,20 +2295,28 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                           resetAnalysis();
                         }}
                         aria-pressed={selected}
-                        className={cn('travel-transport', selected && 'is-selected')}
+                        className={cn(
+                          'travel-transport rounded-lg! border! transition-colors',
+                          selected
+                            ? 'is-selected border-primary! bg-accent! text-accent-foreground! ring-1 ring-primary/20'
+                            : 'border-input! bg-card! hover:border-primary/50! hover:bg-accent/40!'
+                        )}
                       >
                         <span className="travel-transport-copy">
                           <span className="travel-transport-name">{item.label}</span>
                           <span className="travel-transport-note">{item.note}</span>
                         </span>
-                        {selected && <Check className="travel-transport-check" size={18} aria-hidden="true" />}
+                        {selected && <Check className="travel-transport-check text-primary!" size={18} aria-hidden="true" />}
                       </button>
                     );
                   })}
                 </div>
               </section>
 
-              <section className="travel-panel" aria-labelledby="travel-analysis-title">
+              <section
+                className="travel-panel bg-card! border! border-border! rounded-xl! p-3.5! shadow-xs"
+                aria-labelledby="travel-analysis-title"
+              >
                 <div className="travel-panel-head">
                   <div>
                     <h2 id="travel-analysis-title" className="travel-panel-title">Phân tích lịch trình</h2>
@@ -2225,22 +2347,26 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   disabled={analysisState === 'loading'}
                   onClick={startAnalysis}
                   aria-busy={analysisState === 'loading'}
-                  className="travel-button travel-button--primary"
+                  className="travel-button travel-button--primary rounded-lg!"
                 >
                   {analysisState === 'loading' ? 'Đang phân tích…' : 'Phân tích lộ trình'}
                 </button>
               </section>
 
               {analysisState === 'idle' ? (
-                <p className="travel-empty-state">
+                <p className="travel-empty-state rounded-xl! border! border-border! bg-card! p-4! shadow-xs">
                   Lịch trình gợi ý sẽ xuất hiện sau khi bạn chọn đủ phương tiện và địa điểm rồi bấm phân tích.
                 </p>
               ) : analysisState === 'loading' ? (
-                <div className="travel-panel travel-analysis-loading" role="status" aria-live="polite">
+                <div
+                  className="travel-panel travel-analysis-loading bg-card! border! border-border! rounded-xl! p-4! shadow-xs"
+                  role="status"
+                  aria-live="polite"
+                >
                   <h2 className="travel-panel-title">Đang phân tích lộ trình</h2>
                   <p className="travel-analysis-step">{ANALYSIS_STEPS[analysisStepIndex]}</p>
-                  <div className="travel-progress" aria-hidden="true">
-                    <span style={{ width: `${((analysisStepIndex + 1) / ANALYSIS_STEPS.length) * 100}%` }} />
+                  <div className="travel-progress travel-progress--stepped" aria-hidden="true">
+                    <span style={{ transform: `scaleX(${(analysisStepIndex + 1) / ANALYSIS_STEPS.length})` }} />
                   </div>
                 </div>
               ) : (
@@ -2447,13 +2573,13 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
             </div>
           </aside>
 
-          <div className="travel-map-column">
-            <div className="travel-map">
+          <div className="travel-map-column min-w-0! h-[560px]! lg:h-full! lg:min-h-0! flex! flex-col!">
+            <div className="travel-map relative! flex-1! h-full! min-h-0! w-full! overflow-hidden! rounded-xl! border! border-border! shadow-xs">
               <MapView
                 center={[mapFocusCenter.lng, mapFocusCenter.lat]}
                 zoom={mapFocusZoom}
                 attributionControl={{ compact: true }}
-                className="travel-map-canvas"
+                className="travel-map-canvas h-full! w-full! min-h-0!"
               >
                 <MapViewportSync
                   center={mapFocusCenter}
@@ -2473,24 +2599,14 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 )}
 
                 {mapColors && roadRouteLngLat.length > 1 && (
-                  <MapRoute
-                    id="day-road-route"
+                  <SimulatedDayRoute
                     coordinates={roadRouteLngLat}
-                    color={mapColors.route}
-                    width={3}
-                    opacity={0.55}
-                    progress={routeSimulationProgress}
-                    interactive={false}
-                  >
-                    <RouteProgress color={mapColors.progress} width={5} />
-                    {canSimulateRoute && routeSimulationProgress > 0 && (
-                      <RouteMarker at="progress" anchor="center">
-                        <MarkerContent className="travel-route-marker">
-                          <Navigation size={13} aria-hidden="true" />
-                        </MarkerContent>
-                      </RouteMarker>
-                    )}
-                  </MapRoute>
+                    routeColor={mapColors.route}
+                    progressColor={mapColors.progress}
+                    canSimulateRoute={canSimulateRoute}
+                    getProgress={getSimulationProgress}
+                    subscribeProgress={subscribeSimulationProgress}
+                  />
                 )}
 
                 <MapMarker longitude={departurePoint.lng} latitude={departurePoint.lat} anchor="center">
@@ -2547,12 +2663,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                 )}
               </MapView>
 
-              <div className="travel-map-card travel-map-info">
+              <div className="travel-map-card travel-map-info bg-card/95! border! border-border! rounded-xl! shadow-sm!">
                 <p className="travel-map-route">{origin || 'Nơi ở'} → {destination || 'Thành phố'}</p>
                 <p className="travel-map-hint">Kéo bản đồ để xem · Chọn điểm để thêm vào lịch</p>
               </div>
 
-              <div className="travel-map-card travel-map-sim">
+              <div className="travel-map-card travel-map-sim bg-card/95! border! border-border! rounded-xl! shadow-sm!">
                 <div className="travel-sim-days">
                   {dayRoutePreviews.map((day) => (
                     <button
@@ -2563,7 +2679,12 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                         resetRouteSimulation();
                       }}
                       aria-pressed={activeDayIndex === day.day - 1}
-                      className={cn('travel-sim-day', activeDayIndex === day.day - 1 && 'is-active')}
+                      className={cn(
+                        'travel-sim-day rounded-lg! border! transition-colors',
+                        activeDayIndex === day.day - 1
+                          ? 'is-active border-primary! bg-accent! text-accent-foreground!'
+                          : 'border-input! bg-card! text-foreground! hover:border-primary/50!'
+                      )}
                     >
                       <span className="travel-day-dot" style={{ backgroundColor: day.color }} aria-hidden="true" />
                       Ngày {day.day}
@@ -2575,7 +2696,7 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                     type="button"
                     onClick={toggleRouteSimulation}
                     disabled={!canSimulateRoute}
-                    className="travel-button travel-button--primary travel-sim-play"
+                    className="travel-button travel-button--primary travel-sim-play rounded-lg!"
                     aria-label={routeSimulationStatus === 'playing' ? 'Tạm dừng đi thử lộ trình' : 'Đi thử lộ trình'}
                   >
                     {routeSimulationStatus === 'playing' ? <Pause size={16} aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
@@ -2584,8 +2705,8 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   <button
                     type="button"
                     onClick={resetRouteSimulation}
-                    disabled={!canSimulateRoute || routeSimulationProgress === 0}
-                    className="travel-icon-button"
+                    disabled={!canSimulateRoute || !hasSimulationProgress}
+                    className="travel-icon-button rounded-lg! border! border-input! bg-card! hover:border-primary/50! hover:bg-accent/50!"
                     aria-label="Chạy lại lộ trình"
                   >
                     <RotateCcw size={16} aria-hidden="true" />
@@ -2593,33 +2714,41 @@ export function TripPlanner({ origin, destination, departureDate, routes, contro
                   <button
                     type="button"
                     onClick={skipToNextSimulationStop}
-                    disabled={!canSimulateRoute || routeSimulationProgress >= 1}
-                    className="travel-icon-button"
+                    disabled={!canSimulateRoute || isSimulationComplete}
+                    className="travel-icon-button rounded-lg! border! border-input! bg-card! hover:border-primary/50! hover:bg-accent/50!"
                     aria-label="Tới điểm tiếp theo"
                   >
                     <SkipForward size={16} aria-hidden="true" />
                   </button>
-                  <div className="travel-speed">
-                    {[1, 2].map((speed) => (
-                      <button
-                        key={speed}
-                        type="button"
-                        onClick={() => setRouteSimulationSpeed(speed as 1 | 2)}
-                        aria-pressed={routeSimulationSpeed === speed}
-                        className={cn(routeSimulationSpeed === speed && 'is-active')}
-                      >
-                        {speed}x
-                      </button>
-                    ))}
+                  <div className="travel-speed gap-1! border-0! bg-transparent! p-0!">
+                    {[1, 2].map((speed) => {
+                      const isActiveSpeed = routeSimulationSpeed === speed;
+                      return (
+                        <button
+                          key={speed}
+                          type="button"
+                          onClick={() => setRouteSimulationSpeed(speed as 1 | 2)}
+                          aria-pressed={isActiveSpeed}
+                          className={cn(
+                            'rounded-md! border! px-2.5! py-1! text-xs! font-bold! transition-colors',
+                            isActiveSpeed
+                              ? 'is-active bg-primary! text-primary-foreground! border-primary! shadow-xs'
+                              : 'bg-card! border-border! text-foreground! hover:border-primary/50! hover:text-primary!'
+                          )}
+                        >
+                          {speed}x
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                {activeSimulationPlace && routeSimulationProgress > 0 && (
+                {activeSimulationPlace && hasSimulationProgress && (
                   <p className="travel-sim-current" role="status">
                     Đang tới: <strong>{activeSimulationPlace.name}</strong>
                   </p>
                 )}
                 <div className="travel-progress" aria-hidden="true">
-                  <span style={{ width: `${Math.round(routeSimulationProgress * 100)}%` }} />
+                  <span ref={routeSimulationBarRef} />
                 </div>
               </div>
 

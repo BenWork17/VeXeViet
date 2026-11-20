@@ -69,8 +69,41 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     }
   }, [activeSection, ready, router, session]);
 
+  useEffect(() => {
+    if (!drawer) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawer(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [drawer]);
+
   if (!ready || !session) {
-    return <div className="min-h-screen bg-ground" />;
+    return (
+      <div className="grid min-h-screen place-items-center bg-ground px-4" role="status" aria-live="polite">
+        <div className="flex items-center gap-3 rounded-card border border-border bg-sheet px-5 py-3.5">
+          <svg
+            className="h-4 w-4 animate-spin text-accent motion-reduce:animate-none"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+          <span className="text-[13px] font-semibold text-ink">Đang xác thực phiên quản trị…</span>
+        </div>
+      </div>
+    );
   }
 
   const sectionLabel = navItems.find((item) => item.section === activeSection)?.label ?? 'Dashboard';
@@ -80,14 +113,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="lg:grid lg:grid-cols-[228px_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <div className="sticky top-0 flex h-screen flex-col px-5 py-5">
-            <div className="flex items-center gap-2.5">
+            <div className="flex shrink-0 items-center gap-2.5">
               <span className="grid h-7 w-7 place-items-center rounded-control bg-accent text-[12px] font-semibold text-white">VX</span>
               <span className="font-display text-section text-ink">VeXeViet</span>
             </div>
 
-            <NavList pathname={pathname} role={session.role} />
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <NavList pathname={pathname} role={session.role} />
+            </div>
 
-            <div className="mt-auto border-t border-border pt-4">
+            <div className="mt-4 shrink-0 border-t border-border pt-4">
               <p className="text-small font-semibold text-ink">{roleLabel(session.role)}</p>
               <p className="mt-0.5 truncate text-small text-muted">{session.email}</p>
               <button
@@ -125,15 +160,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {drawer ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Điều hướng quản trị">
           <button
             type="button"
             aria-label="Đóng điều hướng"
             onClick={() => setDrawer(false)}
             className="absolute inset-0 bg-ink/20 transition-opacity duration-[160ms]"
           />
-          <div className="absolute inset-y-0 left-0 w-[264px] bg-ground px-4 py-5 transition-transform duration-[160ms]">
-            <div className="flex items-center justify-between">
+          <div className="absolute inset-y-0 left-0 flex w-[264px] max-w-[85vw] flex-col bg-ground px-4 py-5 transition-transform duration-[160ms]">
+            <div className="flex shrink-0 items-center justify-between">
               <span className="font-display text-section text-ink">VeXeViet</span>
               <button
                 type="button"
@@ -144,8 +179,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <X className="h-4 w-4" strokeWidth={1.75} />
               </button>
             </div>
-            <NavList pathname={pathname} role={session.role} onNavigate={() => setDrawer(false)} />
-            <div className="mt-6 border-t border-border pt-4">
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <NavList pathname={pathname} role={session.role} onNavigate={() => setDrawer(false)} />
+            </div>
+            <div className="mt-4 shrink-0 border-t border-border pt-4">
               <p className="text-small font-semibold text-ink">{roleLabel(session.role)}</p>
               <p className="mt-0.5 truncate text-small text-muted">{session.email}</p>
               <button

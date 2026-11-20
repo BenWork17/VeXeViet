@@ -36,11 +36,17 @@ export default function LoginPage() {
     event.preventDefault();
     if (pending) return;
 
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
+      return;
+    }
+
     setError(null);
     setPending(true);
 
     try {
-      await signIn(email.trim(), password);
+      await signIn(trimmedEmail, password);
       router.replace('/dashboard');
     } catch (failure) {
       if (failure instanceof ApiError) {
@@ -105,8 +111,24 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending || !checked}
-            className="inline-flex h-9 w-full items-center justify-center rounded-control bg-ink px-3 text-[13px] font-semibold text-white transition-colors duration-[120ms] hover:bg-[#292524] disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted"
+            aria-busy={pending || undefined}
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-control bg-ink px-3 text-[13px] font-semibold text-white transition-colors duration-[120ms] hover:bg-[#292524] disabled:cursor-not-allowed disabled:bg-raised disabled:text-muted"
           >
+            {pending ? (
+              <svg
+                className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            ) : null}
             {pending ? 'Đang đăng nhập…' : 'Đăng nhập'}
           </button>
         </form>

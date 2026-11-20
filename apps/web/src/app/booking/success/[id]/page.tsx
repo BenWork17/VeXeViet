@@ -1,12 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { CheckCircle2, Printer, XCircle } from 'lucide-react';
-import { TicketCard } from '@/components/features/booking/Ticket/TicketCard';
+import { CheckCircle2, Loader2, Printer, XCircle } from 'lucide-react';
 import { getBookingById } from '@/lib/api/booking';
 import { BookingDetails } from '@/types/booking';
 import { FadeIn } from '@/components/motion';
+
+const TicketCard = dynamic(
+  () => import('@/components/features/booking/Ticket/TicketCard').then((mod) => mod.TicketCard),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        className="mx-auto w-full max-w-2xl overflow-hidden rounded-lg border border-border bg-card p-6 shadow-hn-sm"
+        aria-hidden="true"
+      >
+        <div className="flex items-center justify-between border-b border-border pb-4">
+          <div className="h-6 w-36 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+          <div className="h-6 w-24 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+        </div>
+        <div className="my-5 h-16 w-full animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+        <div className="grid grid-cols-2 gap-4 py-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="space-y-2">
+              <div className="h-3.5 w-20 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+              <div className="h-5 w-32 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex justify-center border-t border-dashed border-border pt-6">
+          <div className="h-[140px] w-[140px] animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+        </div>
+      </div>
+    ),
+  },
+);
 
 export default function BookingSuccessPage() {
   const params = useParams();
@@ -44,8 +74,34 @@ export default function BookingSuccessPage() {
 
   if (loading) {
     return (
-      <div className="booking-page-loading" role="status" aria-live="polite">
-        <p>Đang tải thông tin vé…</p>
+      <div className="booking-ticket-page" role="status" aria-live="polite">
+        <div className="mx-auto w-full max-w-2xl space-y-5 py-6">
+          <div className="flex items-center justify-center gap-2.5 text-sm font-medium text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+            <span>Đang tải thông tin vé…</span>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-border bg-card p-6 shadow-hn-sm" aria-hidden="true">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="space-y-2">
+                <div className="h-6 w-36 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                <div className="h-4 w-24 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+              </div>
+              <div className="h-6 w-24 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+            </div>
+            <div className="my-5 h-16 w-full animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+            <div className="grid grid-cols-2 gap-4 py-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="h-3.5 w-20 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                  <div className="h-5 w-32 animate-pulse rounded bg-muted motion-reduce:animate-none" />
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-center border-t border-dashed border-border pt-6">
+              <div className="h-[140px] w-[140px] animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

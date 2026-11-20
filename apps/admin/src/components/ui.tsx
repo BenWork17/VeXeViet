@@ -57,6 +57,7 @@ export function Button({
   onClick,
   type = 'button',
   disabled = false,
+  isLoading = false,
   title,
   'aria-label': ariaLabel,
 }: {
@@ -67,21 +68,24 @@ export function Button({
   onClick?: () => void;
   type?: 'button' | 'submit';
   disabled?: boolean;
+  isLoading?: boolean;
   title?: string;
   'aria-label'?: string;
 }) {
+  const isDisabled = disabled || isLoading;
   return (
     <button
       type={type}
       onClick={onClick}
-      disabled={disabled}
-      aria-disabled={disabled || undefined}
+      disabled={isDisabled}
+      aria-disabled={isDisabled || undefined}
+      aria-busy={isLoading || undefined}
       title={title}
       aria-label={ariaLabel}
       className={clsx(
         'inline-flex items-center justify-center gap-1.5 rounded-control font-semibold transition-colors duration-[120ms]',
         size === 'md' ? 'h-9 px-3 text-[13px]' : 'h-8 px-2.5 text-[13px]',
-        disabled
+        isDisabled
           ? 'cursor-not-allowed border border-control bg-raised text-muted'
           : tone === 'primary'
             ? 'bg-ink text-white hover:bg-[#292524]'
@@ -89,6 +93,21 @@ export function Button({
         className
       )}
     >
+      {isLoading ? (
+        <svg
+          className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      ) : null}
       {children}
     </button>
   );
@@ -251,11 +270,22 @@ export function ErrorState({
   );
 }
 
-/** Loading placeholder for a table body — never a spinner with no end. */
-export function LoadingRows({ label = 'Đang tải dữ liệu…' }: { label?: string }) {
+/** Loading placeholder for a table body — structured skeleton rows prevent layout jump. */
+export function LoadingRows({ label = 'Đang tải dữ liệu…', rows = 6 }: { label?: string; rows?: number }) {
   return (
-    <div className="mt-4 border-t border-rule py-8" aria-busy="true" aria-live="polite">
-      <p className="text-[13px] text-muted">{label}</p>
+    <div className="mt-4 border-t border-rule pt-3" role="status" aria-busy="true" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      <div className="space-y-2.5">
+        {Array.from({ length: rows }).map((_, index) => (
+          <div key={index} className="flex h-12 items-center gap-4 border-b border-rule/70 pb-2.5 last:border-b-0">
+            <div className="h-3.5 w-[18%] animate-pulse rounded bg-active motion-reduce:animate-none" />
+            <div className="h-3.5 w-[24%] animate-pulse rounded bg-active/80 motion-reduce:animate-none" />
+            <div className="h-3.5 w-[22%] animate-pulse rounded bg-active/70 motion-reduce:animate-none" />
+            <div className="h-5 w-[12%] animate-pulse rounded bg-active/80 motion-reduce:animate-none" />
+            <div className="ml-auto h-3.5 w-[12%] animate-pulse rounded bg-active motion-reduce:animate-none" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

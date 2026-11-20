@@ -10,20 +10,22 @@ export interface CheckboxProps
 export const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, label, ...props }, ref) => {
-  const isChecked = props.checked === true || props.checked === 'indeterminate';
+>(({ className, label, id, ...props }, ref) => {
+  const generatedId = React.useId();
+  const checkboxId = id ?? generatedId;
 
   return (
-    <div className="group flex cursor-pointer items-center gap-2">
+    <div className="group flex items-center gap-2">
       <CheckboxPrimitive.Root
         ref={ref}
+        id={checkboxId}
         className={cn(
-          'peer flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border-2 transition-colors duration-200 ease-out',
+          'peer flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-sm border-2 border-border-strong bg-field transition-colors duration-200 ease-out motion-reduce:transition-none',
+          'hover:border-primary group-hover:border-primary',
+          'data-[state=checked]:border-primary data-[state=checked]:bg-primary',
+          'data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           'disabled:cursor-not-allowed disabled:opacity-50',
-          isChecked
-            ? 'border-primary bg-primary'
-            : 'border-border-strong bg-field group-hover:border-primary',
           className
         )}
         {...props}
@@ -42,6 +44,7 @@ export const Checkbox = React.forwardRef<
               strokeLinecap="round"
               strokeLinejoin="round"
               className="text-primary-foreground"
+              aria-hidden="true"
             >
               <polyline points="20 6 9 17 4 12" />
             </svg>
@@ -50,10 +53,10 @@ export const Checkbox = React.forwardRef<
       </CheckboxPrimitive.Root>
       {label && (
         <label
-          htmlFor={props.id}
+          htmlFor={checkboxId}
           className={cn(
-            'cursor-pointer select-none text-sm font-semibold text-foreground transition-colors duration-200 ease-out',
-            isChecked ? 'text-primary' : 'group-hover:text-primary'
+            'cursor-pointer select-none text-sm font-semibold text-foreground transition-colors duration-200 ease-out motion-reduce:transition-none',
+            'group-hover:text-primary peer-data-[state=checked]:text-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-50'
           )}
         >
           {label}

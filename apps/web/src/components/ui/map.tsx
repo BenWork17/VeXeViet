@@ -336,6 +336,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
           container: containerRef.current,
           style: initialStyle,
           renderWorldCopies: false,
+          cooperativeGestures: true,
           attributionControl: {
             compact: true,
           },

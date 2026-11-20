@@ -8,6 +8,7 @@ import { Button, cn } from '@vexeviet/ui'
 import { SearchForm, type SearchFormValues } from '@/components/features/search/SearchForm'
 import { FilterPanel } from '@/components/features/search/FilterPanel'
 import { SearchRouteCard } from '@/components/features/search/SearchRouteCard'
+import { CardWatermark } from '@/components/brand'
 import { FadeIn } from '@/components/motion'
 import { searchRoutes } from '@/lib/api/routes'
 import { Route, SearchFilters, SearchRoutesResponse } from '@vexeviet/types'
@@ -34,6 +35,7 @@ import {
   setSortOrder,
   resetFilters,
 } from '@/store/slices/searchSlice'
+import { initBooking } from '@/store/slices/bookingSlice'
 
 function applyFiltersAndSort(
   routes: Route[],
@@ -127,12 +129,23 @@ const SORT_OPTIONS = [
   { id: 'rating', label: 'Đánh giá', icon: Star },
 ] as const
 
+const QUICK_POPULAR_ROUTES = [
+  { label: 'TP. HCM → Đà Lạt', fullLabel: 'TP. Hồ Chí Minh → Đà Lạt', origin: 'TP. Hồ Chí Minh', destination: 'Đà Lạt' },
+  { label: 'Hà Nội → Sa Pa', fullLabel: 'Hà Nội → Sa Pa', origin: 'Hà Nội', destination: 'Sa Pa' },
+  { label: 'Huế → Đà Nẵng', fullLabel: 'Huế → Đà Nẵng', origin: 'Huế', destination: 'Đà Nẵng' },
+  { label: 'TP. HCM → Nha Trang', fullLabel: 'TP. Hồ Chí Minh → Nha Trang', origin: 'TP. Hồ Chí Minh', destination: 'Nha Trang' },
+] as const
+
 function LoadingSkeleton() {
   return (
     <div className="search-skeletons" role="status">
       <span className="sr-only">Đang tải danh sách chuyến xe</span>
       {Array.from({ length: 3 }).map((_, index) => (
-        <div key={index} className="search-skeleton-card" aria-hidden="true">
+        <div
+          key={index}
+          className="search-skeleton-card bg-card! border! border-border! rounded-xl! shadow-xs"
+          aria-hidden="true"
+        >
           <div className="search-skeleton-line search-skeleton-line-short" />
           <div className="search-skeleton-route">
             <div className="search-skeleton-line" />
@@ -143,6 +156,27 @@ function LoadingSkeleton() {
       ))}
     </div>
   )
+}
+
+function parseLocalDate(dateStr: string | null): Date | undefined {
+  if (!dateStr) return undefined
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim())
+  if (match) {
+    const year = Number(match[1])
+    const month = Number(match[2])
+    const day = Number(match[3])
+    const parsed = new Date(year, month - 1, day)
+    if (
+      parsed.getFullYear() === year &&
+      parsed.getMonth() === month - 1 &&
+      parsed.getDate() === day
+    ) {
+      return parsed
+    }
+    return undefined
+  }
+  const fallback = new Date(dateStr)
+  return Number.isNaN(fallback.getTime()) ? undefined : fallback
 }
 
 function SearchPageContent() {
@@ -160,14 +194,31 @@ function SearchPageContent() {
   const origin = searchParams.get('origin') || ''
   const destination = searchParams.get('destination') || ''
   const departureDateStr = searchParams.get('departureDate')
+  const departureDate = useMemo(() => parseLocalDate(departureDateStr), [departureDateStr])
   const passengers = searchParams.get('passengers') || '1'
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsHeaderScrolled(window.scrollY > 100)
+    let rafId: number | null = null
+
+    const updateScrollState = () => {
+      rafId = null
+      const scrolled = window.scrollY > 100
+      setIsHeaderScrolled((prev) => (prev === scrolled ? prev : scrolled))
     }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+
+    const handleScroll = () => {
+      if (rafId !== null) return
+      rafId = window.requestAnimationFrame(updateScrollState)
+    }
+
+    updateScrollState()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -225,17 +276,47 @@ function SearchPageContent() {
   }
 
   useEffect(() => {
-    if (origin && destination && departureDateStr) {
+    if (origin && destination && departureDate) {
       performSearch({
         origin,
         destination,
-        departureDate: new Date(departureDateStr),
-        passengers: parseInt(passengers, 10),
+        departureDate,
+        passengers: parseInt(passengers, 10) || 1,
       })
     }
-  }, [origin, destination, departureDateStr, passengers])
+  }, [origin, destination, departureDate, passengers])
 
   const handleBookRoute = (routeId: string) => {
+    const selectedRoute = searchResults?.routes.find((r) => r.id === routeId)
+    if (selectedRoute) {
+      const priceNum =
+        typeof selectedRoute.price === 'string'
+          ? parseFloat(selectedRoute.price)
+          : selectedRoute.price || 0
+
+      dispatch(
+        initBooking({
+          id: selectedRoute.id,
+          price: priceNum,
+          busType: selectedRoute.busType || 'STANDARD',
+          from: selectedRoute.origin || origin,
+          to: selectedRoute.destination || destination,
+          departureTime: selectedRoute.departureTime,
+          pickupPoints: (selectedRoute.pickupPoints || []).map((p: any, i: number) => ({
+            id: p.id || `p-${i + 1}`,
+            time: p.time,
+            location: p.location || p.name || '',
+            address: p.address,
+          })),
+          dropoffPoints: (selectedRoute.dropoffPoints || []).map((p: any, i: number) => ({
+            id: p.id || `d-${i + 1}`,
+            time: p.time,
+            location: p.location || p.name || '',
+            address: p.address,
+          })),
+        })
+      )
+    }
     router.push(`/booking/${routeId}`)
   }
 
@@ -248,166 +329,238 @@ function SearchPageContent() {
     }
   }
 
+  const handleQuickRoute = (nextOrigin: string, nextDestination: string) => {
+    const targetDate = departureDate ? format(departureDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+    const params = new URLSearchParams({
+      origin: nextOrigin,
+      destination: nextDestination,
+      departureDate: targetDate,
+      passengers: passengers || '1',
+    })
+    router.push(`/search?${params.toString()}`)
+  }
+
   const resultCount = filteredAndSortedRoutes.length
 
   return (
-    <div className="search-page">
+    <div className="search-page pb-12">
       <FadeIn>
-      <header className="search-page-header">
-        <div className="site-container">
-          <h1
-            className="search-route-heading"
-            aria-label={origin && destination ? `${origin} đến ${destination}` : undefined}
-          >
-            <span className="search-route-stop">
-              <span className="search-route-city">{origin || 'Chọn điểm đi'}</span>
-            </span>
-            <span className="search-route-bridge" aria-hidden="true">
-              <span className="search-route-line" />
-              <ArrowRight size={18} strokeWidth={2.4} />
-            </span>
-            <span className="search-route-stop search-route-stop-arrival">
-              <span className="search-route-city">{destination || 'Chọn điểm đến'}</span>
-            </span>
-          </h1>
-
-          <p className="search-trip-meta">
-            <span>
-              <CalendarDays size={16} aria-hidden="true" />
-              {departureDateStr ? format(new Date(departureDateStr), 'dd/MM/yyyy') : 'Chọn ngày đi'}
-            </span>
-            <span>
-              <Users size={16} aria-hidden="true" />
-              {passengers} hành khách
-            </span>
-            <span>
-              <Bus size={16} aria-hidden="true" />
-              Tất cả loại xe
-            </span>
-          </p>
-        </div>
-      </header>
-
-      <section className="search-form-section" aria-label="Tìm chuyến xe">
-        <div className="site-container">
-          <div className="search-form-panel">
-            <SearchForm
-              isLoading={loading}
-              initialValues={{
-                origin,
-                destination,
-                departureDate: departureDateStr ? new Date(departureDateStr) : undefined,
-                passengers: parseInt(passengers, 10)
-              }}
-            />
-          </div>
-        </div>
-      </section>
-
-      <div className="site-container search-layout">
-        <aside className="search-sidebar">
-          <FilterPanel />
-        </aside>
-
-        <main className="search-results">
-          <div className="search-toolbar">
-            <div>
-              <h2 id="results-heading" aria-live="polite">
-                {loading
-                  ? 'Đang tìm chuyến...'
-                  : error
-                    ? 'Chuyến xe chưa tải được'
-                    : `${resultCount} chuyến xe`}
-              </h2>
-              <p>{origin && destination ? `${origin} đến ${destination}` : 'Chọn điểm đi và điểm đến để bắt đầu'}</p>
+        {/* Unified Compact Search Command Bar */}
+        <section
+          className="mx-auto w-full max-w-[1520px] px-5 pt-4 pb-5 sm:px-8 xl:px-10"
+          aria-label="Tìm chuyến xe"
+        >
+          <div className="group relative rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl" aria-hidden="true">
+              <CardWatermark variant="dong-son" position="top-right" />
             </div>
 
-            <div className="search-sort" role="group" aria-label="Sắp xếp kết quả">
-              <span className="search-sort-label">Sắp xếp</span>
-              {SORT_OPTIONS.map((option) => {
-                const isActive = sortBy === option.id
-                const Icon = option.icon
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={isActive}
-                    onClick={() => handleSort(option.id)}
-                    className={cn('search-sort-button', isActive && 'is-active')}
-                  >
-                    <Icon size={15} aria-hidden="true" />
-                    <span>{option.label}</span>
-                    {isActive && (
-                      <ChevronDown
-                        size={13}
-                        aria-hidden="true"
-                        className={cn('search-sort-chevron', sortOrder === 'desc' && 'is-desc')}
-                      />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="search-mobile-filter"
-            aria-expanded={showMobileFilters}
-            aria-controls="search-filter-sheet"
-            onClick={() => setShowMobileFilters(true)}
-          >
-            <Filter size={18} aria-hidden="true" />
-            Bộ lọc và sắp xếp
-          </button>
-
-          <div className="search-results-list" aria-busy={loading}>
-            {loading ? (
-              <LoadingSkeleton />
-            ) : error ? (
-              <div className="search-state search-state-error" role="alert">
-                <span className="search-state-icon" aria-hidden="true">
-                  <X size={22} />
-                </span>
-                <h3>Không tải được chuyến xe</h3>
-                <p>{error}</p>
-                <Button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="search-secondary-action"
+            <div className="relative z-10 mb-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1
+                  className="m-0 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-accent px-3.5 py-1 font-sans text-sm font-bold tracking-tight text-foreground"
+                  aria-label={origin && destination ? `${origin} đến ${destination}` : undefined}
                 >
-                  Thử lại
-                </Button>
+                  <span>{origin || 'Chọn điểm đi'}</span>
+                  <ArrowRight size={14} strokeWidth={2.5} className="shrink-0 text-primary" aria-hidden="true" />
+                  <span>{destination || 'Chọn điểm đến'}</span>
+                </h1>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDays size={14} className="text-primary" aria-hidden="true" />
+                    {departureDate ? format(departureDate, 'dd/MM/yyyy') : 'Chọn ngày đi'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users size={14} className="text-primary" aria-hidden="true" />
+                    {passengers} hành khách
+                  </span>
+                  <span className="hidden items-center gap-1.5 sm:inline-flex">
+                    <Bus size={14} className="text-primary" aria-hidden="true" />
+                    Tất cả loại xe
+                  </span>
+                </div>
               </div>
-            ) : resultCount === 0 ? (
-              <div className="search-state">
-                <span className="search-state-icon" aria-hidden="true">
-                  <Bus size={22} />
-                </span>
-                <h3>Không tìm thấy chuyến xe</h3>
-                <p>
-                  Chưa có chuyến nào khớp với bộ lọc hiện tại. Bạn thử bỏ bớt bộ lọc hoặc chọn ngày khác.
+
+              <div className="hidden items-center gap-1.5 md:flex" aria-label="Tuyến phổ biến">
+                <span className="mr-1 text-xs font-semibold text-muted-foreground">Gợi ý:</span>
+                {QUICK_POPULAR_ROUTES.slice(0, 3).map((routeItem) => {
+                  const isCurrent =
+                    origin === routeItem.origin && destination === routeItem.destination
+                  return (
+                    <button
+                      key={routeItem.label}
+                      type="button"
+                      onClick={() => handleQuickRoute(routeItem.origin, routeItem.destination)}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                        isCurrent
+                          ? 'border-primary bg-accent text-accent-foreground'
+                          : 'border-border bg-background/70 text-muted-foreground hover:border-primary/50 hover:bg-accent/60 hover:text-primary'
+                      )}
+                    >
+                      {routeItem.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="relative z-10">
+              <SearchForm
+                isLoading={loading}
+                className="lg:[&_.search-fields]:grid-cols-4! [&_.search-fields]:gap-4! [&_.search-form-footer]:pt-2! [&_.search-submit]:rounded-xl! [&_.search-submit]:px-6!"
+                initialValues={{
+                  origin,
+                  destination,
+                  departureDate,
+                  passengers: parseInt(passengers, 10) || 1
+                }}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Main 24-inch Split Layout: 310px Sticky Filter Sidebar + Results */}
+        <div className="mx-auto grid w-full max-w-[1520px] grid-cols-1 items-start gap-6 px-5 sm:px-8 lg:grid-cols-[310px_minmax(0,1fr)] xl:px-10">
+          <aside className="hidden lg:sticky lg:top-[88px] lg:block">
+            <FilterPanel />
+          </aside>
+
+          <section className="search-results min-w-0 space-y-4" aria-labelledby="results-heading">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-xs">
+              <div>
+                <h2 id="results-heading" className="m-0 font-sans text-base font-extrabold text-foreground" aria-live="polite">
+                  {loading
+                    ? 'Đang tìm chuyến...'
+                    : error
+                      ? 'Chuyến xe chưa tải được'
+                      : `${resultCount} chuyến xe phù hợp`}
+                </h2>
+                <p className="mt-0.5 mb-0 text-xs text-muted-foreground">
+                  {origin && destination
+                    ? `${origin} → ${destination}${departureDate ? ` · ${format(departureDate, 'dd/MM/yyyy')}` : ''}`
+                    : 'Chọn điểm đi và điểm đến để bắt đầu tìm kiếm'}
                 </p>
-                <Button
-                  type="button"
-                  onClick={() => dispatch(resetFilters())}
-                  className="search-secondary-action"
-                >
-                  Xóa bộ lọc
-                </Button>
               </div>
-            ) : (
-              <ul className="search-route-list">
-                {filteredAndSortedRoutes.map((route) => (
-                  <li key={route.id}>
-                    <SearchRouteCard route={route} onBook={handleBookRoute} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </main>
-      </div>
+
+              <div className="search-sort flex flex-wrap items-center gap-2" role="group" aria-label="Sắp xếp kết quả">
+                <span className="search-sort-label text-xs font-semibold text-muted-foreground">Sắp xếp</span>
+                {SORT_OPTIONS.map((option) => {
+                  const isActive = sortBy === option.id
+                  const Icon = option.icon
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => handleSort(option.id)}
+                      className={cn(
+                        'search-sort-button rounded-lg! border! transition-colors',
+                        isActive
+                          ? 'is-active border-primary! bg-accent! text-accent-foreground! font-bold! shadow-xs'
+                          : 'border-input! bg-card! text-foreground! hover:border-primary/50! hover:bg-accent/50! hover:text-primary!'
+                      )}
+                    >
+                      <Icon size={15} aria-hidden="true" />
+                      <span>{option.label}</span>
+                      {isActive && (
+                        <ChevronDown
+                          size={13}
+                          aria-hidden="true"
+                          className={cn('search-sort-chevron', sortOrder === 'desc' && 'is-desc')}
+                        />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="search-mobile-filter rounded-lg! border! border-input! bg-card! shadow-xs lg:hidden!"
+              aria-expanded={showMobileFilters}
+              aria-controls="search-filter-sheet"
+              onClick={() => setShowMobileFilters(true)}
+            >
+              <Filter size={18} aria-hidden="true" />
+              Bộ lọc và sắp xếp
+            </button>
+
+            <div className="search-results-list" aria-busy={loading}>
+              {loading ? (
+                <LoadingSkeleton />
+              ) : error ? (
+                <div
+                  className="search-state search-state-error bg-card! border! border-destructive/30! rounded-2xl! shadow-xs"
+                  role="alert"
+                >
+                  <span className="search-state-icon" aria-hidden="true">
+                    <X size={22} />
+                  </span>
+                  <h3>Không tải được chuyến xe</h3>
+                  <p>{error}</p>
+                  <Button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="search-secondary-action rounded-lg! border! border-input! bg-card! text-foreground! hover:border-primary! hover:bg-accent!"
+                  >
+                    Thử lại
+                  </Button>
+                </div>
+              ) : resultCount === 0 ? (
+                <div className="group relative overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center shadow-xs">
+                  <CardWatermark variant="lotus" position="bottom-right" />
+                  <div className="relative z-10 mx-auto flex max-w-xl flex-col items-center">
+                    <span
+                      className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-accent text-primary"
+                      aria-hidden="true"
+                    >
+                      <Bus size={22} />
+                    </span>
+                    <h3 className="m-0 font-sans text-lg font-extrabold text-foreground">
+                      Không tìm thấy chuyến xe phù hợp
+                    </h3>
+                    <p className="mt-2 mb-5 max-w-md text-sm leading-relaxed text-muted-foreground">
+                      Chưa có chuyến nào khớp với bộ lọc hoặc ngày đã chọn. Bạn có thể xóa bộ lọc hoặc khám phá nhanh các tuyến phổ biến dưới đây.
+                    </p>
+
+                    <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+                      {QUICK_POPULAR_ROUTES.map((routeItem) => (
+                        <button
+                          key={routeItem.fullLabel}
+                          type="button"
+                          onClick={() => handleQuickRoute(routeItem.origin, routeItem.destination)}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-input bg-background px-3.5 py-2 text-xs font-bold text-foreground transition-colors hover:border-primary hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <span>{routeItem.fullLabel}</span>
+                          <ArrowRight size={13} className="text-primary" aria-hidden="true" />
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button
+                      type="button"
+                      onClick={() => dispatch(resetFilters())}
+                      className="search-secondary-action rounded-lg! border! border-input! bg-card! px-4! text-foreground! hover:border-primary! hover:bg-accent!"
+                    >
+                      Xóa bộ lọc
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <ul className="search-route-list m-0 grid list-none gap-4 p-0">
+                  {filteredAndSortedRoutes.map((route) => (
+                    <li key={route.id}>
+                      <SearchRouteCard route={route} onBook={handleBookRoute} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </div>
       </FadeIn>
 
       {showMobileFilters && (

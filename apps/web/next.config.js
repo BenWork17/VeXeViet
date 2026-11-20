@@ -4,15 +4,23 @@ const withPWA = require('@ducanh2912/next-pwa').default;
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@vexeviet/ui'],
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'date-fns',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-alert-dialog',
+    ],
+  },
   eslint: {
     dirs: ['src'],
   },
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       { protocol: 'https', hostname: 'upload.wikimedia.org' },
       { protocol: 'https', hostname: 'placehold.co' },
     ],
-    unoptimized: true,
   },
   async headers() {
     return [

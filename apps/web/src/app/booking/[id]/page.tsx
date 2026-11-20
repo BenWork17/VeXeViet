@@ -11,10 +11,19 @@ import { FadeIn } from '@/components/motion';
 import { useAppDispatch, useAppSelector } from '@/lib/hooks/redux';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
-import { setSeats, setTotalPrice, setStep, clearHoldInfo } from '@/store/slices/bookingSlice';
+import {
+  setSeats,
+  setTotalPrice,
+  setStep,
+  clearHoldInfo,
+  initBooking,
+  hydrateBooking,
+  loadBookingContext,
+} from '@/store/slices/bookingSlice';
 import { getSeatAvailability } from '@/lib/api/bookings';
+import { getRouteById } from '@/lib/api/routes';
 import type { SeatAvailability, SeatDetail } from '@vexeviet/types';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 
 export default function BookingPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -28,7 +37,9 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   // For sleeper buses - use API response directly
   const [seatAvailability, setSeatAvailability] = useState<SeatAvailability | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isHydratingRoute, setIsHydratingRoute] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seatLimitNotice, setSeatLimitNotice] = useState<string | null>(null);
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const [conflictedSeats, setConflictedSeats] = useState<string[]>([]);
@@ -82,6 +93,107 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   // Check if this is a sleeper bus (case-insensitive)
   const isSleeper = busTypeDisplay === 'SLEEPER';
 
+  const normalizeAvailability = useCallback(
+    (raw: SeatAvailability): { normalized: SeatAvailability; mappedSeats: SeatData[] } => {
+      const availability: SeatAvailability = {
+        ...raw,
+        seats: [...raw.seats],
+        busTemplate: raw.busTemplate ? { ...raw.busTemplate } : raw.busTemplate,
+      };
+
+      let detectedBusType = availability.busTemplate?.busType || currentRoute?.busType || 'STANDARD';
+
+      const isSleeperLabels = availability.seats.some(
+        (s) =>
+          s.seatNumber?.includes('-L') ||
+          s.seatNumber?.includes('-U') ||
+          s.seatLabel?.includes('-L') ||
+          s.seatLabel?.includes('-U')
+      );
+
+      if (isSleeperLabels && detectedBusType !== 'SLEEPER') {
+        detectedBusType = 'SLEEPER';
+      }
+
+      if (!availability.busTemplate) {
+        const seatCount = availability.seats.length;
+
+        if (detectedBusType === 'SLEEPER') {
+          availability.busTemplate = {
+            id: 'auto-sleeper',
+            name: seatCount >= 38 ? 'Xe Giường Nằm 42 Chỗ' : 'Xe Giường Nằm 34 Chỗ VIP',
+            busType: 'SLEEPER',
+            totalSeats: seatCount,
+            floors: 2,
+            rowsPerFloor: seatCount >= 38 ? 7 : 6,
+            columns: ['A', '_', 'B', '_', 'C'],
+            layoutImage: null,
+          };
+        } else if (detectedBusType === 'LIMOUSINE') {
+          availability.busTemplate = {
+            id: 'auto-limousine',
+            name: seatCount <= 25 ? 'Limousine 22 Chỗ VIP' : 'Limousine 34 Chỗ',
+            busType: 'LIMOUSINE',
+            totalSeats: seatCount,
+            floors: 1,
+            rowsPerFloor: seatCount <= 25 ? 11 : 17,
+            columns: ['A', '_', 'B'],
+            layoutImage: null,
+          };
+        } else {
+          availability.busTemplate = {
+            id: 'auto-standard',
+            name: 'Xe Ghế Ngồi 45 Chỗ',
+            busType: 'STANDARD',
+            totalSeats: seatCount,
+            floors: 1,
+            rowsPerFloor: 12,
+            columns: ['A', 'B', '_', 'C', 'D'],
+            layoutImage: null,
+          };
+        }
+      }
+
+      availability.seats = availability.seats.map((s, index) => {
+        const label = s.seatNumber || s.seatLabel || '';
+
+        let floor = s.floor;
+        if (!floor) {
+          if (label.includes('-U')) floor = 2;
+          else if (label.includes('-L')) floor = 1;
+          else floor = 1;
+        }
+
+        const rowMatch = label.match(/\d+/);
+        const row = s.row || (rowMatch ? parseInt(rowMatch[0]) : Math.floor(index / 4) + 1);
+
+        const colMatch = label.match(/[A-Z]/);
+        const column = s.column || (colMatch ? colMatch[0] : ['A', 'B', 'C', 'D'][index % 4] || 'A');
+
+        return {
+          ...s,
+          id: s.id || label || `s-${index}`,
+          floor,
+          row,
+          column,
+          seatLabel: label || `${row}${column}`,
+          isSelectable: s.status === 'AVAILABLE' || s.isSelectable === true,
+          finalPrice: s.finalPrice || basePrice || 250000,
+        };
+      });
+
+      const mappedSeats: SeatData[] = availability.seats.map((seat: SeatDetail) => ({
+        id: seat.id || seat.seatNumber || seat.seatLabel,
+        status: seat.status === 'AVAILABLE' ? 'available' : 'occupied',
+        type: seat.seatType === 'VIP' ? 'vip' : 'standard',
+      }));
+
+      return { normalized: availability, mappedSeats };
+    },
+    [currentRoute?.busType, basePrice]
+  );
+
+  // Hydrate currentRoute from sessionStorage or API on direct URL entry / F5
   useEffect(() => {
     if (isAuthLoading) return;
 
@@ -90,137 +202,114 @@ export default function BookingPage({ params }: { params: { id: string } }) {
       return;
     }
 
-    if (!currentRoute) {
-      router.push(`/routes/${routeId}`);
+    if (currentRoute && currentRoute.id === routeId) {
       return;
     }
 
+    const persisted = loadBookingContext();
+    if (persisted?.currentRoute && persisted.currentRoute.id === routeId) {
+      dispatch(hydrateBooking(persisted));
+      if (persisted.selectedSeats && persisted.selectedSeats.length > 0) {
+        setSelectedSeats(persisted.selectedSeats);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    async function hydrateRoute() {
+      try {
+        setIsHydratingRoute(true);
+        setError(null);
+        const data = await getRouteById(routeId);
+        if (cancelled) return;
+        if (!data) {
+          setError('Không tìm thấy thông tin chuyến xe');
+          setLoading(false);
+          return;
+        }
+        const priceNum = typeof data.price === 'string' ? parseFloat(data.price) : data.price || 0;
+        dispatch(
+          initBooking({
+            id: data.id,
+            price: priceNum,
+            busType: data.busType || 'STANDARD',
+            from: (data as any).departureLocation || data.origin || '',
+            to: (data as any).arrivalLocation || data.destination || '',
+            departureTime: data.departureTime,
+            pickupPoints: (data.pickupPoints || []).map((p: any, i: number) => ({
+              id: p.id || `p-${i + 1}`,
+              time: p.time,
+              location: p.location || p.name || '',
+              address: p.address,
+            })),
+            dropoffPoints: (data.dropoffPoints || []).map((p: any, i: number) => ({
+              id: p.id || `d-${i + 1}`,
+              time: p.time,
+              location: p.location || p.name || '',
+              address: p.address,
+            })),
+          })
+        );
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || 'Không thể tải thông tin chuyến xe');
+          setLoading(false);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsHydratingRoute(false);
+        }
+      }
+    }
+
+    hydrateRoute();
+    return () => {
+      cancelled = true;
+    };
+  }, [routeId, currentRoute, dispatch, router, isAuthenticated, user, isAuthLoading]);
+
+  useEffect(() => {
+    if (isAuthLoading || !isAuthenticated || !user) return;
+    if (!currentRoute || currentRoute.id !== routeId) return;
+
+    let cancelled = false;
     async function fetchSeats() {
       try {
         setLoading(true);
         setError(null);
-        
-        const departureDate = currentRoute?.departureTime 
+
+        const departureDate = currentRoute?.departureTime
           ? new Date(currentRoute.departureTime).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0];
-        
-        console.log('[BookingPage] Requesting:', { routeId, departureDate });
-        
+
         const availability = await getSeatAvailability(routeId, departureDate!);
-        
-        console.log('[BookingPage] API Data:', availability);
-        
+
+        if (cancelled) return;
+
         if (!availability || !availability.seats || availability.seats.length === 0) {
           throw new Error('Không có dữ liệu chỗ ngồi từ server');
         }
 
-        // HEURISTIC: If API lacks busTemplate, detect from seat numbers
-        let detectedBusType = availability.busTemplate?.busType || currentRoute?.busType || 'STANDARD';
-        
-        const isSleeperLabels = availability.seats.some(s => 
-          s.seatNumber?.includes('-L') || s.seatNumber?.includes('-U') || 
-          s.seatLabel?.includes('-L') || s.seatLabel?.includes('-U')
-        );
-
-        if (isSleeperLabels && detectedBusType !== 'SLEEPER') {
-          detectedBusType = 'SLEEPER';
-        }
-
-        // Create busTemplate if not provided by API
-        if (!availability.busTemplate) {
-          // Determine template based on detected bus type and seat count
-          const seatCount = availability.seats.length;
-          
-          if (detectedBusType === 'SLEEPER') {
-            // Sleeper bus fallback
-            availability.busTemplate = {
-              id: 'auto-sleeper',
-              name: seatCount >= 38 ? 'Xe Giường Nằm 42 Chỗ' : 'Xe Giường Nằm 34 Chỗ VIP',
-              busType: 'SLEEPER',
-              totalSeats: seatCount,
-              floors: 2,
-              rowsPerFloor: seatCount >= 38 ? 7 : 6,
-              columns: ['A', '_', 'B', '_', 'C'],
-              layoutImage: null
-            };
-          } else if (detectedBusType === 'LIMOUSINE') {
-            // Limousine fallback
-            availability.busTemplate = {
-              id: 'auto-limousine',
-              name: seatCount <= 25 ? 'Limousine 22 Chỗ VIP' : 'Limousine 34 Chỗ',
-              busType: 'LIMOUSINE',
-              totalSeats: seatCount,
-              floors: 1,
-              rowsPerFloor: seatCount <= 25 ? 11 : 17,
-              columns: ['A', '_', 'B'],
-              layoutImage: null
-            };
-          } else {
-            // Standard bus fallback
-            availability.busTemplate = {
-              id: 'auto-standard',
-              name: 'Xe Ghế Ngồi 45 Chỗ',
-              busType: 'STANDARD',
-              totalSeats: seatCount,
-              floors: 1,
-              rowsPerFloor: 12,
-              columns: ['A', 'B', '_', 'C', 'D'],
-              layoutImage: null
-            };
-          }
-        }
-
-        // Ensure all seats have floor/row/col for rendering
-        availability.seats = availability.seats.map((s, index) => {
-          const label = (s.seatNumber || s.seatLabel || '');
-          
-          // Detect floor: 1 for Lower (-L), 2 for Upper (-U)
-          // Trust API if available, otherwise parse label
-          let floor = s.floor;
-          if (!floor) {
-            if (label.includes('-U')) floor = 2;
-            else if (label.includes('-L')) floor = 1;
-            else floor = 1;
-          }
-          
-          // Extract row and column
-          const rowMatch = label.match(/\d+/);
-          const row = s.row || (rowMatch ? parseInt(rowMatch[0]) : Math.floor(index / 4) + 1);
-          
-          const colMatch = label.match(/[A-Z]/);
-          const column = s.column || (colMatch ? colMatch[0] : ['A', 'B', 'C', 'D'][index % 4] || 'A');
-
-          return {
-            ...s,
-            id: s.id || label || `s-${index}`,
-            floor,
-            row,
-            column,
-            seatLabel: label || `${row}${column}`,
-            isSelectable: s.status === 'AVAILABLE' || s.isSelectable === true,
-            finalPrice: s.finalPrice || (basePrice || 250000)
-          };
-        });
-
-        setSeatAvailability(availability);
-
-        // Keep legacy mapping for fallback SeatMap component
-        const mappedSeats: SeatData[] = availability.seats.map((seat: SeatDetail) => ({
-          id: seat.id || seat.seatNumber || seat.seatLabel,
-          status: seat.status === 'AVAILABLE' ? 'available' : 'occupied',
-          type: seat.seatType === 'VIP' ? 'vip' : 'standard',
-        }));
+        const { normalized, mappedSeats } = normalizeAvailability(availability);
+        setSeatAvailability(normalized);
         setSeatsData(mappedSeats);
       } catch (err: any) {
-        console.error('[BookingPage] Error:', err);
-        setError(err.message || 'Lỗi kết nối server');
+        if (!cancelled) {
+          console.error('[BookingPage] Error:', err);
+          setError(err.message || 'Lỗi kết nối server');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     fetchSeats();
-  }, [routeId, currentRoute, router, isAuthenticated, user, isAuthLoading]);
+    return () => {
+      cancelled = true;
+    };
+  }, [routeId, currentRoute, isAuthenticated, user, isAuthLoading, normalizeAvailability]);
 
   const generateFallbackSeats = (): SeatData[] => {
     const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -246,12 +335,14 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   const handleSeatSelect = (seatId: string) => {
     setSelectedSeats((prev) => {
       if (prev.includes(seatId)) {
+        setSeatLimitNotice(null);
         return prev.filter((id) => id !== seatId);
       }
       if (prev.length >= 5) {
-        alert('Bạn chỉ có thể chọn tối đa 5 ghế.');
+        setSeatLimitNotice('Bạn chỉ có thể chọn tối đa 5 ghế cho mỗi lượt đặt.');
         return prev;
       }
+      setSeatLimitNotice(null);
       return [...prev, seatId];
     });
   };
@@ -320,7 +411,32 @@ export default function BookingPage({ params }: { params: { id: string } }) {
       ? new Date(currentRoute.departureTime).toISOString().split('T')[0] || ''
       : new Date().toISOString().split('T')[0] || '';
 
-    await refreshSeatAvailability(routeId, departureDate);
+    try {
+      setLoading(true);
+      setError(null);
+      const fresh = await refreshSeatAvailability(routeId, departureDate);
+      if (fresh && fresh.seats && fresh.seats.length > 0) {
+        const { normalized, mappedSeats } = normalizeAvailability(fresh);
+        setSeatAvailability(normalized);
+        setSeatsData(mappedSeats);
+
+        // Prune any previously selected seats that are no longer available
+        setSelectedSeats((prev) =>
+          prev.filter((seatId) => {
+            const seat = normalized.seats.find(
+              (s) => s.id === seatId || s.seatNumber === seatId || s.seatLabel === seatId
+            );
+            return Boolean(seat && seat.status === 'AVAILABLE' && seat.isSelectable);
+          })
+        );
+      } else {
+        setSelectedSeats((prev) => prev.filter((seatId) => !conflictedSeats.includes(seatId)));
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Không thể cập nhật sơ đồ ghế');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleExpiredReturn = async () => {
@@ -342,19 +458,40 @@ export default function BookingPage({ params }: { params: { id: string } }) {
     return <BookingLoading label="Đang kiểm tra đăng nhập..." />;
   }
 
-  if (loading) {
-    return <BookingLoading label="Đang tải sơ đồ ghế..." />;
+  if (isHydratingRoute || loading) {
+    return <BookingLoading label={isHydratingRoute ? 'Đang tải thông tin chuyến xe...' : 'Đang tải sơ đồ ghế...'} />;
   }
 
   if (!currentRoute) {
-    return null;
+    return (
+      <div className="booking-state-page">
+        <div className="booking-state-card">
+          <h1 className="booking-state-title">Không tải được chuyến xe</h1>
+          <p className="booking-state-text">{error || 'Không tìm thấy thông tin chuyến xe.'}</p>
+          <div className="booking-state-actions">
+            <button
+              type="button"
+              onClick={() => router.push('/search')}
+              className="booking-action booking-action--inline"
+            >
+              Quay lại tìm kiếm
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const selectedSeatLabels = getSelectedSeatLabels();
 
   return (
-    <div className="booking-container">
+    <div className="booking-container pb-24 lg:pb-0">
       <FadeIn>
+      <button type="button" onClick={handleBack} className="booking-back-link">
+        <ArrowLeft size={16} aria-hidden="true" />
+        Quay lại chi tiết chuyến xe
+      </button>
+
       <h1 className="sr-only">
         Chọn ghế cho tuyến {currentRoute.from} đến {currentRoute.to}
       </h1>
@@ -462,6 +599,12 @@ export default function BookingPage({ params }: { params: { id: string } }) {
               </div>
             ) : null}
             <p className="booking-summary-note">Tối đa 5 ghế cho mỗi lượt đặt.</p>
+            {seatLimitNotice ? (
+              <p className="booking-field-error" role="alert">
+                <AlertCircle size={14} aria-hidden="true" />
+                {seatLimitNotice}
+              </p>
+            ) : null}
 
             {isSleeper && seatAvailability?.summary ? (
               <div className="booking-summary-row">
@@ -502,7 +645,14 @@ export default function BookingPage({ params }: { params: { id: string } }) {
               aria-busy={isHolding}
               className="booking-action"
             >
-              {isHolding ? 'Đang giữ chỗ…' : 'Tiếp tục đặt vé'}
+              {isHolding ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                  Đang giữ chỗ…
+                </span>
+              ) : (
+                'Tiếp tục đặt vé'
+              )}
             </button>
             <p className="booking-action-note">
               Ghế được giữ trong 15 phút sau khi bạn tiếp tục.
@@ -512,6 +662,38 @@ export default function BookingPage({ params }: { params: { id: string } }) {
       </div>
 
       </FadeIn>
+
+      {/* Sticky Mobile CTA Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card px-4 py-3 shadow-hn-md lg:hidden">
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">
+              {selectedSeats.length > 0
+                ? `${selectedSeats.length} ghế: ${selectedSeatLabels.join(', ')}`
+                : 'Chưa chọn ghế'}
+            </p>
+            <p className="font-mono text-lg font-semibold text-foreground">
+              {totalPrice.toLocaleString('vi-VN')}đ
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleContinue}
+            disabled={selectedSeats.length === 0 || isHolding}
+            aria-busy={isHolding}
+            className="inline-flex h-[44px] shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isHolding ? (
+              <>
+                <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                <span>Đang giữ chỗ…</span>
+              </>
+            ) : (
+              <span>Tiếp tục</span>
+            )}
+          </button>
+        </div>
+      </div>
 
       <SeatConflictModal
         isOpen={showConflictModal}

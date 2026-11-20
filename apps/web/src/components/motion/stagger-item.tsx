@@ -1,7 +1,4 @@
-'use client'
-
 import * as React from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
 
 const STEP_DELAY = 0.04
 const MAX_DELAY_STEPS = 3
@@ -13,22 +10,15 @@ export interface StaggerItemProps {
 }
 
 export function StaggerItem({ children, className, index = 0 }: StaggerItemProps) {
-  const prefersReducedMotion = useReducedMotion()
-  const reduceMotion = prefersReducedMotion === true
   const steps = Math.min(Math.max(index, 0), MAX_DELAY_STEPS)
+  const delay = steps * STEP_DELAY
 
   return (
-    <motion.div
-      className={className}
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={
-        reduceMotion
-          ? { duration: 0, delay: 0 }
-          : { duration: 0.2, ease: 'easeOut', delay: steps * STEP_DELAY }
-      }
+    <div
+      className={className ? `hn-fade-in ${className}` : 'hn-fade-in'}
+      style={delay > 0 ? { animationDelay: `${delay}s` } : undefined}
     >
       {children}
-    </motion.div>
+    </div>
   )
 }

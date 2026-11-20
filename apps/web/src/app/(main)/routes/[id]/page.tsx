@@ -126,7 +126,7 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
   if (!route) notFound();
 
   const handleSelectSeats = () => {
-    if (isNavigating) return;
+    if (isNavigating || isSoldOut) return;
     setIsNavigating(true);
     // TODO: Re-enable login requirement after testing
     // if (!user) {
@@ -141,6 +141,8 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
       from: route.departureLocation,
       to: route.arrivalLocation,
       departureTime: route.departureTime,
+      pickupPoints: route.pickupPoints,
+      dropoffPoints: route.dropoffPoints,
     }));
     router.push(`/booking/${route.id}`);
   };
@@ -201,15 +203,17 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
 
                   <button
                     onClick={handleSelectSeats}
-                    disabled={isNavigating}
+                    disabled={isNavigating || isSoldOut}
                     className={cn(
                       "w-full rounded-md bg-primary px-5 py-3 text-base font-semibold text-primary-foreground shadow-hn-sm transition-colors duration-150 motion-reduce:transition-none",
-                      isNavigating
+                      isNavigating || isSoldOut
                         ? "cursor-not-allowed opacity-50"
                         : "hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                     )}
                   >
-                    {isNavigating ? (
+                    {isSoldOut ? (
+                      'Hết vé'
+                    ) : isNavigating ? (
                       <span className="flex items-center justify-center gap-2">
                         <span className="h-5 w-5 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground motion-safe:animate-spin" />
                         Đang chuyển...
@@ -269,15 +273,17 @@ export default function RouteDetailPage({ params }: { params: { id: string } }) 
           </div>
           <button
             onClick={handleSelectSeats}
-            disabled={isNavigating}
+            disabled={isNavigating || isSoldOut}
             className={cn(
               "flex-1 rounded-md bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-hn-sm transition-colors duration-150 motion-reduce:transition-none",
-              isNavigating
+              isNavigating || isSoldOut
                 ? "cursor-not-allowed opacity-50"
                 : "hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             )}
           >
-            {isNavigating ? (
+            {isSoldOut ? (
+              'Hết vé'
+            ) : isNavigating ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="h-4 w-4 rounded-full border-2 border-primary-foreground/30 border-t-primary-foreground motion-safe:animate-spin" />
                 Đang chuyển...

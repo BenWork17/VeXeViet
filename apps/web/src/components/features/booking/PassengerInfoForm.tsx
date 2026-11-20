@@ -1,10 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useForm, useFieldArray, type FieldErrors } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useAppSelector } from '@/lib/hooks/redux';
 import { cn } from '@/lib/utils';
 import { Input } from '@vexeviet/ui';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export interface PassengerData {
   firstName: string;
@@ -29,7 +32,60 @@ interface PassengerInfoFormProps {
   className?: string;
 }
 
-type ContactField = 'fullName' | 'phone' | 'email' | 'acceptTerms';
+const passengerItemSchema = z.object({
+  firstName: z.string().trim().min(1, 'Vui lòng nhập tên'),
+  lastName: z.string().trim().min(1, 'Vui lòng nhập họ'),
+  seatNumber: z.string().min(1),
+  idNumber: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (val) => !val || /^[0-9]{9,12}$/.test(val),
+      'CMND/CCCD phải gồm 9–12 chữ số'
+    ),
+  dateOfBirth: z.string().optional(),
+});
+
+const passengerInfoSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(2, 'Vui lòng nhập họ tên (tối thiểu 2 ký tự)')
+    .regex(/^[a-zA-ZÀ-ỹ\s]+$/, 'Họ tên chỉ được chứa chữ cái và khoảng trắng'),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (val) => /^(0|\+84)[0-9]{9,10}$/.test(val.replace(/\s/g, '')),
+      'Số điện thoại không hợp lệ (10–11 số, bắt đầu bằng 0 hoặc +84)'
+    ),
+  email: z.string().trim().email('Email không hợp lệ'),
+  passengers: z.array(passengerItemSchema).min(1),
+  acceptTerms: z.boolean().refine((val) => val === true, {
+    message: 'Bạn cần đồng ý với điều khoản để tiếp tục',
+  }),
+});
+
+type PassengerInfoFormValues = z.infer<typeof passengerInfoSchema>;
+
+function getFirstErrorElementId(errors: FieldErrors<PassengerInfoFormValues>): string | null {
+  if (errors.fullName) return 'contact-full-name';
+  if (errors.phone) return 'contact-phone';
+  if (errors.email) return 'contact-email';
+  if (Array.isArray(errors.passengers)) {
+    for (let i = 0; i < errors.passengers.length; i += 1) {
+      const pErr = errors.passengers[i];
+      if (!pErr) continue;
+      if (pErr.lastName) return `passenger-${i}-last-name`;
+      if (pErr.firstName) return `passenger-${i}-first-name`;
+      if (pErr.idNumber) return `passenger-${i}-id-number`;
+      if (pErr.dateOfBirth) return `passenger-${i}-date-of-birth`;
+    }
+  }
+  if (errors.acceptTerms) return 'accept-terms';
+  return null;
+}
 
 export function PassengerInfoForm({
   initialData,
@@ -39,147 +95,112 @@ export function PassengerInfoForm({
 }: PassengerInfoFormProps) {
   const booking = useAppSelector((state) => state.booking);
   const seatLabels = booking.heldSeats.length > 0 ? booking.heldSeats : booking.selectedSeats;
+  const todayIso = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Split initial fullName for first passenger
-  const nameParts = (initialData?.fullName || '').split(' ');
-  const initLastName = nameParts[0] || '';
-  const initFirstName = nameParts.slice(1).join(' ') || '';
+  const defaultValues = useMemo<PassengerInfoFormValues>(() => {
+    const nameParts = (initialData?.fullName || '').trim().split(/\s+/).filter(Boolean);
+    const initLastName = nameParts[0] || '';
+    const initFirstName = nameParts.slice(1).join(' ') || '';
 
-  const [contactData, setContactData] = useState({
-    fullName: initialData?.fullName || '',
-    phone: initialData?.phone || '',
-    email: initialData?.email || '',
-    acceptTerms: initialData?.acceptTerms || false,
+    return {
+      fullName: initialData?.fullName || '',
+      phone: initialData?.phone || '',
+      email: initialData?.email || '',
+      acceptTerms: Boolean(initialData?.acceptTerms),
+      passengers: seatLabels.map((seat, index) => {
+        const saved =
+          initialData?.passengers?.find((p) => p.seatNumber === seat) ||
+          initialData?.passengers?.[index];
+        if (saved) {
+          return {
+            firstName: saved.firstName || '',
+            lastName: saved.lastName || '',
+            seatNumber: seat,
+            idNumber: saved.idNumber || '',
+            dateOfBirth: saved.dateOfBirth || '',
+          };
+        }
+        return {
+          firstName: index === 0 ? initFirstName : '',
+          lastName: index === 0 ? initLastName : '',
+          seatNumber: seat,
+          idNumber: '',
+          dateOfBirth: '',
+        };
+      }),
+    };
+  }, [initialData, seatLabels]);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<PassengerInfoFormValues>({
+    resolver: zodResolver(passengerInfoSchema),
+    defaultValues,
+    mode: 'onBlur',
+    reValidateMode: 'onChange',
+    shouldFocusError: true,
   });
 
-  const [passengers, setPassengers] = useState<PassengerData[]>(
-    seatLabels.map((seat, index) => ({
-      firstName: index === 0 ? initFirstName : '',
-      lastName: index === 0 ? initLastName : '',
-      seatNumber: seat,
-      idNumber: '',
-      dateOfBirth: '',
-    }))
-  );
+  const { fields } = useFieldArray({
+    control,
+    name: 'passengers',
+  });
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-  const validateContact = (field: ContactField, value: string | boolean): string | null => {
-    switch (field) {
-      case 'fullName': {
-        const text = typeof value === 'string' ? value : '';
-        if (!text || text.trim().length < 2) return 'Vui lòng nhập họ tên (tối thiểu 2 ký tự)';
-        if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(text)) return 'Họ tên chỉ được chứa chữ cái và khoảng trắng';
-        return null;
-      }
-      case 'phone': {
-        const text = typeof value === 'string' ? value : '';
-        if (!text || !/^(0|\+84)[0-9]{9,10}$/.test(text.replace(/\s/g, '')))
-          return 'Số điện thoại không hợp lệ (10-11 số, bắt đầu bằng 0 hoặc +84)';
-        return null;
-      }
-      case 'email': {
-        const text = typeof value === 'string' ? value : '';
-        if (!text || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return 'Email không hợp lệ';
-        return null;
-      }
-      case 'acceptTerms':
-        if (!value) return 'Bạn cần đồng ý với điều khoản để tiếp tục';
-        return null;
-      default:
-        return null;
+  // Sync if seatLabels or initialData hydrates asynchronously after mount
+  useEffect(() => {
+    if (fields.length === 0 && seatLabels.length > 0) {
+      reset(defaultValues);
     }
-  };
+  }, [fields.length, seatLabels.length, defaultValues, reset]);
 
-  const validatePassenger = (index: number, field: keyof PassengerData, value: string): string | null => {
-    if (field === 'firstName' && (!value || value.trim().length < 1)) return 'Vui lòng nhập tên';
-    if (field === 'lastName' && (!value || value.trim().length < 1)) return 'Vui lòng nhập họ';
-    return null;
-  };
-
-  const handleContactChange = (field: ContactField, value: string | boolean) => {
-    setContactData(prev => ({ ...prev, [field]: value }));
-    if (touched[field]) {
-      const error = validateContact(field, value);
-      setErrors(prev => ({ ...prev, [field]: error || '' }));
-    }
-  };
-
-  const handleContactBlur = (field: ContactField) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    const error = validateContact(field, contactData[field]);
-    setErrors(prev => ({ ...prev, [field]: error || '' }));
-  };
-
-  const handlePassengerChange = (index: number, field: keyof PassengerData, value: string) => {
-    setPassengers(prev => {
-      const updated = [...prev];
-      updated[index] = { ...prev[index], [field]: value } as PassengerData;
-      return updated;
-    });
-    const key = `passenger_${index}_${field}`;
-    if (touched[key]) {
-      const error = validatePassenger(index, field, value);
-      setErrors(prev => ({ ...prev, [key]: error || '' }));
-    }
-  };
-
-  const handlePassengerBlur = (index: number, field: keyof PassengerData) => {
-    const key = `passenger_${index}_${field}`;
-    setTouched(prev => ({ ...prev, [key]: true }));
-    const p = passengers[index];
-    const error = p ? validatePassenger(index, field, p[field] || '') : null;
-    setErrors(prev => ({ ...prev, [key]: error || '' }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const newErrors: Record<string, string> = {};
-    let hasError = false;
-
-    // Validate contact fields
-    (['fullName', 'phone', 'email', 'acceptTerms'] as ContactField[]).forEach(field => {
-      const error = validateContact(field, contactData[field]);
-      if (error) { newErrors[field] = error; hasError = true; }
-    });
-
-    // Validate each passenger
-    passengers.forEach((p, i) => {
-      const fnErr = validatePassenger(i, 'firstName', p.firstName);
-      if (fnErr) { newErrors[`passenger_${i}_firstName`] = fnErr; hasError = true; }
-      const lnErr = validatePassenger(i, 'lastName', p.lastName);
-      if (lnErr) { newErrors[`passenger_${i}_lastName`] = lnErr; hasError = true; }
-    });
-
-    if (hasError) {
-      setErrors(newErrors);
-      const allTouched: Record<string, boolean> = { fullName: true, phone: true, email: true, acceptTerms: true };
-      passengers.forEach((_, i) => {
-        allTouched[`passenger_${i}_firstName`] = true;
-        allTouched[`passenger_${i}_lastName`] = true;
-      });
-      setTouched(allTouched);
-      return;
-    }
-
+  const handleValidSubmit = (data: PassengerInfoFormValues) => {
     onSubmit({
-      fullName: contactData.fullName,
-      phone: contactData.phone,
-      email: contactData.email,
-      passengers,
-      acceptTerms: contactData.acceptTerms,
+      fullName: data.fullName,
+      phone: data.phone,
+      email: data.email,
+      passengers: data.passengers.map((p) => ({
+        firstName: p.firstName,
+        lastName: p.lastName,
+        seatNumber: p.seatNumber,
+        idNumber: p.idNumber || undefined,
+        dateOfBirth: p.dateOfBirth || undefined,
+      })),
+      acceptTerms: data.acceptTerms,
     });
   };
 
-  const fullNameError = errors.fullName && touched.fullName ? errors.fullName : '';
-  const phoneError = errors.phone && touched.phone ? errors.phone : '';
-  const emailError = errors.email && touched.email ? errors.email : '';
-  const termsError = errors.acceptTerms && touched.acceptTerms ? errors.acceptTerms : '';
+  const handleInvalidSubmit = (formErrors: FieldErrors<PassengerInfoFormValues>) => {
+    const firstId = getFirstErrorElementId(formErrors);
+    if (!firstId) return;
+    const element = document.getElementById(firstId);
+    if (!element) return;
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    element.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'center',
+    });
+    element.focus({ preventScroll: true });
+  };
+
+  const fullNameError = errors.fullName?.message || '';
+  const phoneError = errors.phone?.message || '';
+  const emailError = errors.email?.message || '';
+  const termsError = errors.acceptTerms?.message || '';
 
   return (
-    <form onSubmit={handleSubmit} className={cn('booking-form', className)} noValidate>
+    <form
+      onSubmit={handleSubmit(handleValidSubmit, handleInvalidSubmit)}
+      className={cn('booking-form', className)}
+      noValidate
+    >
       <section className="booking-form-section" aria-labelledby="contact-info-title">
         <div>
           <h3 id="contact-info-title" className="booking-section-title">
@@ -194,14 +215,13 @@ export function PassengerInfoForm({
           <Input
             id="contact-full-name"
             type="text"
+            autoComplete="name"
             placeholder="Nguyễn Văn A"
-            value={contactData.fullName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('fullName', e.target.value)}
-            onBlur={() => handleContactBlur('fullName')}
             disabled={isSubmitting}
             aria-invalid={Boolean(fullNameError)}
             aria-describedby={fullNameError ? 'contact-full-name-error' : undefined}
             className={cn('booking-input', fullNameError && 'booking-input--invalid')}
+            {...register('fullName')}
           />
           {fullNameError ? (
             <p id="contact-full-name-error" className="booking-field-error">
@@ -218,14 +238,14 @@ export function PassengerInfoForm({
           <Input
             id="contact-phone"
             type="tel"
+            inputMode="tel"
+            autoComplete="tel"
             placeholder="0912345678"
-            value={contactData.phone}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('phone', e.target.value)}
-            onBlur={() => handleContactBlur('phone')}
             disabled={isSubmitting}
             aria-invalid={Boolean(phoneError)}
             aria-describedby={phoneError ? 'contact-phone-error' : undefined}
             className={cn('booking-input', phoneError && 'booking-input--invalid')}
+            {...register('phone')}
           />
           {phoneError ? (
             <p id="contact-phone-error" className="booking-field-error">
@@ -242,16 +262,16 @@ export function PassengerInfoForm({
           <Input
             id="contact-email"
             type="email"
+            inputMode="email"
+            autoComplete="email"
             placeholder="example@email.com"
-            value={contactData.email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('email', e.target.value)}
-            onBlur={() => handleContactBlur('email')}
             disabled={isSubmitting}
             aria-invalid={Boolean(emailError)}
             aria-describedby={
               emailError ? 'contact-email-error contact-email-hint' : 'contact-email-hint'
             }
             className={cn('booking-input', emailError && 'booking-input--invalid')}
+            {...register('email')}
           />
           {emailError ? (
             <p id="contact-email-error" className="booking-field-error">
@@ -268,33 +288,31 @@ export function PassengerInfoForm({
       <section className="booking-form-section" aria-labelledby="passenger-info-title">
         <div>
           <h3 id="passenger-info-title" className="booking-section-title">
-            Thông tin hành khách ({passengers.length} người)
+            Thông tin hành khách ({fields.length} người)
           </h3>
           <p className="booking-section-hint">
             Vui lòng nhập thông tin cho mỗi hành khách. Họ tên phải khớp với giấy tờ tùy thân.
           </p>
         </div>
 
-        {passengers.map((passenger, index) => {
+        {fields.map((passengerField, index) => {
           const lastNameId = `passenger-${index}-last-name`;
           const firstNameId = `passenger-${index}-first-name`;
           const idNumberId = `passenger-${index}-id-number`;
           const dateOfBirthId = `passenger-${index}-date-of-birth`;
-          const lastNameError =
-            errors[`passenger_${index}_lastName`] && touched[`passenger_${index}_lastName`]
-              ? errors[`passenger_${index}_lastName`]
-              : '';
-          const firstNameError =
-            errors[`passenger_${index}_firstName`] && touched[`passenger_${index}_firstName`]
-              ? errors[`passenger_${index}_firstName`]
-              : '';
+          const passengerErrors = errors.passengers?.[index];
+          const lastNameError = passengerErrors?.lastName?.message || '';
+          const firstNameError = passengerErrors?.firstName?.message || '';
+          const idNumberError = passengerErrors?.idNumber?.message || '';
 
           return (
-            <div key={passenger.seatNumber} className="booking-passenger-card">
+            <div key={passengerField.id} className="booking-passenger-card">
               <h4 className="booking-passenger-head">
                 Hành khách {index + 1}
-                <span className="booking-passenger-seat">Ghế {passenger.seatNumber}</span>
+                <span className="booking-passenger-seat">Ghế {passengerField.seatNumber}</span>
               </h4>
+
+              <input type="hidden" {...register(`passengers.${index}.seatNumber`)} />
 
               <div className="booking-form-section">
                 <div className="booking-field">
@@ -304,14 +322,13 @@ export function PassengerInfoForm({
                   <Input
                     id={lastNameId}
                     type="text"
+                    autoComplete={index === 0 ? 'family-name' : 'off'}
                     placeholder="Nguyễn"
-                    value={passenger.lastName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'lastName', e.target.value)}
-                    onBlur={() => handlePassengerBlur(index, 'lastName')}
                     disabled={isSubmitting}
                     aria-invalid={Boolean(lastNameError)}
                     aria-describedby={lastNameError ? `${lastNameId}-error` : undefined}
                     className={cn('booking-input', lastNameError && 'booking-input--invalid')}
+                    {...register(`passengers.${index}.lastName`)}
                   />
                   {lastNameError ? (
                     <p id={`${lastNameId}-error`} className="booking-field-error">
@@ -328,14 +345,13 @@ export function PassengerInfoForm({
                   <Input
                     id={firstNameId}
                     type="text"
+                    autoComplete={index === 0 ? 'given-name' : 'off'}
                     placeholder="Văn A"
-                    value={passenger.firstName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'firstName', e.target.value)}
-                    onBlur={() => handlePassengerBlur(index, 'firstName')}
                     disabled={isSubmitting}
                     aria-invalid={Boolean(firstNameError)}
                     aria-describedby={firstNameError ? `${firstNameId}-error` : undefined}
                     className={cn('booking-input', firstNameError && 'booking-input--invalid')}
+                    {...register(`passengers.${index}.firstName`)}
                   />
                   {firstNameError ? (
                     <p id={`${firstNameId}-error`} className="booking-field-error">
@@ -354,12 +370,21 @@ export function PassengerInfoForm({
                   <Input
                     id={idNumberId}
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
                     placeholder="079123456789"
-                    value={passenger.idNumber || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'idNumber', e.target.value)}
                     disabled={isSubmitting}
-                    className="booking-input"
+                    aria-invalid={Boolean(idNumberError)}
+                    aria-describedby={idNumberError ? `${idNumberId}-error` : undefined}
+                    className={cn('booking-input', idNumberError && 'booking-input--invalid')}
+                    {...register(`passengers.${index}.idNumber`)}
                   />
+                  {idNumberError ? (
+                    <p id={`${idNumberId}-error`} className="booking-field-error">
+                      <AlertCircle size={14} aria-hidden="true" />
+                      {idNumberError}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="booking-field">
@@ -369,10 +394,10 @@ export function PassengerInfoForm({
                   <Input
                     id={dateOfBirthId}
                     type="date"
-                    value={passenger.dateOfBirth || ''}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePassengerChange(index, 'dateOfBirth', e.target.value)}
+                    max={todayIso}
                     disabled={isSubmitting}
                     className="booking-input"
+                    {...register(`passengers.${index}.dateOfBirth`)}
                   />
                 </div>
               </div>
@@ -386,18 +411,16 @@ export function PassengerInfoForm({
           <input
             id="accept-terms"
             type="checkbox"
-            checked={contactData.acceptTerms}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleContactChange('acceptTerms', e.target.checked)}
-            onBlur={() => handleContactBlur('acceptTerms')}
             disabled={isSubmitting}
             aria-invalid={Boolean(termsError)}
             aria-describedby={termsError ? 'accept-terms-error' : undefined}
+            {...register('acceptTerms')}
           />
           <p>
             Tôi đã đọc và đồng ý với{' '}
-            <a href="/terms" target="_blank" rel="noreferrer">điều khoản sử dụng</a>
+            <span className="font-semibold text-primary">điều khoản sử dụng</span>
             {' '}và{' '}
-            <a href="/privacy" target="_blank" rel="noreferrer">chính sách bảo mật</a>
+            <span className="font-semibold text-primary">chính sách bảo mật</span>
             {' '}của VeXeViet
           </p>
         </label>
@@ -416,7 +439,10 @@ export function PassengerInfoForm({
         className="booking-action"
       >
         {isSubmitting ? (
-          <span className="booking-form-progress">Đang lưu thông tin…</span>
+          <span className="booking-form-progress inline-flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+            Đang lưu thông tin…
+          </span>
         ) : (
           <span className="booking-form-submit">Tiếp tục thanh toán</span>
         )}

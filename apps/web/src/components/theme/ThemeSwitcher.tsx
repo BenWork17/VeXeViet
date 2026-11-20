@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { useThemeContext } from './ThemeProvider';
 import { Theme } from '@/lib/hooks/useTheme';
@@ -16,6 +16,12 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
 export function ThemeSwitcher() {
   const { theme, setTheme, resolvedTheme } = useThemeContext();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const currentOption = themeOptions.find((opt) => opt.value === theme) ?? themeOptions[2]!;
   const CurrentIcon = resolvedTheme === 'dark' ? Moon : Sun;
 
@@ -31,13 +37,17 @@ export function ThemeSwitcher() {
           type="button"
           className={cn(
             'inline-flex h-10 w-10 items-center justify-center rounded-full',
-            'bg-card text-foreground',
+            'border border-border bg-card text-foreground',
             'transition-colors duration-150 motion-reduce:transition-none',
-            'hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125]',
+            'hover:bg-accent hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           )}
-          aria-label={`Chế độ hiển thị: ${currentOption.label}`}
+          aria-label={mounted ? `Chế độ hiển thị: ${currentOption.label}` : 'Chế độ hiển thị'}
         >
-          <CurrentIcon className="h-4 w-4" aria-hidden="true" />
+          {mounted ? (
+            <CurrentIcon className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <span className="h-4 w-4" aria-hidden="true" />
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -59,7 +69,7 @@ export function ThemeSwitcher() {
                 className={cn(
                   'flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm font-semibold',
                   'transition-colors duration-150 motion-reduce:transition-none',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/[0.125]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
                   isSelected
                     ? 'bg-accent text-accent-foreground'
                     : 'text-foreground hover:bg-muted',

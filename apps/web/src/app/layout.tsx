@@ -1,7 +1,6 @@
 import './globals.css'
-import 'react-day-picker/dist/style.css'
-import { Header } from '@/layouts/Header/Header'
-import { Footer } from '@/layouts/Footer/Footer'
+import type { CSSProperties } from 'react'
+import { Alike, Lora, Nunito, Source_Code_Pro } from 'next/font/google'
 import { StoreProvider } from '@/store/StoreProvider'
 import { QueryProvider } from './providers'
 import { ErrorBoundary } from '@/components/error/ErrorBoundary'
@@ -11,6 +10,40 @@ import { ThemeProvider } from '@/components/theme'
 import { LayoutContent } from './LayoutContent'
 
 export { metadata, viewport } from './metadata'
+
+const nunito = Nunito({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '600', '700', '800'],
+  display: 'swap',
+  variable: '--font-nunito',
+})
+
+const alike = Alike({
+  subsets: ['latin', 'latin-ext'],
+  weight: '400',
+  display: 'swap',
+  variable: '--font-alike',
+})
+
+const lora = Lora({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500'],
+  display: 'swap',
+  variable: '--font-lora',
+})
+
+const sourceCodePro = Source_Code_Pro({
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-source-code-pro',
+})
+
+const fontVariablesStyle = {
+  '--font-sans': 'var(--font-nunito), ui-sans-serif, system-ui, sans-serif',
+  '--font-display': 'var(--font-alike), var(--font-lora), ui-serif, Georgia, serif',
+  '--font-mono': 'var(--font-source-code-pro), ui-monospace, SFMono-Regular, monospace',
+} as CSSProperties
 
 const themeScript = `
 (function() {
@@ -31,17 +64,19 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html
+      lang="vi"
+      suppressHydrationWarning
+      className={`${nunito.variable} ${alike.variable} ${lora.variable} ${sourceCodePro.variable}`}
+      style={fontVariablesStyle}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Alike&family=Lora:wght@400;500&family=Nunito:wght@400;600;700;800&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152x152.png" />
         <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120x120.png" />
-        <meta name="theme-color" content="#FEF3C7" />
+        <meta name="theme-color" content="#FAF9F7" />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground font-sans transition-colors duration-200">
         <ErrorBoundary>

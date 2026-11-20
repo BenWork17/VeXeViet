@@ -15,32 +15,33 @@ export function UpdatePrompt() {
     <div
       role="alert"
       className={cn(
-        'fixed bottom-4 left-1/2 z-50 -translate-x-1/2',
-        'flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3 shadow-hn-md',
+        'pointer-events-auto flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3 shadow-hn-md',
         'text-foreground transition-colors duration-150 motion-reduce:transition-none',
       )}
     >
       <RefreshCw className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
-      <span className="text-sm font-semibold">A new version is available</span>
+      <span className="text-sm font-semibold">Đã có phiên bản mới</span>
       <div className="ml-2 flex items-center gap-2">
         <button
+          type="button"
           onClick={updateApp}
           className={cn(
             'inline-flex h-9 items-center rounded-md px-3 text-sm font-semibold',
             'bg-primary text-primary-foreground hover:bg-primary-deep',
             'transition-colors duration-150 motion-reduce:transition-none',
-            'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/[0.125]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
           )}
         >
-          Update Now
+          Cập nhật ngay
         </button>
         <button
+          type="button"
           onClick={() => setDismissed(true)}
-          aria-label="Dismiss update notification"
+          aria-label="Đóng thông báo cập nhật"
           className={cn(
             'rounded-sm p-1.5 text-muted-foreground hover:text-foreground',
             'transition-colors duration-150 motion-reduce:transition-none',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/[0.125]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
           )}
         >
           <X className="h-4 w-4" aria-hidden="true" />

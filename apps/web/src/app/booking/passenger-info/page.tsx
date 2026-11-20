@@ -1,16 +1,35 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppSelector, useAppDispatch } from '@/lib/hooks/redux';
 import { useSeatHold } from '@/lib/hooks/useSeatHold';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { selectBooking, setStep, clearHoldInfo } from '@/store/slices/bookingSlice';
+import {
+  selectBooking,
+  setStep,
+  clearHoldInfo,
+  hydrateBooking,
+  loadBookingContext,
+} from '@/store/slices/bookingSlice';
 import { PassengerInfoForm, type PassengerInfo } from '@/components/features/booking/PassengerInfoForm';
 import { CountdownTimer } from '@/components/features/booking/CountdownTimer';
 import { SeatHoldExpiredModal } from '@/components/features/booking/SeatHoldExpiredModal';
 import { FadeIn } from '@/components/motion';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
+
+const PASSENGER_INFO_STORAGE_KEY = 'vexeviet_passenger_info';
+
+function loadSavedPassengerInfo(): Partial<PassengerInfo> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(PASSENGER_INFO_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Partial<PassengerInfo>;
+  } catch {
+    return null;
+  }
+}
 
 export default function PassengerInfoPage() {
   const router = useRouter();
@@ -20,6 +39,7 @@ export default function PassengerInfoPage() {
 
   const [showExpiredModal, setShowExpiredModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Seat hold hook
   const {
@@ -34,18 +54,50 @@ export default function PassengerInfoPage() {
     },
   });
 
-  // Check if we have required booking data
+  // Hydrate booking context from sessionStorage on F5 / refresh before checking redirect
   useEffect(() => {
+    if (!booking.currentRoute || booking.selectedSeats.length === 0) {
+      const persisted = loadBookingContext();
+      if (persisted?.currentRoute && persisted.selectedSeats && persisted.selectedSeats.length > 0) {
+        dispatch(hydrateBooking(persisted));
+      }
+    }
+    setIsHydrated(true);
+  }, [booking.currentRoute, booking.selectedSeats.length, dispatch]);
+
+  // Check if we have required booking data after hydration
+  useEffect(() => {
+    if (!isHydrated) return;
+
     if (!booking.currentRoute || booking.selectedSeats.length === 0) {
       router.push('/search');
       return;
     }
 
     // Check if hold has expired
-    if (!holdId || isExpired) {
+    if (isExpired) {
       setShowExpiredModal(true);
     }
-  }, [booking.currentRoute, booking.selectedSeats, holdId, isExpired, router]);
+  }, [isHydrated, booking.currentRoute, booking.selectedSeats, isExpired, router]);
+
+  const initialFormData = useMemo<Partial<PassengerInfo>>(() => {
+    const saved = loadSavedPassengerInfo();
+    if (saved) {
+      return {
+        fullName: saved.fullName || (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : ''),
+        phone: saved.phone || user?.phone || '',
+        email: saved.email || user?.email || '',
+        passengers: saved.passengers,
+        acceptTerms: Boolean(saved.acceptTerms),
+      };
+    }
+    return {
+      fullName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
+      phone: user?.phone || '',
+      email: user?.email || '',
+      acceptTerms: false,
+    };
+  }, [user]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -90,7 +142,7 @@ export default function PassengerInfoPage() {
     }).format(amount);
   };
 
-  if (!booking.currentRoute || booking.selectedSeats.length === 0) {
+  if (!isHydrated || !booking.currentRoute || booking.selectedSeats.length === 0) {
     return null;
   }
 
@@ -125,12 +177,7 @@ export default function PassengerInfoPage() {
             ) : null}
 
             <PassengerInfoForm
-              initialData={{
-                fullName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
-                phone: user?.phone || '',
-                email: user?.email || '',
-                acceptTerms: false,
-              }}
+              initialData={initialFormData}
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}
             />

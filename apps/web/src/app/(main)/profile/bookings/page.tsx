@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockBookingApi } from '@/lib/api/mock/booking';
 import { cancelBooking } from '@/lib/api/bookings';
+import { useMyBookings } from '@/lib/hooks/useBookings';
+import { useAuth } from '@/lib/hooks/useAuth';
 import { BookingDetails } from '@/types/booking';
 import {
   AlertDialog,
@@ -22,48 +21,107 @@ import { Calendar, Clock, MapPin, Users, Ticket, X, CheckCircle2 } from 'lucide-
 import Link from 'next/link';
 import { FadeIn } from '@/components/motion';
 
+function normalizeBooking(raw: any): BookingDetails {
+  const totalPrice =
+    raw.totalPrice && typeof raw.totalPrice === 'object'
+      ? raw.totalPrice.amount || raw.totalPrice.total || 0
+      : raw.totalAmount ?? raw.totalPrice ?? 0;
+
+  const durationMinutes = typeof raw.route?.duration === 'number' ? raw.route.duration : null;
+  const duration =
+    durationMinutes !== null
+      ? `${Math.floor(durationMinutes / 60)}h ${durationMinutes % 60}m`
+      : String(raw.route?.duration || 'N/A');
+
+  const passengers = Array.isArray(raw.passengers)
+    ? raw.passengers.map((p: any) => ({
+        fullName:
+          p.fullName ||
+          `${p.lastName || ''} ${p.firstName || ''}`.trim() ||
+          'Hành khách',
+        seatNumber: p.seatNumber || '',
+        phone: p.phone || raw.contactInfo?.phone || '',
+        email: p.email || raw.contactInfo?.email,
+      }))
+    : (raw.seats || []).map((seat: string) => ({
+        fullName: raw.contactInfo?.fullName || 'Hành khách',
+        seatNumber: seat,
+        phone: raw.contactInfo?.phone || '',
+        email: raw.contactInfo?.email,
+      }));
+
+  const normalizedStatus: BookingDetails['status'] =
+    raw.status === 'CONFIRMED' || raw.status === 'COMPLETED'
+      ? 'CONFIRMED'
+      : raw.status === 'CANCELLED'
+        ? 'CANCELLED'
+        : 'PENDING';
+
+  const paymentStatus: BookingDetails['paymentStatus'] =
+    raw.paymentStatus === 'PAID' || raw.paymentStatus === 'REFUNDED'
+      ? raw.paymentStatus
+      : normalizedStatus === 'CONFIRMED'
+        ? 'PAID'
+        : 'PENDING';
+
+  return {
+    id: raw.id || raw.bookingId || '',
+    bookingCode: raw.bookingCode || raw.id || '',
+    status: normalizedStatus,
+    route: {
+      id: raw.route?.id || raw.routeId || '',
+      from: raw.route?.from || raw.route?.origin || 'N/A',
+      to: raw.route?.to || raw.route?.destination || 'N/A',
+      departureTime: raw.route?.departureTime || raw.departureDate || raw.createdAt || new Date().toISOString(),
+      arrivalTime: raw.route?.arrivalTime || raw.route?.departureTime || raw.createdAt || new Date().toISOString(),
+      duration,
+    },
+    operator: {
+      id: raw.operator?.id || raw.route?.operator?.id || raw.route?.operatorId || '',
+      name: raw.operator?.name || raw.route?.operator?.name || 'VeXeViet',
+      logoUrl: raw.operator?.logoUrl || raw.operator?.logo || raw.route?.operator?.logo || '',
+    },
+    busType: raw.busType || raw.route?.busType || 'STANDARD',
+    licensePlate: raw.licensePlate || raw.route?.licensePlate || 'N/A',
+    passengers,
+    ticketPrice: raw.ticketPrice ?? totalPrice,
+    serviceFee: raw.serviceFee ?? 0,
+    totalPrice,
+    paymentMethod: raw.paymentMethod || 'VNPAY',
+    paymentStatus,
+    transactionId: raw.transactionId,
+    createdAt: raw.createdAt || new Date().toISOString(),
+  };
+}
+
 export default function BookingsDashboardPage() {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const { data: rawBookings = [], isLoading: loading, refetch } = useMyBookings();
   const router = useRouter();
-  const [bookings, setBookings] = useState<BookingDetails[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  const bookings = useMemo(
+    () => (Array.isArray(rawBookings) ? rawBookings.map(normalizeBooking) : []),
+    [rawBookings]
+  );
+
   useEffect(() => {
-    if (!user) {
+    if (!isAuthLoading && !user) {
       router.push('/login');
-      return;
     }
-
-    loadBookings();
-  }, [user, router]);
-
-  const loadBookings = async () => {
-    if (!user) return;
-
-    setLoading(true);
-    try {
-      const data = await mockBookingApi.getBookingHistory(user.id);
-      setBookings(data);
-    } catch (error) {
-      showToast('Failed to load bookings', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user, isAuthLoading, router]);
 
   const handleCancelBooking = async (bookingId: string) => {
     setCancellingId(bookingId);
     try {
-      // Call real API instead of mock
-      const result = await cancelBooking(bookingId, {
+      await cancelBooking(bookingId, {
         reason: 'User requested cancellation'
       });
 
       showToast('Booking cancelled successfully', 'success');
-      await loadBookings(); // Refresh bookings
+      await refetch();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.error?.message || 'Failed to cancel booking';
       showToast(errorMessage, 'error');

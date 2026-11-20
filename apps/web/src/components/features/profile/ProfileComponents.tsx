@@ -30,6 +30,7 @@ export function ProfileForm({ user }: { user: User }) {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
     defaultValues: {
@@ -42,6 +43,7 @@ export function ProfileForm({ user }: { user: User }) {
   const onSubmit = async (data: ProfileFormValues) => {
     try {
       await updateProfileMutation.mutateAsync(data);
+      reset(data);
       showSuccess('Cập nhật thông tin thành công!');
     } catch (error: any) {
       showError('Lỗi', error?.message || 'Cập nhật thất bại. Vui lòng thử lại.');
@@ -49,11 +51,12 @@ export function ProfileForm({ user }: { user: User }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" noValidate>
       <div className="grid gap-4 md:grid-cols-2">
         <ProfileInput
           label="Họ"
           icon={UserRound}
+          autoComplete="family-name"
           error={errors.lastName?.message}
           inputProps={register('lastName', {
             required: 'Vui lòng nhập họ',
@@ -63,6 +66,7 @@ export function ProfileForm({ user }: { user: User }) {
         <ProfileInput
           label="Tên"
           icon={UserRound}
+          autoComplete="given-name"
           error={errors.firstName?.message}
           inputProps={register('firstName', {
             required: 'Vui lòng nhập tên',
@@ -73,6 +77,9 @@ export function ProfileForm({ user }: { user: User }) {
         <ProfileInput
           label="Số điện thoại"
           icon={Phone}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
           placeholder="+84901234567"
           helperText="Định dạng: +84901234567 hoặc 0901234567"
           error={errors.phone?.message}
@@ -106,6 +113,7 @@ export function ProfileForm({ user }: { user: User }) {
         <button
           type="submit"
           disabled={updateProfileMutation.isPending || !isDirty}
+          aria-busy={updateProfileMutation.isPending}
           className="inline-flex h-[42px] items-center justify-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary-deep disabled:cursor-not-allowed disabled:opacity-50"
         >
           {updateProfileMutation.isPending ? (
@@ -130,12 +138,18 @@ function ProfileInput({
   helperText,
   inputProps,
   placeholder,
+  type = 'text',
+  inputMode,
+  autoComplete,
 }: {
   label: string;
   icon: typeof UserRound;
   error?: string;
   helperText?: string;
   placeholder?: string;
+  type?: React.HTMLInputTypeAttribute;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  autoComplete?: string;
   inputProps: React.InputHTMLAttributes<HTMLInputElement>;
 }) {
   return (
@@ -144,13 +158,17 @@ function ProfileInput({
       <span
         className={`flex h-[42px] items-center gap-2.5 rounded-md border bg-field px-3.5 transition-colors duration-150 ${
           error
-            ? 'border-2 border-error ring-[3px] ring-error-soft'
-            : 'border-input hover:border-primary focus-within:border-2 focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15'
+            ? 'border-error ring-[3px] ring-error-soft'
+            : 'border-input hover:border-primary focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/15'
         }`}
       >
-        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         <input
           {...inputProps}
+          type={type}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          aria-invalid={Boolean(error)}
           placeholder={placeholder}
           className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
         />

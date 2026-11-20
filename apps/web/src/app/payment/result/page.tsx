@@ -135,7 +135,6 @@ function PaymentResultContent() {
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const [result, setResult] = useState<PaymentResultParams | null>(null);
-  const [animate, setAnimate] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   useEffect(() => {
@@ -161,7 +160,6 @@ function PaymentResultContent() {
 
     setResult(paymentResult);
     dispatch(setPaymentStatus(success ? 'success' : 'failed'));
-    setTimeout(() => setAnimate(true), 100);
   }, [searchParams, dispatch]);
 
   useEffect(() => {
@@ -260,12 +258,7 @@ function PaymentResultContent() {
 
   return (
     <FadeIn className="min-h-screen bg-background px-4 py-8 font-sans text-foreground sm:py-12">
-      <div
-        className={cn(
-          'mx-auto max-w-2xl transition-all duration-200 motion-reduce:transition-none',
-          animate ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0',
-        )}
-      >
+      <div className="mx-auto max-w-2xl">
         <div className="overflow-hidden rounded-lg border border-border bg-card shadow-hn-md">
           <div
             className={cn(

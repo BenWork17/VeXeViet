@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { holdSeats, releaseSeats, getSeatAvailability } from '@/lib/api/bookings';
-import { HoldSeatsRequest, ReleaseSeatsRequest, HoldSeatsResponse } from '@vexeviet/types';
+import { HoldSeatsRequest, ReleaseSeatsRequest, HoldSeatsResponse, SeatAvailability } from '@vexeviet/types';
 import { useAppDispatch, useAppSelector } from './redux';
 import { 
   setHoldInfo, 
@@ -32,6 +32,11 @@ interface UseSeatHoldOptions {
   onExpire?: () => void;
   onReleaseSuccess?: () => void;
   onReleaseError?: (error: Error) => void;
+  /**
+   * Opt in to 1Hz `timeRemaining` state updates. Defaults to `false` so pages that
+   * delegate countdown display to `<CountdownTimer />` do not re-render every second.
+   */
+  trackCountdown?: boolean;
 }
 
 interface UseSeatHoldReturn {
@@ -41,12 +46,12 @@ interface UseSeatHoldReturn {
   isHolding: boolean;
   isReleasing: boolean;
   isExpired: boolean;
-  timeRemaining: number; // in seconds
-  
+  timeRemaining: number; // in seconds (live-updated only when trackCountdown is true)
+
   // Actions
   hold: (request: HoldSeatsRequest) => Promise<HoldSeatsResponse>;
   release: () => Promise<void>;
-  refreshAvailability: (routeId: string, departureDate: string) => Promise<void>;
+  refreshAvailability: (routeId: string, departureDate: string) => Promise<SeatAvailability>;
   clearHold: () => void;
 }
 
@@ -122,51 +127,67 @@ export function useSeatHold(options: UseSeatHoldOptions = {}): UseSeatHoldReturn
   }, [dispatch, holdId]);
   
   // Calculate time remaining and handle expiration
+  const trackCountdown = options.trackCountdown ?? false;
+
   useEffect(() => {
     if (!expiresAt) {
       setTimeRemaining(0);
       setIsExpired(false);
       return;
     }
-    
-    const calculateRemaining = () => {
-      const expireTime = new Date(expiresAt).getTime();
-      const now = Date.now();
-      const remaining = Math.max(0, Math.floor((expireTime - now) / 1000));
-      return remaining;
-    };
-    
-    // Initial calculation
-    const initial = calculateRemaining();
-    setTimeRemaining(initial);
-    setIsExpired(initial <= 0);
-    
-    if (initial <= 0) {
-      // Already expired
+
+    const expireTime = new Date(expiresAt).getTime();
+    const calculateRemainingMs = () => Math.max(0, expireTime - Date.now());
+    const initialMs = calculateRemainingMs();
+    const initialSeconds = Math.floor(initialMs / 1000);
+
+    setTimeRemaining(initialSeconds);
+    setIsExpired(initialMs <= 0);
+
+    if (initialMs <= 0) {
       expireCallbackRef.current?.();
       return;
     }
-    
-    // Update every second
+
+    if (!trackCountdown) {
+      // Schedule a single timeout for expiration — zero 1Hz re-renders
+      timerRef.current = setTimeout(() => {
+        setTimeRemaining(0);
+        setIsExpired(true);
+        expireCallbackRef.current?.();
+      }, initialMs);
+
+      return () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }
+
+    // Opt-in 1Hz countdown mode
     timerRef.current = setInterval(() => {
-      const remaining = calculateRemaining();
+      const remainingMs = calculateRemainingMs();
+      const remaining = Math.floor(remainingMs / 1000);
       setTimeRemaining(remaining);
-      
-      if (remaining <= 0) {
+
+      if (remainingMs <= 0) {
         setIsExpired(true);
         if (timerRef.current) {
           clearInterval(timerRef.current);
+          timerRef.current = null;
         }
         expireCallbackRef.current?.();
       }
     }, 1000);
-    
+
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [expiresAt]);
+  }, [expiresAt, trackCountdown]);
   
   // Hold seats mutation
   const holdMutation = useMutation({
@@ -222,12 +243,12 @@ export function useSeatHold(options: UseSeatHoldOptions = {}): UseSeatHoldReturn
     await releaseMutation.mutateAsync({ holdId });
   }, [holdId, releaseMutation]);
   
-  // Refresh seat availability
-  const refreshAvailability = useCallback(async (routeId: string, departureDate: string): Promise<void> => {
+  // Refresh seat availability and return fresh data
+  const refreshAvailability = useCallback(async (routeId: string, departureDate: string): Promise<SeatAvailability> => {
     // Invalidate any cached seat availability data
     await queryClient.invalidateQueries({ queryKey: ['seats', 'availability', routeId, departureDate] });
-    // Optionally fetch fresh data
-    await getSeatAvailability(routeId, departureDate);
+    // Fetch and return fresh data so callers can update local state
+    return getSeatAvailability(routeId, departureDate);
   }, [queryClient]);
   
   // Clear hold without API call (for local cleanup)
