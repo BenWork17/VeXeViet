@@ -1,8 +1,8 @@
 {
-  "name": "vexeviet-platform",
+  "name": "vexeviet-fe",
   "version": "1.0.0",
   "private": true,
-  "description": "VeXeViet - Vietnamese bus ticket booking platform",
+  "description": "VeXeViet Frontend Monorepo (Customer Web & Admin/Operator Console)",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=8.0.0"
@@ -10,19 +10,21 @@
   "packageManager": "pnpm@8.15.0",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:admin": "pnpm --filter admin dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:unit": "turbo run test:unit",
     "test:e2e": "turbo run test:e2e",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "clean": "turbo run clean && rm -rf node_modules",
+    "format": "prettier --write \"apps/**/*.{js,jsx,ts,tsx,json,md}\" \"packages/**/*.{js,jsx,ts,tsx,json,md}\"",
+    "clean": "turbo run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\"",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
-    "turbo": "^1.12.0",
+    "eslint": "^8.56.0",
     "prettier": "^3.2.4",
-    "typescript": "^5.3.3",
-    "eslint": "^8.56.0"
+    "turbo": "^1.12.0",
+    "typescript": "^5.3.3"
   }
 }

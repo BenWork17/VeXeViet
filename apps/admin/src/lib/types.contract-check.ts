@@ -17,6 +17,12 @@
  */
 
 import type {
+  BusType as SharedBusType,
+  LoginResponse as SharedLoginResponse,
+  RouteStatus as SharedRouteStatus,
+  UserRole as SharedUserRole,
+} from '@vexeviet/types';
+import type {
   AdminBooking,
   AdminDashboardStats,
   AdminOperator,
@@ -327,3 +333,13 @@ export type AuditActorIdIsNullable = Expected<Equal<Extract<AuditLogItem['actorI
 
 /** `metadata` is arbitrary JSON — the page stringifies it, never indexes it. */
 export type AuditMetadataIsUnknown = Expected<Equal<AuditLogItem['metadata'], unknown>>;
+
+/* ------------------------------------------------------------------ *
+ * Shared @vexeviet/types parity assertions
+ * ------------------------------------------------------------------ */
+
+export type SharedRouteStatusMatchesAdmin = Expected<Equal<SharedRouteStatus, RouteStatus>>;
+export type SharedBusTypeMatchesAdmin = Expected<Equal<SharedBusType, BusType>>;
+export type SharedLoginResponseCarriesRole = Expected<
+  Equal<SharedLoginResponse['user']['role'], SharedUserRole>
+>;

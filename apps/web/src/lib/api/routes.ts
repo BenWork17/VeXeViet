@@ -1,7 +1,3 @@
-/**
- * Route API functions
- */
-
 import apiClient from './client';
 import {
   ApiResponse,
@@ -10,10 +6,6 @@ import {
   City,
   API_ENDPOINTS,
 } from '@vexeviet/types';
-
-// ========================
-// Route Search API
-// ========================
 
 type BackendRoute = Route & {
   fromCity?: string;
@@ -31,10 +23,12 @@ type SearchApiPagination = Partial<SearchRoutesResponse['pagination']> & {
 
 type SearchApiResponse = {
   routes?: BackendRoute[];
-  data?: BackendRoute[] | {
-    routes?: BackendRoute[];
-    pagination?: SearchApiPagination;
-  };
+  data?:
+    | BackendRoute[]
+    | {
+        routes?: BackendRoute[];
+        pagination?: SearchApiPagination;
+      };
   pagination?: SearchApiPagination;
   page?: number;
   pageSize?: number;
@@ -81,44 +75,6 @@ const fallbackPopularRoutes: Route[] = [
     distance: 430,
     operator: { id: 'fallback-operator-2', name: 'Biển Xanh Limousine' },
   },
-  {
-    id: 'fallback-ha-noi-sapa',
-    operatorId: 'fallback-operator-3',
-    origin: 'Hà Nội',
-    destination: 'Sa Pa',
-    departureTime: '22:15',
-    arrivalTime: '05:45',
-    duration: 450,
-    price: 380000,
-    availableSeats: 10,
-    totalSeats: 22,
-    busType: 'VIP',
-    amenities: ['Cabin riêng', 'Wifi', 'Nước uống'],
-    status: 'ACTIVE',
-    pickupPoints: [],
-    dropoffPoints: [],
-    distance: 315,
-    operator: { id: 'fallback-operator-3', name: 'Tây Bắc VIP' },
-  },
-  {
-    id: 'fallback-da-nang-hue',
-    operatorId: 'fallback-operator-4',
-    origin: 'Đà Nẵng',
-    destination: 'Huế',
-    departureTime: '08:00',
-    arrivalTime: '10:30',
-    duration: 150,
-    price: 140000,
-    availableSeats: 26,
-    totalSeats: 45,
-    busType: 'STANDARD',
-    amenities: ['Máy lạnh', 'Nước uống'],
-    status: 'ACTIVE',
-    pickupPoints: [],
-    dropoffPoints: [],
-    distance: 95,
-    operator: { id: 'fallback-operator-4', name: 'Miền Trung Bus' },
-  },
 ];
 
 function parseDurationToMinutes(duration: unknown): number {
@@ -155,7 +111,9 @@ function normalizeRoute(route: BackendRoute): Route {
     amenities: Array.isArray(route.amenities) ? route.amenities : [],
     pickupPoints: Array.isArray(route.pickupPoints) ? route.pickupPoints : [],
     dropoffPoints: Array.isArray(route.dropoffPoints) ? route.dropoffPoints : [],
-    operator: route.operator ?? (route.operatorName ? { id: route.operatorId, name: route.operatorName } : undefined),
+    operator:
+      route.operator ??
+      (route.operatorName ? { id: route.operatorId, name: route.operatorName } : undefined),
   };
 }
 
@@ -166,7 +124,6 @@ function buildSearchResponse(apiData: SearchApiResponse): SearchRoutesResponse {
   const pagination = apiData.pagination ?? dataPagination;
 
   if (!Array.isArray(routes)) {
-    console.warn('[searchRoutes] Unexpected response format, returning empty result');
     return {
       routes: [],
       pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
@@ -188,9 +145,6 @@ function buildSearchResponse(apiData: SearchApiResponse): SearchRoutesResponse {
   };
 }
 
-/**
- * Search for routes (POST /api/v1/search/routes)
- */
 export async function searchRoutes(params: {
   origin: string;
   destination: string;
@@ -205,14 +159,13 @@ export async function searchRoutes(params: {
   pageSize?: number;
 }): Promise<SearchRoutesResponse> {
   const requestBody = {
-    // New backend format
     fromCity: params.origin,
     toCity: params.destination,
-    // Also send old format for backwards compatibility
     origin: params.origin,
     destination: params.destination,
     departureDate: params.departureDate,
     passengers: params.passengers,
+    busType: params.busType,
     minPrice: params.minPrice,
     maxPrice: params.maxPrice,
     sortBy: params.sortBy,
@@ -225,61 +178,39 @@ export async function searchRoutes(params: {
     API_ENDPOINTS.SEARCH_ROUTES,
     requestBody
   );
-  
-  console.log('[searchRoutes] API Response:', response.data);
-  
+
   return buildSearchResponse(response.data);
 }
 
-/**
- * Get popular routes (GET /api/v1/search/popular)
- */
 export async function getPopularRoutes(limit?: number): Promise<Route[]> {
-  const fallbackRoutes = limit ? fallbackPopularRoutes.slice(0, limit) : fallbackPopularRoutes;
-
-  if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_ENABLE_LIVE_POPULAR_ROUTES !== 'true') {
-    return fallbackRoutes;
+  if (process.env.NEXT_PUBLIC_USE_MOCK === 'true') {
+    return limit ? fallbackPopularRoutes.slice(0, limit) : fallbackPopularRoutes;
   }
 
-  const url = limit 
+  const url = limit
     ? `${API_ENDPOINTS.SEARCH_POPULAR}?limit=${limit}`
     : API_ENDPOINTS.SEARCH_POPULAR;
 
-  try {
-    const response = await apiClient.get<ApiResponse<Route[]>>(url);
-    return response.data.data.map(normalizeRoute);
-  } catch (error) {
-    console.warn('[getPopularRoutes] Backend unavailable, using fallback routes', error);
-    return fallbackRoutes;
-  }
+  const response = await apiClient.get<ApiResponse<Route[]>>(url);
+  return response.data.data.map(normalizeRoute);
 }
 
-/**
- * Get search suggestions (GET /api/v1/search/suggestions)
- */
-export async function getSearchSuggestions(field: 'origin' | 'destination', query: string): Promise<string[]> {
+export async function getSearchSuggestions(
+  field: 'origin' | 'destination',
+  query: string
+): Promise<string[]> {
   const response = await apiClient.get<ApiResponse<string[]>>(
     `${API_ENDPOINTS.SEARCH_SUGGESTIONS}?field=${field}&query=${encodeURIComponent(query)}`
   );
   return response.data.data;
 }
 
-/**
- * Get route by ID
- */
 export async function getRouteById(id: string): Promise<Route> {
-  const response = await apiClient.get<ApiResponse<Route>>(
-    API_ENDPOINTS.ROUTES_BY_ID(id)
-  );
+  const response = await apiClient.get<ApiResponse<Route>>(API_ENDPOINTS.ROUTES_BY_ID(id));
   return response.data.data;
 }
 
-/**
- * Get all cities
- */
 export async function getCities(): Promise<City[]> {
-  const response = await apiClient.get<ApiResponse<City[]>>(
-    API_ENDPOINTS.CITIES
-  );
+  const response = await apiClient.get<ApiResponse<City[]>>(API_ENDPOINTS.CITIES);
   return response.data.data;
 }

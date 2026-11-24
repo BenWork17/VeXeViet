@@ -1,24 +1,21 @@
-/**
- * Axios API Client with interceptors for authentication
- * Handles token refresh automatically
- */
-
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { ApiError, ApiResponse, RefreshTokenResponse, ErrorCode, ERROR_MESSAGES } from '@vexeviet/types';
+import {
+  API_ENDPOINTS,
+  ApiError,
+  ApiResponse,
+  ErrorCode,
+  RefreshTokenResponse,
+} from '@vexeviet/types';
+import {
+  generateClientRequestId,
+  normaliseApiError,
+} from '@vexeviet/api-client';
 
-// ========================
-// Configuration
-// ========================
+const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
+const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000') + '/api/v1';
-
-// Token storage keys
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
-
-// ========================
-// Token Management
-// ========================
 
 export const tokenStorage = {
   getAccessToken: (): string | null => {
@@ -43,14 +40,8 @@ export const tokenStorage = {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
   },
 
-  hasTokens: (): boolean => {
-    return !!tokenStorage.getAccessToken();
-  },
+  hasTokens: (): boolean => Boolean(tokenStorage.getAccessToken()),
 };
-
-// ========================
-// API Client Instance
-// ========================
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -60,26 +51,21 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// ========================
-// Request Interceptor
-// ========================
-
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = tokenStorage.getAccessToken();
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (config.headers) {
+      if (!config.headers['X-Request-Id']) {
+        config.headers['X-Request-Id'] = generateClientRequestId();
+      }
+      const token = tokenStorage.getAccessToken();
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
-
-// ========================
-// Response Interceptor with Token Refresh
-// ========================
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -101,17 +87,16 @@ const processQueue = (error: unknown, token: string | null = null) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiError>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const originalRequest = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
 
-    // If error is 401 and we haven't tried refreshing yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't try to refresh if we're on auth endpoints
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       if (originalRequest.url?.includes('/auth/')) {
         return Promise.reject(error);
       }
 
       if (isRefreshing) {
-        // Wait for the refresh to complete
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token: string) => {
@@ -120,9 +105,7 @@ apiClient.interceptors.response.use(
               }
               resolve(apiClient(originalRequest));
             },
-            reject: (err: unknown) => {
-              reject(err);
-            },
+            reject,
           });
         });
       }
@@ -135,7 +118,6 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         isRefreshing = false;
         tokenStorage.clearTokens();
-        // Dispatch logout event for the app to handle
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth:logout'));
         }
@@ -144,8 +126,14 @@ apiClient.interceptors.response.use(
 
       try {
         const response = await axios.post<ApiResponse<RefreshTokenResponse>>(
-          `${API_BASE_URL.replace('/api/v1', '')}/auth/refresh-token`,
-          { refreshToken }
+          `${API_BASE_URL}${API_ENDPOINTS.AUTH_REFRESH}`,
+          { refreshToken },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Request-Id': generateClientRequestId(),
+            },
+          }
         );
 
         const { accessToken, refreshToken: newRefreshToken } = response.data.data;
@@ -161,7 +149,6 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         tokenStorage.clearTokens();
-        // Dispatch logout event
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('auth:logout'));
         }
@@ -175,43 +162,48 @@ apiClient.interceptors.response.use(
   }
 );
 
-// ========================
-// Error Handling Utilities
-// ========================
-
 export interface ParsedApiError {
-  code: ErrorCode;
+  code: ErrorCode | string;
   message: string;
   details?: Record<string, unknown>;
+  detailLines?: string[];
+  requestId?: string;
   status: number;
 }
 
 export function parseApiError(error: unknown): ParsedApiError {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ApiError>;
-    const status = axiosError.response?.status || 500;
-    const errorData = axiosError.response?.data?.error;
+    const status = error.response?.status || 500;
+    const headerRequestId =
+      typeof error.response?.headers?.['x-request-id'] === 'string'
+        ? error.response.headers['x-request-id']
+        : undefined;
 
-    if (errorData) {
+    if (error.response?.data !== undefined) {
+      const normalised = normaliseApiError(status, error.response.data, headerRequestId);
+      if (process.env.NODE_ENV === 'development') {
+        const reqTag = normalised.requestId ? ` [${normalised.requestId}]` : '';
+        console.warn(`[VeXeViet API Error]${reqTag} ${normalised.code}: ${normalised.message}`);
+      }
       return {
-        code: errorData.code as ErrorCode,
-        message: errorData.message || ERROR_MESSAGES[errorData.code as ErrorCode] || 'Đã xảy ra lỗi',
-        details: errorData.details,
-        status,
+        code: normalised.code,
+        message: normalised.message,
+        details: normalised.rawDetails,
+        detailLines: normalised.details,
+        requestId: normalised.requestId,
+        status: normalised.status,
       };
     }
 
-    // Network error
-    if (axiosError.code === 'ERR_NETWORK') {
+    if (error.code === 'ERR_NETWORK') {
       return {
         code: 'SERVICE_UNAVAILABLE',
-        message: 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.',
+        message: 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.',
         status: 0,
       };
     }
 
-    // Timeout
-    if (axiosError.code === 'ECONNABORTED') {
+    if (error.code === 'ECONNABORTED') {
       return {
         code: 'SERVICE_UNAVAILABLE',
         message: 'Yêu cầu quá thời gian chờ. Vui lòng thử lại.',
@@ -220,7 +212,14 @@ export function parseApiError(error: unknown): ParsedApiError {
     }
   }
 
-  // Unknown error
+  if (error instanceof Error && error.message) {
+    return {
+      code: 'INTERNAL_ERROR',
+      message: error.message,
+      status: 500,
+    };
+  }
+
   return {
     code: 'INTERNAL_ERROR',
     message: 'Đã xảy ra lỗi không xác định',

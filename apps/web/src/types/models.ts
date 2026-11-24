@@ -1,24 +1,7 @@
-export interface User {
-  id: string;
-  email: string;
-  fullName: string;
-  phone?: string;
-  avatar?: string;
-}
-
-export interface Booking {
-  id: string;
-  userId: string;
-  routeId: string;
-  departureTime: string;
-  arrivalTime: string;
-  departureLocation: string;
-  arrivalLocation: string;
-  operatorName: string;
-  totalPrice: number;
-  status: 'UPCOMING' | 'COMPLETED' | 'CANCELLED';
-  seatNumbers: string[];
-}
+/**
+ * Presentation view-models exclusively for the Route Detail screen.
+ * Domain DTOs (`User`, `Booking`, `Route`, `Review`, etc.) live in `@vexeviet/types`.
+ */
 
 export interface PickupPoint {
   id: string;
@@ -56,7 +39,7 @@ export interface Operator {
   totalReviews: number;
 }
 
-export interface Route {
+export interface RouteDetailViewModel {
   id: string;
   operator: Operator;
   busType: string;
@@ -74,3 +57,5 @@ export interface Route {
   policies: Policy[];
   images: string[];
 }
+
+export type Route = RouteDetailViewModel;

@@ -1,7 +1,12 @@
 node_modules
 .next
 .turbo
+.agent
+.agents
+.taste-skill
+archive
 dist
 build
 coverage
+pnpm-lock.yaml
 *.log

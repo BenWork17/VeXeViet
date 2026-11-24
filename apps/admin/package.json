@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@vexeviet/api-client": "workspace:^",
     "@vexeviet/types": "workspace:^",
     "clsx": "^2.1.1",
     "lucide-react": "^0.562.0",

@@ -1,67 +1,72 @@
-/**
- * React Query hooks for Bookings
- */
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  getMyBookings, 
-  getBookingById, 
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
   cancelBooking,
   createBooking,
   getBookingByCode,
+  getBookingById,
+  getMyBookings,
 } from '@/lib/api/bookings';
-import { CancelBookingRequest, CreateBookingRequest } from '@vexeviet/types';
+import type { CancelBookingRequest, CreateBookingRequest } from '@vexeviet/types';
 
 export const bookingKeys = {
   all: ['bookings'] as const,
   lists: () => [...bookingKeys.all, 'list'] as const,
   my: () => [...bookingKeys.lists(), 'my'] as const,
   detail: (id: string) => [...bookingKeys.all, 'detail', id] as const,
-  byCode: (code: string) => [...bookingKeys.all, 'code', code] as const,
+  byCode: (code: string) => [...bookingKeys.all, 'code', code.trim().toUpperCase()] as const,
 };
 
-/**
- * Hook to get current user's bookings
- */
-export function useMyBookings() {
+export const bookingQueries = {
+  all: () => bookingKeys.all,
+  my: () =>
+    queryOptions({
+      queryKey: bookingKeys.my(),
+      queryFn: getMyBookings,
+      staleTime: 2 * 60 * 1000,
+    }),
+  detail: (id: string) =>
+    queryOptions({
+      queryKey: bookingKeys.detail(id),
+      queryFn: () => getBookingById(id),
+      staleTime: 60 * 1000,
+    }),
+  byCode: (code: string) => {
+    const normalized = code.trim().toUpperCase();
+    return queryOptions({
+      queryKey: bookingKeys.byCode(normalized),
+      queryFn: () => getBookingByCode(normalized),
+      staleTime: 30 * 1000,
+    });
+  },
+};
+
+export function useMyBookings(enabled = true) {
   return useQuery({
-    queryKey: bookingKeys.my(),
-    queryFn: getMyBookings,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    ...bookingQueries.my(),
+    enabled,
   });
 }
 
-/**
- * Hook to get booking details
- */
 export function useBookingDetail(id: string) {
   return useQuery({
-    queryKey: bookingKeys.detail(id),
-    queryFn: () => getBookingById(id),
-    enabled: !!id,
+    ...bookingQueries.detail(id),
+    enabled: Boolean(id),
   });
 }
 
-/**
- * Hook to cancel a booking
- */
 export function useCancelBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: CancelBookingRequest }) => 
+    mutationFn: ({ id, data }: { id: string; data?: CancelBookingRequest }) =>
       cancelBooking(id, data),
     onSuccess: (_, variables) => {
-      // Invalidate both the list and the specific detail
       queryClient.invalidateQueries({ queryKey: bookingKeys.lists() });
       queryClient.invalidateQueries({ queryKey: bookingKeys.detail(variables.id) });
     },
   });
 }
 
-/**
- * Hook to create a booking
- */
 export function useCreateBooking() {
   const queryClient = useQueryClient();
 
@@ -73,13 +78,10 @@ export function useCreateBooking() {
   });
 }
 
-/**
- * Hook to get booking by booking code (public)
- */
 export function useBookingByCode(code: string) {
+  const normalized = code.trim().toUpperCase();
   return useQuery({
-    queryKey: bookingKeys.byCode(code),
-    queryFn: () => getBookingByCode(code),
-    enabled: !!code,
+    ...bookingQueries.byCode(normalized),
+    enabled: Boolean(normalized),
   });
 }

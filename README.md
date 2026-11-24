@@ -1,88 +1,37 @@
-# VeXeViet Platform
+# VeXeViet Frontend (`vexeviet-fe`)
 
-Vietnamese bus ticket booking platform - Monorepo
+Frontend Turborepo monorepo cho nền tảng đặt vé xe khách trực tuyến **VeXeViet**, kết nối trực tiếp tới Backend API Gateway tại `d:\Vexeviet\vexeviet-be` (`http://localhost:3000/api/v1`).
 
-## Tech Stack
+## Cấu trúc thư mục
 
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript 5
-- **Monorepo:** Turborepo
-- **Package Manager:** pnpm
-- **Styling:** Tailwind CSS + Shadcn/ui
-- **Testing:** Vitest, Playwright
-
-## Project Structure
-
-```
-vexeviet-platform/
+```text
+vexeviet-fe/
 ├── apps/
-│   └── web/              # Next.js web application
+│   ├── web/              # (:8081) Ứng dụng đặt vé dành cho khách hàng (Next.js 14 App Router)
+│   └── admin/            # (:8082) Cổng quản trị dành cho ADMIN & OPERATOR (Next.js 14 App Router)
 ├── packages/
-│   ├── ui/               # Shared UI components
-│   └── config/           # Shared configurations
-├── docs/                 # Documentation
-└── infrastructure/       # Docker & DevOps configs
+│   ├── types/            # (@vexeviet/types) DTOs & API contracts dùng chung toàn FE
+│   ├── api-client/       # (@vexeviet/api-client) Shared endpoints, chuẩn hoá lỗi + X-Request-Id, media helpers
+│   ├── ui/               # (@vexeviet/ui) Design System primitives & hàm cn()
+│   └── config/           # (@vexeviet/config) Shared TypeScript & ESLint presets
+├── archive/
+│   └── mobile/           # Bản prototype Expo/React Native (tách khỏi luồng build mặc định)
+└── docs/                 # { design/, guides/, testing/, archive/ }
 ```
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+
-- pnpm 8+
-- Docker Desktop
-
-### Installation
+## Khởi chạy nhanh
 
 ```bash
-# Install dependencies
 pnpm install
-
-# Start development server
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Run tests
-pnpm test
-
-# Run linting
-pnpm lint
-
-# Format code
-pnpm format
+cp .env.example .env.local
+pnpm dev          # Chạy song song web (:8081) và admin (:8082)
 ```
 
-### Docker Development
+### Các lệnh kiểm tra chất lượng mã nguồn
 
 ```bash
-# Start all services
-make dev-up
-
-# Stop all services
-make dev-down
-
-# View logs
-make logs
+pnpm typecheck    # Kiểm tra TypeScript toàn monorepo
+pnpm lint         # Kiểm tra ESLint
+pnpm test:unit    # Chạy Unit Tests (Vitest)
+pnpm build        # Build production cho tất cả packages và apps
 ```
-
-## Available Scripts
-
-- `pnpm dev` - Start development servers
-- `pnpm build` - Build all apps and packages
-- `pnpm lint` - Lint all workspaces
-- `pnpm test` - Run all tests
-- `pnpm format` - Format code with Prettier
-
-## Documentation
-
-See [docs/](./docs) folder for detailed documentation.
-
-## Current Phase
-
-**PI 1 - Iteration 1-1:** Foundation & Infrastructure Setup
-
-## License
-
-Proprietary - VeXeViet Platform

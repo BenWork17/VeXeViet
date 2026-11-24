@@ -1,5 +1,5 @@
 import './globals.css'
-import type { CSSProperties } from 'react'
+import { Suspense, type CSSProperties } from 'react'
 import { Alike, Lora, Nunito, Source_Code_Pro } from 'next/font/google'
 import { StoreProvider } from '@/store/StoreProvider'
 import { QueryProvider } from './providers'
@@ -7,7 +7,7 @@ import { ErrorBoundary } from '@/components/error/ErrorBoundary'
 import { ToastProvider } from '@/components/error/ToastProvider'
 import { PWAProvider } from '@/components/pwa'
 import { ThemeProvider } from '@/components/theme'
-import { LayoutContent } from './LayoutContent'
+import { NavigationProgress } from '@/components/ui/navigation-progress'
 
 export { metadata, viewport } from './metadata'
 
@@ -73,9 +73,8 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/apple-touch-icon-152x152.png" />
-        <link rel="apple-touch-icon" sizes="120x120" href="/icons/apple-touch-icon-120x120.png" />
+        <link rel="icon" type="image/svg+xml" href="/icons/icon-192x192.svg" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.svg" />
         <meta name="theme-color" content="#FAF9F7" />
       </head>
       <body className="flex min-h-screen flex-col bg-background text-foreground font-sans transition-colors duration-200">
@@ -85,7 +84,10 @@ export default function RootLayout({
               <ThemeProvider>
                 <ToastProvider>
                   <PWAProvider>
-                    <LayoutContent>{children}</LayoutContent>
+                    <Suspense fallback={null}>
+                      <NavigationProgress />
+                    </Suspense>
+                    {children}
                   </PWAProvider>
                 </ToastProvider>
               </ThemeProvider>

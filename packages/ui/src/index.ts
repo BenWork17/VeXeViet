@@ -30,6 +30,5 @@ export {
   type ModalContentProps,
   type ModalFooterProps,
 } from './components/ui/modal';
-export { RouteCard, type RouteCardProps } from './components/features/route-card';
 export { cn } from './lib/utils';
 

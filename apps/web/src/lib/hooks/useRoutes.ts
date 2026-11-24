@@ -1,44 +1,72 @@
-/**
- * React Query hooks for Routes
- */
-
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import {
-  searchRoutes,
-  getRouteById,
-  getPopularRoutes,
   getCities,
+  getPopularRoutes,
+  getRouteById,
+  searchRoutes,
 } from '@/lib/api/routes';
 import { parseApiError } from '@/lib/api/client';
-import { SearchRoutesParams, type Route } from '@vexeviet/types';
-
-// ========================
-// Query Keys
-// ========================
+import type { Route, SearchRoutesParams } from '@vexeviet/types';
 
 export const routeKeys = {
   all: ['routes'] as const,
   search: (params: SearchRoutesParams) => [...routeKeys.all, 'search', params] as const,
   detail: (id: string) => [...routeKeys.all, 'detail', id] as const,
-  popular: () => [...routeKeys.all, 'popular'] as const,
+  popular: (limit?: number) => [...routeKeys.all, 'popular', limit ?? 'all'] as const,
   cities: () => ['cities'] as const,
 };
 
-// ========================
-// Hooks
-// ========================
+export const routeQueries = {
+  all: () => routeKeys.all,
+  search: (params: SearchRoutesParams) =>
+    queryOptions({
+      queryKey: routeKeys.search(params),
+      queryFn: () =>
+        searchRoutes({
+          origin: params.from,
+          destination: params.to,
+          departureDate: params.date,
+          passengers: params.passengers,
+          page: params.page,
+          pageSize: params.limit,
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+          busType: params.vehicleType,
+          minPrice: params.minPrice,
+          maxPrice: params.maxPrice,
+        }),
+      staleTime: 2 * 60 * 1000,
+      retry: (failureCount: number, error: unknown) => {
+        const parsed = parseApiError(error);
+        if (parsed.code === 'VALIDATION_ERROR') return false;
+        return failureCount < 3;
+      },
+    }),
+  detail: (id: string) =>
+    queryOptions({
+      queryKey: routeKeys.detail(id),
+      queryFn: () => getRouteById(id),
+      staleTime: 5 * 60 * 1000,
+    }),
+  popular: (limit?: number) =>
+    queryOptions({
+      queryKey: routeKeys.popular(limit),
+      queryFn: () => getPopularRoutes(limit) as Promise<Route[]>,
+      staleTime: 10 * 60 * 1000,
+    }),
+  cities: () =>
+    queryOptions({
+      queryKey: routeKeys.cities(),
+      queryFn: getCities,
+      staleTime: 30 * 60 * 1000,
+    }),
+};
 
-/**
- * Hook to search routes
- */
 export function useSearchRoutes(params: SearchRoutesParams | null) {
   return useQuery({
-    queryKey: params ? routeKeys.search(params) : ['routes', 'search', 'disabled'],
+    queryKey: params ? routeKeys.search(params) : (['routes', 'search', 'disabled'] as const),
     queryFn: () => {
-      if (!params) {
-        throw new Error('Search params are required');
-      }
-
+      if (!params) throw new Error('Search params are required');
       return searchRoutes({
         origin: params.from,
         destination: params.to,
@@ -53,46 +81,22 @@ export function useSearchRoutes(params: SearchRoutesParams | null) {
         maxPrice: params.maxPrice,
       });
     },
-    enabled: !!params?.from && !!params?.to && !!params?.date,
+    enabled: Boolean(params?.from && params?.to && params?.date),
     staleTime: 2 * 60 * 1000,
-    retry: (failureCount, error) => {
-      const parsed = parseApiError(error);
-      if (parsed.code === 'VALIDATION_ERROR') return false;
-      return failureCount < 3;
-    },
   });
 }
 
-/**
- * Hook to get route details
- */
 export function useRoute(routeId: string | null) {
   return useQuery({
-    queryKey: routeId ? routeKeys.detail(routeId) : ['routes', 'detail', 'disabled'],
-    queryFn: () => getRouteById(routeId!),
-    enabled: !!routeId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    ...routeQueries.detail(routeId ?? ''),
+    enabled: Boolean(routeId),
   });
 }
 
-/**
- * Hook to get popular routes
- */
-export function usePopularRoutes() {
-  return useQuery({
-    queryKey: routeKeys.popular(),
-    queryFn: () => getPopularRoutes() as Promise<Route[]>,
-    staleTime: 10 * 60 * 1000, // 10 minutes - popular routes don't change often
-  });
+export function usePopularRoutes(limit?: number) {
+  return useQuery(routeQueries.popular(limit));
 }
 
-/**
- * Hook to get cities
- */
 export function useCities() {
-  return useQuery({
-    queryKey: routeKeys.cities(),
-    queryFn: getCities,
-    staleTime: 30 * 60 * 1000, // 30 minutes - cities rarely change
-  });
+  return useQuery(routeQueries.cities());
 }

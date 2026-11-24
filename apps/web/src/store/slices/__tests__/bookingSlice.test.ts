@@ -1,202 +1,119 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import bookingReducer, {
-  cancelBooking,
-  resetBookingState,
-  selectUpcomingBookings,
-  selectPastBookings,
-  setSelectedSeats,
-  type BookingState,
+  clearHoldInfo,
+  hydrateBooking,
+  initBooking,
+  initialBookingState,
+  resetBooking,
+  setDropoffPoint,
+  setHoldInfo,
+  setPickupPoint,
+  setStep,
+  toggleSeat,
+  type BookingWizardRoute,
 } from '../bookingSlice';
-import type { RootState } from '@/store';
+import searchReducer, {
+  resetFilters,
+  setFilters,
+  setSortBy,
+  setSortOrder,
+} from '../searchSlice';
 
-// Mock data
-const mockBooking = {
-  id: 'booking-123',
-  userId: 'user-456',
-  routeId: 'route-789',
-  status: 'CONFIRMED' as const,
-  seatNumbers: ['A1', 'A2'],
-  totalPrice: 500000,
-  departureDate: '2026-02-01T08:00:00Z',
-  createdAt: '2026-01-10T10:00:00Z',
-  updatedAt: '2026-01-10T10:00:00Z',
+const SAMPLE_ROUTE: BookingWizardRoute = {
+  id: 'route-dn-hue-01',
+  price: 180000,
+  busType: 'LIMOUSINE',
+  from: 'Đà Nẵng',
+  to: 'Huế',
+  departureTime: '2026-12-01T08:00:00.000Z',
+  operatorName: 'Phương Trang',
+  pickupPoints: [
+    { id: 'pu-1', location: 'Bến xe Trung tâm Đà Nẵng', time: '08:00' },
+    { id: 'pu-2', location: 'Văn phòng Hải Châu', time: '08:20' },
+  ],
+  dropoffPoints: [{ id: 'do-1', location: 'Bến xe Phía Nam Huế', time: '10:30' }],
 };
 
-const mockPastBooking = {
-  ...mockBooking,
-  id: 'booking-past',
-  departureDate: '2025-12-01T08:00:00Z',
-};
-
-const mockCancelledBooking = {
-  ...mockBooking,
-  id: 'booking-cancelled',
-  status: 'CANCELLED' as const,
-};
-
-describe('bookingSlice', () => {
-  let initialState: BookingState;
-
-  beforeEach(() => {
-    initialState = {
-      bookings: [mockBooking, mockPastBooking, mockCancelledBooking],
-      selectedSeats: [],
-      currentRoute: null,
-      loading: false,
-      error: null,
-    };
+describe('bookingSlice pure state transitions', () => {
+  it('initialises route and defaults pickup/dropoff points', () => {
+    const state = bookingReducer(initialBookingState, initBooking(SAMPLE_ROUTE));
+    expect(state.currentRoute?.id).toBe('route-dn-hue-01');
+    expect(state.selectedSeats).toEqual([]);
+    expect(state.totalPrice).toBe(0);
+    expect(state.pickupPointId).toBe('pu-1');
+    expect(state.dropoffPointId).toBe('do-1');
+    expect(state.step).toBe('seat-selection');
   });
 
-  describe('Cancellation Logic', () => {
-    it('should update booking status to CANCELLED when cancelBooking.fulfilled', () => {
-      const action = cancelBooking.fulfilled(
-        { ...mockBooking, status: 'CANCELLED' },
-        'requestId',
-        { bookingId: mockBooking.id }
-      );
+  it('toggles seats, updates total price, and enforces maximum of 5 seats', () => {
+    let state = bookingReducer(initialBookingState, initBooking(SAMPLE_ROUTE));
 
-      const newState = bookingReducer(initialState, action);
+    for (const seatId of ['A01', 'A02', 'A03', 'A04', 'A05', 'A06']) {
+      state = bookingReducer(state, toggleSeat({ seatId }));
+    }
 
-      expect(newState.bookings[0].status).toBe('CANCELLED');
-      expect(newState.loading).toBe(false);
-      expect(newState.error).toBeNull();
-    });
+    expect(state.selectedSeats).toEqual(['A01', 'A02', 'A03', 'A04', 'A05']);
+    expect(state.passengerCount).toBe(5);
+    expect(state.totalPrice).toBe(5 * 180000);
 
-    it('should set loading to true when cancelBooking.pending', () => {
-      const action = cancelBooking.pending('requestId', {
-        bookingId: mockBooking.id,
-      });
-
-      const newState = bookingReducer(initialState, action);
-
-      expect(newState.loading).toBe(true);
-      expect(newState.error).toBeNull();
-    });
-
-    it('should set error when cancelBooking.rejected', () => {
-      const errorMessage = 'Cancellation failed: Network error';
-      const action = cancelBooking.rejected(
-        new Error(errorMessage),
-        'requestId',
-        { bookingId: mockBooking.id }
-      );
-
-      const newState = bookingReducer(initialState, action);
-
-      expect(newState.loading).toBe(false);
-      expect(newState.error).toBe(errorMessage);
-    });
+    state = bookingReducer(state, toggleSeat({ seatId: 'A03' }));
+    expect(state.selectedSeats).toEqual(['A01', 'A02', 'A04', 'A05']);
+    expect(state.passengerCount).toBe(4);
+    expect(state.totalPrice).toBe(4 * 180000);
   });
 
-  describe('Cleanup Logic', () => {
-    it('should reset booking state to initial values', () => {
-      const dirtyState: BookingState = {
-        bookings: initialState.bookings,
-        selectedSeats: ['A1', 'A2', 'A3'],
-        currentRoute: 'route-789',
-        loading: false,
-        error: 'Some error',
-      };
+  it('tracks seat hold metadata, step transitions, hydration, and full reset', () => {
+    let state = bookingReducer(initialBookingState, initBooking(SAMPLE_ROUTE));
+    state = bookingReducer(state, setPickupPoint('pu-2'));
+    state = bookingReducer(state, setDropoffPoint('do-1'));
+    state = bookingReducer(
+      state,
+      setHoldInfo({
+        holdId: 'hold-99',
+        expiresAt: '2026-12-01T08:15:00.000Z',
+        seats: ['A01', 'A02'],
+      }),
+    );
+    state = bookingReducer(state, setStep('passenger-info'));
 
-      const newState = bookingReducer(dirtyState, resetBookingState());
+    expect(state.holdId).toBe('hold-99');
+    expect(state.heldSeats).toEqual(['A01', 'A02']);
+    expect(state.pickupPointId).toBe('pu-2');
+    expect(state.step).toBe('passenger-info');
 
-      expect(newState.selectedSeats).toEqual([]);
-      expect(newState.currentRoute).toBeNull();
-      expect(newState.error).toBeNull();
-      // Bookings should remain (only transient state is cleared)
-      expect(newState.bookings).toEqual(initialState.bookings);
-    });
+    state = bookingReducer(state, clearHoldInfo());
+    expect(state.holdId).toBeNull();
+    expect(state.heldSeats).toEqual([]);
 
-    it('should clear selected seats when setSelectedSeats is called with empty array', () => {
-      const stateWithSeats: BookingState = {
-        ...initialState,
-        selectedSeats: ['A1', 'B2', 'C3'],
-      };
+    const hydrated = bookingReducer(
+      initialBookingState,
+      hydrateBooking({
+        selectedSeats: ['B01'],
+        passengerCount: 1,
+        totalPrice: 180000,
+        step: 'payment',
+      }),
+    );
+    expect(hydrated.selectedSeats).toEqual(['B01']);
+    expect(hydrated.step).toBe('payment');
 
-      const newState = bookingReducer(
-        stateWithSeats,
-        setSelectedSeats([])
-      );
-
-      expect(newState.selectedSeats).toEqual([]);
-    });
+    expect(bookingReducer(hydrated, resetBooking())).toEqual(initialBookingState);
   });
+});
 
-  describe('Selectors', () => {
-    const mockRootState: RootState = {
-      booking: initialState,
-      // Add other slices as needed
-    } as RootState;
+describe('searchSlice client filter state', () => {
+  it('updates filters and sort order and resets cleanly', () => {
+    let state = searchReducer(undefined, setFilters({ minPrice: 150000, busTypes: ['VIP'] }));
+    state = searchReducer(state, setSortBy('rating'));
+    state = searchReducer(state, setSortOrder('desc'));
 
-    it('should select only upcoming bookings', () => {
-      const upcomingBookings = selectUpcomingBookings(mockRootState);
+    expect(state.filters.minPrice).toBe(150000);
+    expect(state.filters.busTypes).toEqual(['VIP']);
+    expect(state.sortBy).toBe('rating');
+    expect(state.sortOrder).toBe('desc');
 
-      expect(upcomingBookings).toHaveLength(1);
-      expect(upcomingBookings[0].id).toBe('booking-123');
-      expect(new Date(upcomingBookings[0].departureDate).getTime()).toBeGreaterThan(
-        Date.now()
-      );
-    });
-
-    it('should select only past bookings', () => {
-      const pastBookings = selectPastBookings(mockRootState);
-
-      expect(pastBookings).toHaveLength(2);
-      expect(pastBookings.map((b) => b.id)).toContain('booking-past');
-      expect(pastBookings.map((b) => b.id)).toContain('booking-cancelled');
-    });
-
-    it('should exclude cancelled bookings from upcoming', () => {
-      const upcomingBookings = selectUpcomingBookings(mockRootState);
-
-      expect(upcomingBookings.every((b) => b.status !== 'CANCELLED')).toBe(true);
-    });
-  });
-
-  describe('Seat Selection Logic', () => {
-    it('should add seats to selectedSeats', () => {
-      const newState = bookingReducer(
-        initialState,
-        setSelectedSeats(['A1', 'A2'])
-      );
-
-      expect(newState.selectedSeats).toEqual(['A1', 'A2']);
-    });
-
-    it('should update selectedSeats count correctly', () => {
-      const state1 = bookingReducer(initialState, setSelectedSeats(['A1']));
-      expect(state1.selectedSeats).toHaveLength(1);
-
-      const state2 = bookingReducer(state1, setSelectedSeats(['A1', 'B2', 'C3']));
-      expect(state2.selectedSeats).toHaveLength(3);
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle cancelling non-existent booking gracefully', () => {
-      const action = cancelBooking.fulfilled(
-        { ...mockBooking, id: 'non-existent', status: 'CANCELLED' },
-        'requestId',
-        { bookingId: 'non-existent' }
-      );
-
-      const newState = bookingReducer(initialState, action);
-
-      // State should remain unchanged if booking not found
-      expect(newState.bookings).toEqual(initialState.bookings);
-    });
-
-    it('should preserve other bookings when cancelling one', () => {
-      const action = cancelBooking.fulfilled(
-        { ...mockBooking, status: 'CANCELLED' },
-        'requestId',
-        { bookingId: mockBooking.id }
-      );
-
-      const newState = bookingReducer(initialState, action);
-
-      expect(newState.bookings).toHaveLength(3);
-      expect(newState.bookings[1].status).toBe('CONFIRMED'); // Other booking unchanged
-    });
+    state = searchReducer(state, resetFilters());
+    expect(state.filters.minPrice).toBe(0);
+    expect(state.filters.busTypes).toEqual([]);
   });
 });

@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import type * as MapLibreGL from 'maplibre-gl';
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,22 +38,18 @@ import {
   MapMarker,
   MarkerContent,
   MarkerLabel,
-  type MapRef,
 } from '@/components/ui/map';
+import type { ExploreDestination } from '@/lib/data/explore-destinations';
 import {
-  buildGoogleStreetViewEmbedUrl,
-  buildGoogleStreetViewExternalUrl,
-  buildSearchRouteUrl,
-  buildTravelPlannerUrl,
-  type Camera3DVantagePoint,
-  type ExploreDestination,
-} from '@/lib/data/explore-destinations';
+  FALLBACK_360_IMG,
+  GeoGuessrCompassBar,
+  getShortestAngleDelta,
+  normalizeAngle360,
+  type Camera3DVantagePointItem,
+} from './camera-3d/GeoGuessrCompassBar';
+import { useCameraChoreography } from './camera-3d/useCameraChoreography';
 
-export type Camera3DVantagePointItem = Camera3DVantagePoint;
-
-type DestinationWithOptional3D = ExploreDestination & {
-  camera3DAngles?: Camera3DVantagePointItem[];
-};
+export type { Camera3DVantagePointItem };
 
 export interface Destination3DCameraViewProps {
   destination: ExploreDestination;
@@ -72,195 +67,6 @@ export interface Destination3DCameraModalProps {
   onToggleHighlight?: (highlightId: string, destinationId?: string) => void;
 }
 
-type CameraMode = 'streetview' | 'sphere-360' | 'flycam-map';
-type LightingPreset = 'dawn' | 'day' | 'sunset';
-type BasemapStyleMode = 'satellite' | 'vector';
-
-const SATELLITE_3D_STYLE: MapLibreGL.StyleSpecification = {
-  version: 8,
-  sources: {
-    'esri-world-imagery': {
-      type: 'raster',
-      tiles: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      ],
-      tileSize: 256,
-      attribution: 'Esri, Maxar, Earthstar Geographics',
-    },
-  },
-  layers: [
-    {
-      id: 'esri-world-imagery-layer',
-      type: 'raster',
-      source: 'esri-world-imagery',
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
-};
-
-const FALLBACK_360_IMG =
-  'https://placehold.co/1600x900/1f1b18/fb923c?text=VeXeViet+360+Street+View';
-
-function normalizeAngle360(deg: number): number {
-  return ((deg % 360) + 360) % 360;
-}
-
-function getShortestAngleDelta(targetYaw: number, currentYaw: number): number {
-  let diff = normalizeAngle360(targetYaw) - normalizeAngle360(currentYaw);
-  if (diff > 180) diff -= 360;
-  if (diff < -180) diff += 360;
-  return diff;
-}
-
-/**
- * Resolve 360° Street View & 3D Flycam vantage points for any destination
- */
-function resolveVantagePoints(dest: ExploreDestination): Camera3DVantagePointItem[] {
-  const with3D = dest as DestinationWithOptional3D;
-  if (Array.isArray(with3D.camera3DAngles) && with3D.camera3DAngles.length > 0) {
-    return with3D.camera3DAngles;
-  }
-
-  const [baseLat, baseLng] = dest.coordinates;
-  const galleryImgs = [dest.heroImage, ...(dest.gallery || [])];
-  const hl0 = dest.highlights[0];
-  const hl1 = dest.highlights[1];
-  const hl2 = dest.highlights[2];
-
-  return [
-    {
-      id: `${dest.id}-sv-1`,
-      label: `Trung tâm ${dest.displayLocation.split('•')[0]?.trim() || dest.province}`,
-      coordinates: [baseLat, baseLng],
-      streetViewLatLng: [baseLat, baseLng],
-      streetViewHeading: 35,
-      streetViewPitch: 4,
-      streetViewFov: 90,
-      pitch: 66,
-      bearing: 35,
-      zoom: 15.2,
-      altitudeMeters: 220,
-      imageUrl: galleryImgs[0] || dest.heroImage,
-      panorama360Url: galleryImgs[0] || dest.heroImage,
-      description:
-        hl0?.description ||
-        `Góc nhìn Street View 360° trực diện tại ${dest.displayLocation} — kéo chuột để xoay nhìn toàn cảnh xung quanh.`,
-      bestTime: hl0?.goldenHour || 'Bình minh 05:45 – 07:00',
-    },
-    {
-      id: `${dest.id}-sv-2`,
-      label: hl1 ? hl1.title : `Góc Đường Phố ${dest.province}`,
-      coordinates: [baseLat + 0.0045, baseLng + 0.004],
-      streetViewLatLng: [baseLat + 0.0045, baseLng + 0.004],
-      streetViewHeading: 120,
-      streetViewPitch: 2,
-      streetViewFov: 90,
-      pitch: 68,
-      bearing: 120,
-      zoom: 15.6,
-      altitudeMeters: 180,
-      imageUrl: galleryImgs[1] || dest.heroImage,
-      panorama360Url: galleryImgs[1] || dest.heroImage,
-      description:
-        hl1?.description ||
-        `Góc quan sát 360° xung quanh điểm vui chơi nổi bật tại ${dest.displayLocation}.`,
-      bestTime: hl1?.goldenHour || 'Hoàng hôn 16:30 – 18:00',
-    },
-    {
-      id: `${dest.id}-sv-3`,
-      label: hl2 ? hl2.title : `Tọa Độ Ngắm Cảnh Hoàng Hôn`,
-      coordinates: [baseLat - 0.004, baseLng + 0.005],
-      streetViewLatLng: [baseLat - 0.004, baseLng + 0.005],
-      streetViewHeading: 240,
-      streetViewPitch: 5,
-      streetViewFov: 90,
-      pitch: 64,
-      bearing: 240,
-      zoom: 15.0,
-      altitudeMeters: 150,
-      imageUrl: galleryImgs[2] || galleryImgs[0] || dest.heroImage,
-      panorama360Url: galleryImgs[2] || galleryImgs[0] || dest.heroImage,
-      description:
-        hl2?.description ||
-        `Khám phá không gian 360° hướng về khu vực giải trí & ẩm thực đặc trưng tại ${dest.province}.`,
-      bestTime: hl2?.goldenHour || '17:00 – 19:30',
-    },
-  ];
-}
-
-const COMPASS_LABELS: Array<{ deg: number; label: string; major?: boolean }> = [
-  { deg: 0, label: 'N', major: true },
-  { deg: 45, label: 'NE' },
-  { deg: 90, label: 'E', major: true },
-  { deg: 135, label: 'SE' },
-  { deg: 180, label: 'S', major: true },
-  { deg: 225, label: 'SW' },
-  { deg: 270, label: 'W', major: true },
-  { deg: 315, label: 'NW' },
-];
-
-/**
- * GeoGuessr-style Linear Top Compass Bar
- */
-function GeoGuessrCompassBar({ yaw }: { yaw: number }) {
-  const normalizedYaw = normalizeAngle360(yaw);
-  const ticks = useMemo(() => {
-    const arr: number[] = [];
-    for (let d = 0; d < 360; d += 15) {
-      arr.push(d);
-    }
-    return arr;
-  }, []);
-
-  return (
-    <div
-      aria-label={`La bàn hướng nhìn ${Math.round(normalizedYaw)} độ`}
-      className="pointer-events-none relative mx-auto flex h-10 w-64 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/75 shadow-lg backdrop-blur-md sm:w-80"
-    >
-      {/* Center Red/Orange Needle */}
-      <div className="absolute top-0 left-1/2 z-20 h-2.5 w-0.5 -translate-x-1/2 bg-primary" />
-      <div className="absolute bottom-0 left-1/2 z-20 h-2 w-0.5 -translate-x-1/2 bg-primary/80" />
-
-      {/* Sliding Compass Ticks */}
-      <div className="relative h-full w-full">
-        {ticks.map((deg) => {
-          const delta = getShortestAngleDelta(deg, normalizedYaw);
-          if (Math.abs(delta) > 95) return null;
-          const leftPercent = 50 + (delta / 90) * 50;
-          const cardinal = COMPASS_LABELS.find((c) => c.deg === deg);
-          return (
-            <div
-              key={deg}
-              style={{ left: `${leftPercent}%` }}
-              className="absolute top-0 flex h-full -translate-x-1/2 flex-col items-center justify-center"
-            >
-              {cardinal ? (
-                <span
-                  className={`font-mono leading-none ${
-                    cardinal.major
-                      ? 'text-xs font-extrabold text-white'
-                      : 'text-[10px] font-bold text-white/75'
-                  } ${cardinal.label === 'N' ? 'text-primary!' : ''}`}
-                >
-                  {cardinal.label}
-                </span>
-              ) : (
-                <span className="h-1.5 w-px bg-white/35" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Heading Readout Pill */}
-      <span className="absolute right-2.5 bottom-0.5 font-mono text-[9px] font-bold text-white/65">
-        {Math.round(normalizedYaw)}°
-      </span>
-    </div>
-  );
-}
-
 export function Destination3DCameraView({
   destination,
   selectedHighlightIds = [],
@@ -268,238 +74,62 @@ export function Destination3DCameraView({
   isEmbedded = false,
   onClose,
 }: Destination3DCameraViewProps) {
-  const vantagePoints = useMemo(() => resolveVantagePoints(destination), [destination]);
-  const [selectedVantageIndex, setSelectedVantageIndex] = useState(0);
-  const activeVantage = vantagePoints[selectedVantageIndex] ?? vantagePoints[0]!;
-
-  // Default to Mode 1: Real Google Street View 360° (GeoGuessr / OpenGuessr style)
-  const [cameraMode, setCameraMode] = useState<CameraMode>('streetview');
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-
-  // Street View state
-  const [svResetCounter, setSvResetCounter] = useState<number>(0);
-  const [svLoading, setSvLoading] = useState<boolean>(true);
-  const [miniMapExpanded, setMiniMapExpanded] = useState<boolean>(false);
-  const [miniMapPinned, setMiniMapPinned] = useState<boolean>(false);
-
-  // 360° Interactive Sphere state (Mode 2)
-  const [yaw, setYaw] = useState<number>(
-    normalizeAngle360(activeVantage.streetViewHeading ?? activeVantage.bearing ?? 0),
-  );
-  const [spherePitch, setSpherePitch] = useState<number>(activeVantage.streetViewPitch ?? 0);
-  const [fovZoom, setFovZoom] = useState<number>(1.25); // 1.05 to 2.1
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [isAutoPanning, setIsAutoPanning] = useState<boolean>(false);
-  const [lighting, setLighting] = useState<LightingPreset>('day');
-  const [sphereImgSrc, setSphereImgSrc] = useState<string>(
-    activeVantage.panorama360Url || activeVantage.imageUrl,
-  );
-  const [isStepping, setIsStepping] = useState<boolean>(false);
-  const dragStartRef = useRef<{ x: number; y: number; startYaw: number; startPitch: number } | null>(
-    null,
-  );
-
-  // Flycam 3D Map state (Mode 3)
-  const [basemapMode, setBasemapMode] = useState<BasemapStyleMode>('satellite');
-  const [mapPitch, setMapPitch] = useState<number>(activeVantage.pitch || 65);
-  const [mapBearing, setMapBearing] = useState<number>(activeVantage.bearing || -30);
-  const [mapZoom, setMapZoom] = useState<number>(activeVantage.zoom || 15);
-  const [isOrbitingMap, setIsOrbitingMap] = useState<boolean>(false);
-  const [activeHotspotId, setActiveHotspotId] = useState<string | null>(
-    destination.highlights[0]?.id ?? null,
-  );
-
-  const mapRef = useRef<MapRef | null>(null);
-  const miniMapRef = useRef<MapRef | null>(null);
-
-  // Reset states when destination changes
-  useEffect(() => {
-    const first = vantagePoints[0];
-    if (!first) return;
-    setSelectedVantageIndex(0);
-    setSvLoading(true);
-    setSvResetCounter((c) => c + 1);
-    setYaw(normalizeAngle360(first.streetViewHeading ?? first.bearing ?? 0));
-    setSpherePitch(first.streetViewPitch ?? 0);
-    setSphereImgSrc(first.panorama360Url || first.imageUrl);
-    setMapPitch(first.pitch || 65);
-    setMapBearing(first.bearing || -30);
-    setMapZoom(first.zoom || 15);
-    setActiveHotspotId(destination.highlights[0]?.id ?? null);
-  }, [destination.id, vantagePoints, destination.highlights]);
-
-  // Sync image when active vantage changes
-  useEffect(() => {
-    setSphereImgSrc(activeVantage.panorama360Url || activeVantage.imageUrl);
-  }, [activeVantage.panorama360Url, activeVantage.imageUrl]);
-
-  // Switch vantage point across all 3 modes
-  const handleSelectVantage = useCallback(
-    (index: number) => {
-      const safeIndex = ((index % vantagePoints.length) + vantagePoints.length) % vantagePoints.length;
-      const target = vantagePoints[safeIndex];
-      if (!target) return;
-
-      setIsStepping(true);
-      window.setTimeout(() => setIsStepping(false), 320);
-
-      setSelectedVantageIndex(safeIndex);
-      setSvLoading(true);
-      setYaw(normalizeAngle360(target.streetViewHeading ?? target.bearing ?? 0));
-      setSpherePitch(target.streetViewPitch ?? 0);
-      setMapPitch(target.pitch || 65);
-      setMapBearing(target.bearing || -30);
-      setMapZoom(target.zoom || 15);
-
-      const [lat, lng] = target.streetViewLatLng ?? target.coordinates;
-      mapRef.current?.flyTo({
-        center: [lng, lat],
-        pitch: target.pitch || 65,
-        bearing: target.bearing || 0,
-        zoom: target.zoom || 15.2,
-        duration: 1500,
-        essential: true,
-      });
-      miniMapRef.current?.flyTo({
-        center: [lng, lat],
-        zoom: 13.5,
-        duration: 900,
-        essential: true,
-      });
-    },
-    [vantagePoints],
-  );
-
-  // Auto-pan 360° in Sphere Mode or 360° Orbit in Flycam Map Mode
-  useEffect(() => {
-    if (cameraMode === 'sphere-360' && isAutoPanning && !isDragging) {
-      const timer = window.setInterval(() => {
-        setYaw((prev) => normalizeAngle360(prev + 0.65));
-      }, 30);
-      return () => window.clearInterval(timer);
-    }
-
-    if (cameraMode === 'flycam-map' && isOrbitingMap) {
-      const timer = window.setInterval(() => {
-        setMapBearing((prev) => {
-          const next = normalizeAngle360(prev + 1.2);
-          mapRef.current?.rotateTo(next, { duration: 0 });
-          return next;
-        });
-      }, 45);
-      return () => window.clearInterval(timer);
-    }
-
-    return undefined;
-  }, [cameraMode, isAutoPanning, isDragging, isOrbitingMap]);
-
-  // Pointer drag handlers for 360° Sphere Viewer (Mode 2)
-  const handleSpherePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    // Ignore clicks on buttons inside the viewer
-    if ((e.target as HTMLElement).closest('button')) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setIsDragging(true);
-    setIsAutoPanning(false);
-    dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      startYaw: yaw,
-      startPitch: spherePitch,
-    };
-  };
-
-  const handleSpherePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging || !dragStartRef.current) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
-    // Natural drag-to-look sensitivity (drag left -> look right, like Google Street View)
-    const nextYaw = normalizeAngle360(dragStartRef.current.startYaw - dx * 0.28);
-    const nextPitch = Math.max(-28, Math.min(28, dragStartRef.current.startPitch + dy * 0.16));
-    setYaw(nextYaw);
-    setSpherePitch(nextPitch);
-  };
-
-  const handleSpherePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDragging) return;
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    setIsDragging(false);
-    dragStartRef.current = null;
-  };
-
-  const handleSphereWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setFovZoom((prev) => {
-      const next = prev - e.deltaY * 0.0008;
-      return Math.max(1.08, Math.min(2.1, Number(next.toFixed(2))));
-    });
-  };
-
-  const handleResetView = () => {
-    if (cameraMode === 'streetview') {
-      setSvLoading(true);
-      setSvResetCounter((c) => c + 1);
-    } else if (cameraMode === 'sphere-360') {
-      setIsAutoPanning(false);
-      setYaw(normalizeAngle360(activeVantage.streetViewHeading ?? activeVantage.bearing ?? 0));
-      setSpherePitch(activeVantage.streetViewPitch ?? 0);
-      setFovZoom(1.25);
-    } else {
-      setIsOrbitingMap(false);
-      handleSelectVantage(selectedVantageIndex);
-    }
-  };
-
-  // Place destination's entertainment highlights around the 360° horizon
-  const highlightHotspots = useMemo(() => {
-    const [baseLat, baseLng] = activeVantage.streetViewLatLng ?? destination.coordinates;
-    const yawSlots = [15, 105, 195, 285];
-    const pitchSlots = [4, -4, 6, -2];
-    const mapOffsets: Array<[number, number]> = [
-      [0.0024, -0.0028],
-      [-0.0028, 0.0034],
-      [0.0036, 0.0032],
-      [-0.002, -0.0036],
-    ];
-    return destination.highlights.map((hl, idx) => {
-      const offset = mapOffsets[idx % mapOffsets.length]!;
-      return {
-        highlight: hl,
-        yawAngle: yawSlots[idx % yawSlots.length]!,
-        pitchAngle: pitchSlots[idx % pitchSlots.length]!,
-        lat: baseLat + offset[0],
-        lng: baseLng + offset[1],
-      };
-    });
-  }, [destination, activeVantage]);
-
-  const mapStyles = useMemo(() => {
-    if (basemapMode === 'satellite') {
-      return {
-        light: SATELLITE_3D_STYLE,
-        dark: SATELLITE_3D_STYLE,
-      };
-    }
-    return undefined;
-  }, [basemapMode]);
-
-  const lightingFilterClass =
-    lighting === 'dawn'
-      ? 'sepia-[.16] saturate-[1.25] hue-rotate-[-8deg] brightness-105'
-      : lighting === 'sunset'
-        ? 'sepia-[.26] saturate-[1.4] contrast-[1.06] brightness-95'
-        : 'saturate-[1.08] contrast-[1.02]';
-
-  const svEmbedUrl = useMemo(() => buildGoogleStreetViewEmbedUrl(activeVantage), [activeVantage]);
-  const svExternalUrl = useMemo(() => buildGoogleStreetViewExternalUrl(activeVantage), [activeVantage]);
-  const searchUrl = buildSearchRouteUrl(destination);
-  const travelUrl = buildTravelPlannerUrl(destination);
-
-  // Seamless 360° strip horizontal translation based on yaw (0°–360°)
-  // One full panorama panel spans 100% of strip width; we render 3 panels [-1, 0, 1]
-  const yawFraction = normalizeAngle360(yaw) / 360; // 0 to 1
-  const stripTranslatePercent = -yawFraction * 100;
+  const {
+    vantagePoints,
+    selectedVantageIndex,
+    activeVantage,
+    cameraMode,
+    setCameraMode,
+    isFullscreen,
+    setIsFullscreen,
+    svResetCounter,
+    svLoading,
+    setSvLoading,
+    miniMapExpanded,
+    setMiniMapExpanded,
+    miniMapPinned,
+    setMiniMapPinned,
+    yaw,
+    spherePitch,
+    fovZoom,
+    setFovZoom,
+    isDragging,
+    isAutoPanning,
+    setIsAutoPanning,
+    lighting,
+    setLighting,
+    sphereImgSrc,
+    setSphereImgSrc,
+    isStepping,
+    basemapMode,
+    setBasemapMode,
+    mapPitch,
+    setMapPitch,
+    mapBearing,
+    setMapBearing,
+    mapZoom,
+    setMapZoom,
+    isOrbitingMap,
+    setIsOrbitingMap,
+    activeHotspotId,
+    setActiveHotspotId,
+    mapRef,
+    miniMapRef,
+    handleSelectVantage,
+    handleSpherePointerDown,
+    handleSpherePointerMove,
+    handleSpherePointerUp,
+    handleSphereWheel,
+    handleResetView,
+    highlightHotspots,
+    mapStyles,
+    lightingFilterClass,
+    svEmbedUrl,
+    svExternalUrl,
+    searchUrl,
+    travelUrl,
+    stripTranslatePercent,
+  } = useCameraChoreography(destination);
 
   return (
     <div
@@ -507,20 +137,17 @@ export function Destination3DCameraView({
         isFullscreen ? 'fixed inset-2 z-[var(--z-modal)] shadow-2xl sm:inset-4' : ''
       }`}
     >
-      {/* Top Bar: Mode Switcher (Street View 360° | Toàn Cảnh 360° Sphere | Flycam 3D) */}
+      {/* Top Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border bg-card px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-2.5 py-1 font-mono text-[11px] font-extrabold uppercase tracking-wider text-primary-foreground">
             <Globe className="h-3.5 w-3.5" aria-hidden="true" />
             STREET VIEW 360° • GEOGUESSR MODE
           </span>
-          <h3 className="text-sm font-bold text-foreground sm:text-base">
-            {destination.displayLocation}
-          </h3>
+          <h3 className="text-sm font-bold text-foreground sm:text-base">{destination.displayLocation}</h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* 3-Mode Tab Bar */}
           <div
             className="inline-flex flex-wrap rounded-xl border border-border bg-surface-soft p-1"
             role="tablist"
@@ -628,7 +255,6 @@ export function Destination3DCameraView({
           })}
         </div>
 
-        {/* Mode-specific quick tools */}
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
@@ -677,42 +303,27 @@ export function Destination3DCameraView({
               </button>
 
               <div className="flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setLighting('dawn')}
-                  className={`rounded px-1.5 py-0.5 font-bold ${
-                    lighting === 'dawn'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  title="Ánh sáng Bình minh"
-                >
-                  <Sunrise className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLighting('day')}
-                  className={`rounded px-1.5 py-0.5 font-bold ${
-                    lighting === 'day'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  title="Ánh sáng Ban ngày"
-                >
-                  <Sun className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLighting('sunset')}
-                  className={`rounded px-1.5 py-0.5 font-bold ${
-                    lighting === 'sunset'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                  title="Ánh sáng Hoàng hôn"
-                >
-                  <Sunset className="h-3.5 w-3.5" aria-hidden="true" />
-                </button>
+                {(
+                  [
+                    { key: 'dawn', Icon: Sunrise, title: 'Ánh sáng Bình minh' },
+                    { key: 'day', Icon: Sun, title: 'Ánh sáng Ban ngày' },
+                    { key: 'sunset', Icon: Sunset, title: 'Ánh sáng Hoàng hôn' },
+                  ] as const
+                ).map(({ key, Icon, title }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setLighting(key)}
+                    className={`rounded px-1.5 py-0.5 font-bold ${
+                      lighting === key
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                    title={title}
+                  >
+                    <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                ))}
               </div>
             </>
           )}
@@ -742,9 +353,7 @@ export function Destination3DCameraView({
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  setBasemapMode((m) => (m === 'satellite' ? 'vector' : 'satellite'))
-                }
+                onClick={() => setBasemapMode((m) => (m === 'satellite' ? 'vector' : 'satellite'))}
                 className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-bold text-foreground hover:border-primary"
               >
                 <Layers className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
@@ -755,15 +364,12 @@ export function Destination3DCameraView({
         </div>
       </div>
 
-      {/* Main 360° / 3D Viewport Stage */}
+      {/* Main Viewport Stage */}
       <div
         className={`relative w-full overflow-hidden bg-[#0e0d0c] ${
-          isFullscreen ? 'flex-1 min-h-[460px]' : 'h-[440px] sm:h-[520px]'
+          isFullscreen ? 'min-h-[460px] flex-1' : 'h-[440px] sm:h-[520px]'
         }`}
       >
-        {/* ============================================================
-            MODE 1: REAL GOOGLE STREET VIEW 360° (GEOGUESSR / OPENGUESSR)
-           ============================================================ */}
         {cameraMode === 'streetview' && (
           <div className="relative h-full w-full">
             {svLoading && (
@@ -786,19 +392,16 @@ export function Destination3DCameraView({
               className="h-full w-full border-0"
             />
 
-            {/* Top-Left GeoGuessr Info Overlay */}
             <div className="pointer-events-none absolute top-3 left-3 z-20 flex flex-col gap-1.5">
               <div className="inline-flex items-center gap-2 rounded-lg bg-black/75 px-3 py-1.5 font-mono text-[11px] font-bold text-white shadow-md backdrop-blur-md">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
                 <span>STREET VIEW 360° • KÉO CHUỘT ĐỂ NHÌN XUNG QUANH</span>
               </div>
               <div className="hidden max-w-sm rounded-lg border border-white/15 bg-black/70 px-3 py-1.5 text-[11px] text-white/90 backdrop-blur-md sm:block">
-                <strong className="text-secondary">{activeVantage.label}:</strong>{' '}
-                {activeVantage.description}
+                <strong className="text-secondary">{activeVantage.label}:</strong> {activeVantage.description}
               </div>
             </div>
 
-            {/* Bottom-Left Quick Fallback Switch to 360° Sphere */}
             <div className="absolute bottom-3 left-3 z-20 flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -810,7 +413,6 @@ export function Destination3DCameraView({
               </button>
             </div>
 
-            {/* GeoGuessr Signature Collapsible Bottom-Right Mini-Map Radar */}
             <div
               onMouseEnter={() => setMiniMapExpanded(true)}
               onMouseLeave={() => {
@@ -822,7 +424,6 @@ export function Destination3DCameraView({
                   : 'h-32 w-44 sm:h-36 sm:w-52'
               }`}
             >
-              {/* Mini-Map Header */}
               <div className="absolute top-1.5 right-1.5 left-1.5 z-20 flex items-center justify-between gap-1">
                 <span className="rounded bg-black/80 px-2 py-0.5 font-mono text-[10px] font-bold text-white backdrop-blur-xs">
                   RADAR ĐIỂM ĐỨNG ({vantagePoints.length})
@@ -882,9 +483,6 @@ export function Destination3DCameraView({
           </div>
         )}
 
-        {/* ============================================================
-            MODE 2: INTERACTIVE 360° DRAG-TO-LOOK SPHERE (GEOGUESSR / PANNELLUM)
-           ============================================================ */}
         {cameraMode === 'sphere-360' && (
           <div
             onPointerDown={handleSpherePointerDown}
@@ -896,7 +494,6 @@ export function Destination3DCameraView({
               isDragging ? 'cursor-grabbing' : 'cursor-grab'
             }`}
           >
-            {/* Seamless 360° Cylindrical Tiled Panorama Strip */}
             <div
               className={`absolute inset-0 transition-opacity duration-300 ${
                 isStepping ? 'scale-105 opacity-75' : 'opacity-100'
@@ -908,9 +505,7 @@ export function Destination3DCameraView({
             >
               <div
                 className="relative flex h-full w-[300%]"
-                style={{
-                  transform: `translate3d(${stripTranslatePercent / 3}%, 0, 0)`,
-                }}
+                style={{ transform: `translate3d(${stripTranslatePercent / 3}%, 0, 0)` }}
               >
                 {[-1, 0, 1].map((tileIdx) => (
                   <div key={tileIdx} className="relative h-full w-1/3 shrink-0 overflow-hidden">
@@ -929,7 +524,6 @@ export function Destination3DCameraView({
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/35" />
             </div>
 
-            {/* GeoGuessr Linear Top Compass Bar */}
             <div className="pointer-events-none absolute top-3 right-0 left-0 z-20 flex flex-col items-center gap-1.5 px-4">
               <GeoGuessrCompassBar yaw={yaw} />
               <span className="rounded-full bg-black/65 px-3 py-0.5 font-mono text-[10px] font-bold text-white/90 backdrop-blur-xs">
@@ -937,10 +531,9 @@ export function Destination3DCameraView({
               </span>
             </div>
 
-            {/* 360° Horizon POI Hotspots (Appear dynamically as you look around!) */}
             {highlightHotspots.map(({ highlight, yawAngle, pitchAngle }, idx) => {
               const deltaYaw = getShortestAngleDelta(yawAngle, yaw);
-              if (Math.abs(deltaYaw) > 65) return null; // Outside current FOV
+              if (Math.abs(deltaYaw) > 65) return null;
               const leftPercent = 50 + (deltaYaw / 60) * 46;
               const topPercent = 48 + (pitchAngle - spherePitch) * 0.8;
               const isSelectedSpot = activeHotspotId === highlight.id;
@@ -965,15 +558,12 @@ export function Destination3DCameraView({
                   >
                     <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
                     <span className="max-w-[165px] truncate">{highlight.title}</span>
-                    <span className="rounded bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">
-                      {idx + 1}
-                    </span>
+                    <span className="rounded bg-white/20 px-1.5 py-0.5 font-mono text-[10px]">{idx + 1}</span>
                   </button>
                 </div>
               );
             })}
 
-            {/* Right-side GeoGuessr Zoom (+/-) Controls */}
             <div className="absolute top-1/2 right-3 z-20 flex -translate-y-1/2 flex-col gap-1.5">
               <button
                 type="button"
@@ -993,7 +583,6 @@ export function Destination3DCameraView({
               </button>
             </div>
 
-            {/* On-Ground 3D Street View Walking Chevrons (GeoGuessr signature!) */}
             <div
               className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3"
               style={{ perspective: '420px' }}
@@ -1014,9 +603,7 @@ export function Destination3DCameraView({
                 className="group flex flex-col items-center gap-0.5 rounded-2xl border-2 border-white/85 bg-primary/90 px-5 py-2 text-xs font-extrabold text-primary-foreground shadow-2xl backdrop-blur-md transition-all hover:scale-105 hover:bg-primary"
               >
                 <ArrowUp className="h-5 w-5 transition-transform group-hover:-translate-y-0.5" aria-hidden="true" />
-                <span className="font-mono text-[10px] uppercase tracking-wider">
-                  Đi tới điểm kế tiếp
-                </span>
+                <span className="font-mono text-[10px] uppercase tracking-wider">Đi tới điểm kế tiếp</span>
               </button>
 
               <button
@@ -1029,7 +616,6 @@ export function Destination3DCameraView({
               </button>
             </div>
 
-            {/* Bottom-Left Active Vantage Caption */}
             <div className="pointer-events-none absolute bottom-4 left-4 z-20 hidden max-w-xs rounded-xl border border-white/20 bg-black/75 p-3 text-xs text-white backdrop-blur-md lg:block">
               <div className="flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase text-secondary">
                 <Eye className="h-3 w-3" aria-hidden="true" />
@@ -1040,7 +626,6 @@ export function Destination3DCameraView({
               </p>
             </div>
 
-            {/* Bottom-Right Active POI Hotspot Quick Pin Card */}
             {activeHotspotId && (
               <div className="absolute right-4 bottom-4 z-20 hidden w-64 rounded-xl border border-primary/50 bg-card/95 p-3 text-xs text-foreground shadow-xl backdrop-blur-md md:block">
                 {(() => {
@@ -1060,9 +645,7 @@ export function Destination3DCameraView({
                         </span>
                       </div>
                       <p className="font-bold text-foreground">{spot.title}</p>
-                      <p className="line-clamp-2 text-[11px] text-muted-foreground">
-                        {spot.description}
-                      </p>
+                      <p className="line-clamp-2 text-[11px] text-muted-foreground">{spot.description}</p>
                       {onToggleHighlight && (
                         <button
                           type="button"
@@ -1094,9 +677,6 @@ export function Destination3DCameraView({
           </div>
         )}
 
-        {/* ============================================================
-            MODE 3: FLYCAM 3D SATELLITE / VECTOR ORBIT (MAPLIBRE 3D)
-           ============================================================ */}
         {cameraMode === 'flycam-map' && (
           <div className="relative h-full w-full">
             <MapView
@@ -1117,7 +697,6 @@ export function Destination3DCameraView({
               }}
               className="h-full w-full"
             >
-              {/* Main Flycam Pin */}
               <MapMarker
                 longitude={(activeVantage.streetViewLatLng ?? activeVantage.coordinates)[1]}
                 latitude={(activeVantage.streetViewLatLng ?? activeVantage.coordinates)[0]}
@@ -1134,7 +713,6 @@ export function Destination3DCameraView({
                 </MarkerLabel>
               </MapMarker>
 
-              {/* Floating 3D Highlight Pins */}
               {highlightHotspots.map(({ highlight, lat, lng }, idx) => {
                 const isChecked = selectedHighlightIds.includes(highlight.id);
                 return (
@@ -1177,7 +755,6 @@ export function Destination3DCameraView({
               })}
             </MapView>
 
-            {/* Flycam HUD Telemetry Pill */}
             <div className="pointer-events-none absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 rounded-lg bg-black/75 px-3 py-1.5 font-mono text-[11px] font-bold text-white backdrop-blur-md">
               <span className="text-primary">FLYCAM 3D</span>
               <span>|</span>
@@ -1191,7 +768,7 @@ export function Destination3DCameraView({
         )}
       </div>
 
-      {/* Bottom Bar: Telemetry / Gimbal Controls & Direct Booking CTAs */}
+      {/* Bottom Bar */}
       <div className="flex flex-col gap-3 border-t border-border bg-card px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3 text-xs">
           {cameraMode === 'flycam-map' ? (
@@ -1247,7 +824,6 @@ export function Destination3DCameraView({
           )}
         </div>
 
-        {/* Direct Conversion CTAs */}
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={travelUrl}

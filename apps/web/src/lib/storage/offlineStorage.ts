@@ -213,57 +213,33 @@ export async function clearTickets(): Promise<void> {
 }
 
 export async function syncTickets(): Promise<void> {
-  if (!navigator.onLine) {
-    console.log('Offline - skipping sync');
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return;
   }
 
   const database = getDB();
   const cachedTickets = await getTickets();
+  if (cachedTickets.length === 0) return;
 
-  try {
-    const response = await fetch('/api/tickets/sync', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ticketIds: cachedTickets.map((t) => t.id),
-        lastSyncedAt: cachedTickets[0]?.offlineData?.lastSyncedAt,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Sync request failed');
-    }
-
-    const { tickets: serverTickets, deletedIds } = await response.json() as {
-      tickets: Ticket[];
-      deletedIds: string[];
-    };
-
+  await new Promise<void>((resolve, reject) => {
     const transaction = database.transaction([TICKETS_STORE], 'readwrite');
     const store = transaction.objectStore(TICKETS_STORE);
+    const nowIso = new Date().toISOString();
 
-    for (const id of deletedIds) {
-      store.delete(id);
-    }
-
-    for (const ticket of serverTickets) {
-      const ticketWithOfflineData: Ticket = {
+    for (const ticket of cachedTickets) {
+      store.put({
         ...ticket,
         offlineData: {
-          cachedAt: new Date().toISOString(),
-          lastSyncedAt: new Date().toISOString(),
+          cachedAt: ticket.offlineData?.cachedAt || nowIso,
+          lastSyncedAt: nowIso,
           pendingSync: false,
         },
-      };
-      store.put(ticketWithOfflineData);
+      });
     }
 
-    console.log(`Synced ${serverTickets.length} tickets, removed ${deletedIds.length}`);
-  } catch (error) {
-    console.error('Failed to sync tickets:', error);
-    throw error;
-  }
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(new Error('Failed to refresh offline tickets'));
+  });
 }
 
 export function isOfflineStorageAvailable(): boolean {

@@ -4,7 +4,7 @@ import {
   PaymentStatusPollingResponse,
 } from '@/types/payment';
 import { mockInitiatePayment } from './mock/payment';
-import apiClient from './client';
+import apiClient, { parseApiError } from './client';
 import { API_ENDPOINTS } from '@vexeviet/types';
 
 const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_PAYMENT === 'true';
@@ -12,22 +12,14 @@ const USE_MOCK_API = process.env.NEXT_PUBLIC_USE_MOCK_PAYMENT === 'true';
 /**
  * Create payment and get redirect URL
  * POST /api/v1/payments
- * 
- * Backend response: { success, data: { paymentId, paymentUrl, transactionId, expiredAt } }
- * FE action: redirect browser to paymentUrl (VNPay gateway)
- * After payment: VNPay → Backend verify → redirect FE to /payment/result?success=...
  */
 export async function initiatePayment(
   bookingId: string,
   paymentMethod: PaymentMethod,
   amount: number,
-  bankCode?: string
+  _bankCode?: string
 ): Promise<InitiatePaymentResponse> {
-  // Note: returnUrl is configured on backend via FRONTEND_PAYMENT_RESULT_URL env variable
-  // Backend sẽ redirect user về: {FRONTEND_PAYMENT_RESULT_URL}?success=true&status=COMPLETED&...
-
   if (USE_MOCK_API) {
-    console.log('🔧 Using Mock Payment API');
     const returnUrl = `${window.location.origin}/payment/result`;
     return mockInitiatePayment({
       bookingId,
@@ -45,7 +37,6 @@ export async function initiatePayment(
       language: 'vn',
     });
 
-    // Backend response: { success, data: { paymentId, paymentUrl, transactionId, expiredAt } }
     const paymentData = data.data || data;
 
     return {
@@ -54,17 +45,17 @@ export async function initiatePayment(
       transactionId: paymentData.transactionId || paymentData.paymentId || bookingId,
     };
   } catch (error: unknown) {
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
-    }
-
-    if (typeof error === 'object' && error !== null && 'response' in error) {
-      const axiosError = error as { response?: { data?: { message?: string }; statusText?: string } };
-      const errorMessage = axiosError.response?.data?.message || axiosError.response?.statusText || 'Unknown error';
-      throw new Error(`Lỗi khởi tạo thanh toán: ${errorMessage}`);
-    }
-
-    throw error;
+    const parsed = parseApiError(error);
+    const reqSuffix = parsed.requestId ? ` (Mã tham chiếu: ${parsed.requestId})` : '';
+    const wrapped = new Error(`${parsed.message}${reqSuffix}`) as Error & {
+      code?: string;
+      requestId?: string;
+      status?: number;
+    };
+    wrapped.code = parsed.code;
+    wrapped.requestId = parsed.requestId;
+    wrapped.status = parsed.status;
+    throw wrapped;
   }
 }
 

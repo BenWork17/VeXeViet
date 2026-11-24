@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createReview,
   getMyReviews,
@@ -20,45 +20,62 @@ export const reviewKeys = {
     [...reviewKeys.all, 'operator', operatorId, 'list', params ?? {}] as const,
 };
 
+export const reviewQueries = {
+  all: () => reviewKeys.all,
+  my: (page = 1, limit = 10) =>
+    queryOptions({
+      queryKey: reviewKeys.my(page, limit),
+      queryFn: () => getMyReviews({ page, limit }),
+      staleTime: 60 * 1000,
+    }),
+  eligibility: (bookingIds: string[]) => {
+    const validIds = bookingIds.filter(Boolean);
+    return queryOptions({
+      queryKey: reviewKeys.eligibility(validIds),
+      queryFn: () => getReviewEligibility(validIds),
+      staleTime: 60 * 1000,
+      retry: 1,
+    });
+  },
+  operatorSummary: (operatorId: string) =>
+    queryOptions({
+      queryKey: reviewKeys.operatorSummary(operatorId),
+      queryFn: () => getOperatorReviewSummary(operatorId),
+      staleTime: 2 * 60 * 1000,
+      retry: 1,
+    }),
+  operatorList: (operatorId: string, params?: GetOperatorReviewsParams) =>
+    queryOptions({
+      queryKey: reviewKeys.operatorList(operatorId, params),
+      queryFn: () => getOperatorReviews(operatorId, params),
+      staleTime: 60 * 1000,
+      retry: 1,
+    }),
+};
+
 export function useReviewEligibility(bookingIds: string[], enabled = true) {
   const validIds = bookingIds.filter(Boolean);
   return useQuery({
-    queryKey: reviewKeys.eligibility(validIds),
-    queryFn: () => getReviewEligibility(validIds),
+    ...reviewQueries.eligibility(validIds),
     enabled: enabled && validIds.length > 0,
-    staleTime: 60 * 1000,
-    retry: 1,
   });
 }
 
 export function useMyReviews(page = 1, limit = 10) {
-  return useQuery({
-    queryKey: reviewKeys.my(page, limit),
-    queryFn: () => getMyReviews({ page, limit }),
-    staleTime: 60 * 1000,
-  });
+  return useQuery(reviewQueries.my(page, limit));
 }
 
 export function useOperatorReviewSummary(operatorId?: string) {
   return useQuery({
-    queryKey: reviewKeys.operatorSummary(operatorId ?? ''),
-    queryFn: () => getOperatorReviewSummary(operatorId as string),
+    ...reviewQueries.operatorSummary(operatorId ?? ''),
     enabled: Boolean(operatorId),
-    staleTime: 2 * 60 * 1000,
-    retry: 1,
   });
 }
 
-export function useOperatorReviews(
-  operatorId?: string,
-  params?: GetOperatorReviewsParams
-) {
+export function useOperatorReviews(operatorId?: string, params?: GetOperatorReviewsParams) {
   return useQuery({
-    queryKey: reviewKeys.operatorList(operatorId ?? '', params),
-    queryFn: () => getOperatorReviews(operatorId as string, params),
+    ...reviewQueries.operatorList(operatorId ?? '', params),
     enabled: Boolean(operatorId),
-    staleTime: 60 * 1000,
-    retry: 1,
   });
 }
 

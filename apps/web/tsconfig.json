@@ -1,37 +1,16 @@
 {
+  "extends": "../../packages/config/typescript/nextjs.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
       "@/*": ["./src/*"],
       "@vexeviet/types": ["../../packages/types/src"],
-      "@vexeviet/types/*": ["../../packages/types/src/*"]
-    },
-    "strictNullChecks": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitAny": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true
+      "@vexeviet/types/*": ["../../packages/types/src/*"],
+      "@vexeviet/api-client": ["../../packages/api-client/src"],
+      "@vexeviet/api-client/*": ["../../packages/api-client/src/*"],
+      "@vexeviet/ui": ["../../packages/ui/src"],
+      "@vexeviet/ui/*": ["../../packages/ui/src/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"]
+  "exclude": ["node_modules", "e2e"]
 }
