@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { cancelBooking } from '@/lib/api/bookings';
+import { resolveMediaUrl } from '@/lib/api/media';
 import { useMyBookings } from '@/lib/hooks/useBookings';
 import { useReviewEligibility } from '@/lib/hooks/useReviews';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -81,8 +82,19 @@ function normalizeBooking(raw: any): BookingDetails {
     },
     operator: {
       id: raw.operator?.id || raw.route?.operator?.id || raw.route?.operatorId || '',
-      name: raw.operator?.name || raw.route?.operator?.name || 'VeXeViet',
-      logoUrl: raw.operator?.logoUrl || raw.operator?.logo || raw.route?.operator?.logo || '',
+      name:
+        raw.operator?.name ||
+        raw.route?.operator?.name ||
+        raw.route?.operatorName ||
+        'VeXeViet',
+      logoUrl:
+        resolveMediaUrl(
+          raw.operator?.operatorAvatarUrl ||
+            raw.operator?.logoUrl ||
+            raw.operator?.logo ||
+            raw.route?.operator?.operatorAvatarUrl ||
+            raw.route?.operator?.logo
+        ) || '',
     },
     busType: raw.busType || raw.route?.busType || 'STANDARD',
     licensePlate: raw.licensePlate || raw.route?.licensePlate || 'N/A',

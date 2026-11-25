@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useOfflineTickets } from '@/lib/hooks/useOfflineTickets';
 import { useToast } from '@/components/error/ToastProvider';
 import { parseApiError } from '@/lib/api/client';
+import { resolveMediaUrl } from '@/lib/api/media';
 import type { Ticket } from '@/types/ticket';
 import { FadeIn } from '@/components/motion';
 
@@ -71,7 +72,10 @@ function mapBookingToOfflineTicket(booking: Booking): Ticket {
     operator: {
       id: booking.route?.operator?.id || '',
       name: booking.route?.operator?.name || 'VeXeViet Partner',
-      logoUrl: booking.route?.operator?.operatorAvatarUrl || booking.route?.operator?.logo || '',
+      logoUrl:
+        resolveMediaUrl(
+          booking.route?.operator?.operatorAvatarUrl || booking.route?.operator?.logo
+        ) || '',
     },
     passenger: {
       fullName: firstPassenger

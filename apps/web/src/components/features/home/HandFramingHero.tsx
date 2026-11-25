@@ -15,7 +15,7 @@ import { Pause, Play } from 'lucide-react'
 /**
  * First-Person Human POV "Director's Hand-Frame" Video Hero Stage
  *
- * - 0ms LCP Poster (`hero-vietnam-bus.jpg`) cross-fades cleanly into a seamless
+ * - 0ms LCP Poster (`hero-tvc-poster.jpg`) cross-fades cleanly into a seamless
  *   1080p 2D Ligne-Claire looping `<video>` (`WebM VP9` + `MP4 H.264`).
  * - Diagonal Counter-Balanced Viewfinder HUD sits at Top-Left (`┌`) and Bottom-Right (`┘`),
  *   100% unobstructed by the 2D hands at Bottom-Left (`└`) and Top-Right (`┐`).
