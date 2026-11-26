@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+**/.next
+**/.turbo
+archive
+.agent
+.agents
+.devcontainer
+docs
+*.log
