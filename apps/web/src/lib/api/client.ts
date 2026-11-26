@@ -14,6 +14,11 @@ import {
 const API_ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
 const API_BASE_URL = `${API_ORIGIN}/api/v1`;
 
+export function warmUpApi(): void {
+  if (typeof window === 'undefined') return;
+  void fetch(`${API_ORIGIN}/health`, { mode: 'cors', cache: 'no-store' }).catch(() => {});
+}
+
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
@@ -45,7 +50,7 @@ export const tokenStorage = {
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

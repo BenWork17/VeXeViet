@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ApiError, loadSession, signIn } from '@/lib/api';
+import { ApiError, loadSession, signIn, warmUpApi } from '@/lib/api';
 
 /**
  * Real credential sign-in (§8). The demo buttons and the demo-session helper are
@@ -22,15 +22,29 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [wakingServer, setWakingServer] = useState(false);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
     // An already-authenticated admin lands on the dashboard rather than on a
     // second login form. Deferred until after the first render so the page
     // never flashes a redirect before storage has been read.
-    if (loadSession()) router.replace('/dashboard');
-    else setChecked(true);
+    if (loadSession()) {
+      router.replace('/dashboard');
+      return;
+    }
+    setChecked(true);
+    warmUpApi();
   }, [router]);
+
+  useEffect(() => {
+    if (!pending) {
+      setWakingServer(false);
+      return;
+    }
+    const timer = window.setTimeout(() => setWakingServer(true), 3500);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,6 +119,12 @@ export default function LoginPage() {
           {error ? (
             <p role="alert" className="rounded-control border border-pill-negative-bg bg-pill-negative-bg px-3 py-2 text-[13px] leading-5 text-pill-negative-ink">
               {error}
+            </p>
+          ) : null}
+
+          {wakingServer && !error ? (
+            <p role="status" className="rounded-control border border-rule bg-raised px-3 py-2 text-[12px] leading-5 text-muted">
+              Máy chủ Cloud đang khởi động lại sau thời gian nghỉ, vui lòng đợi thêm giây lát…
             </p>
           ) : null}
 

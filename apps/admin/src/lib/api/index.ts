@@ -10,6 +10,7 @@ export {
   signOut,
   uploadFile,
   validateImageFile,
+  warmUpApi,
 } from './client';
 export type { ApiFailure, ApiQuery } from './client';
 export { useApi } from './use-api';

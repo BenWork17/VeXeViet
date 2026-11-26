@@ -14,6 +14,7 @@ import {
   type Variants,
 } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { warmUpApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/hooks/useAuth';
 import {
   loginSchema,
@@ -36,6 +37,10 @@ export function AuthView() {
   const [direction, setDirection] = useState<1 | -1>(initialIsLogin ? -1 : 1);
 
   const redirectUrl = searchParams.get('redirect') || '/';
+
+  useEffect(() => {
+    warmUpApi();
+  }, []);
 
   useEffect(() => {
     const paramIsLogin = searchParams.get('mode') !== 'register';

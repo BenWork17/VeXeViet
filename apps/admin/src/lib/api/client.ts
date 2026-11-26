@@ -20,6 +20,15 @@ import {
 const apiOrigin = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000').replace(/\/$/, '');
 export const apiBaseUrl = `${apiOrigin}/api/v1`;
 
+/**
+ * Fires a lightweight non-blocking `/health` ping so free-tier cloud containers
+ * start waking up immediately while the user is typing credentials on `/login`.
+ */
+export function warmUpApi(): void {
+  if (typeof window === 'undefined') return;
+  void fetch(`${apiOrigin}/health`, { mode: 'cors', cache: 'no-store' }).catch(() => {});
+}
+
 export type ApiQuery = Record<string, string | number | boolean | undefined>;
 
 export type ApiFailure = {
